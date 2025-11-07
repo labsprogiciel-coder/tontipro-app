@@ -33,7 +33,7 @@
         "foregroundImage": "./assets/images/adaptive-icon.png",
         "backgroundColor": "#ffffff"
       },
-      "package": "app.rork.epargne-mobile"
+      "package": "com.dokal.yembi"
     },
     "web": {
       "favicon": "./assets/images/favicon.png"
