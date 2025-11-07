@@ -1,11 +1,11 @@
 {
   "expo": {
-    "name": "ÉpargneMobile",
-    "slug": "epargne-mobile",
+    "name": "Yembi",
+    "slug": "yembi",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
-    "scheme": "myapp",
+    "scheme": "yembi",
     "userInterfaceStyle": "automatic",
     "newArchEnabled": true,
     "splash": {
@@ -15,7 +15,7 @@
     },
     "ios": {
       "supportsTablet": true,
-      "bundleIdentifier": "app.rork.epargne-mobile",
+      "bundleIdentifier": "app.dokal.yembi",
       "entitlements": {
         "com": {
           "apple": {
@@ -48,6 +48,15 @@
     ],
     "experiments": {
       "typedRoutes": true
-    }
+    },
+    "extra": {
+      "router": {
+        "origin": "https://rork.app/"
+      },
+      "eas": {
+        "projectId": "1621fd7e-111b-4568-a0ea-0139b35bd3ae"
+      }
+    },
+    "owner": "progiciel"
   }
 }
