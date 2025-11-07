@@ -32,7 +32,7 @@ export default function AppLayout() {
         name="dashboard"
         options={{
           title: "Dashboard",
-          tabBarLabel: "Home",
+          tabBarLabel: "Accueil",
           tabBarIcon: ({ color }) => <Home size={24} color={color} />,
         }}
       />
@@ -48,7 +48,7 @@ export default function AppLayout() {
         name="clients/add"
         options={{
           href: null,
-          title: "Add Client",
+          title: "Ajouter un client",
           headerShown: false,
         }}
       />
@@ -56,7 +56,7 @@ export default function AppLayout() {
         name="clients/[id]"
         options={{
           href: null,
-          title: "Client Details",
+          title: "Détails du client",
           headerShown: false,
         }}
       />
@@ -72,7 +72,7 @@ export default function AppLayout() {
         name="transactions/new"
         options={{
           href: null,
-          title: "New Transaction",
+          title: "Nouvelle transaction",
           headerShown: false,
         }}
       />
@@ -80,7 +80,7 @@ export default function AppLayout() {
         name="transactions/withdraw"
         options={{
           href: null,
-          title: "Withdraw",
+          title: "Retrait",
           headerShown: false,
         }}
       />
@@ -88,21 +88,21 @@ export default function AppLayout() {
         name="transactions/[id]"
         options={{
           href: null,
-          title: "Transaction Details",
+          title: "Détails de la transaction",
           headerShown: false,
         }}
       />
       <Tabs.Screen
         name="reports"
         options={{
-          title: "Reports",
+          title: "Rapports",
           tabBarIcon: ({ color }) => <BarChart3 size={24} color={color} />,
         }}
       />
       <Tabs.Screen
         name="settings"
         options={{
-          title: "Settings",
+          title: "Paramètres",
           tabBarIcon: ({ color }) => <Settings size={24} color={color} />,
         }}
       />

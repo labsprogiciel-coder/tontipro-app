@@ -25,17 +25,17 @@ export default function RegisterScreen() {
 
   const handleRegister = async () => {
     if (!name || !agentId || !pin || !confirmPin) {
-      setError("Please fill in all fields");
+      setError("Veuillez remplir tous les champs");
       return;
     }
 
     if (pin !== confirmPin) {
-      setError("PINs do not match");
+      setError("Les PIN ne correspondent pas");
       return;
     }
 
     if (pin.length < 4) {
-      setError("PIN must be at least 4 digits");
+      setError("Le PIN doit contenir au moins 4 chiffres");
       return;
     }
 
@@ -52,20 +52,20 @@ export default function RegisterScreen() {
         <View style={styles.content}>
           <View style={styles.logoContainer}>
             <Text style={styles.logoText}>ÉpargneMobile</Text>
-            <Text style={styles.tagline}>Agent Registration</Text>
+            <Text style={styles.tagline}>Inscription Agent</Text>
           </View>
 
           <View style={styles.formContainer}>
-            <Text style={styles.welcomeText}>Create Account</Text>
+            <Text style={styles.welcomeText}>Créer un compte</Text>
             <Text style={styles.subtitle}>
-              Register as a new agent to get started
+              Inscrivez-vous en tant que nouvel agent pour commencer
             </Text>
 
             <View style={styles.inputContainer}>
               <User size={20} color={colors.textSecondary} />
               <TextInput
                 style={styles.input}
-                placeholder="Full Name"
+                placeholder="Nom complet"
                 value={name}
                 onChangeText={setName}
                 autoCapitalize="words"
@@ -76,7 +76,7 @@ export default function RegisterScreen() {
               <Mail size={20} color={colors.textSecondary} />
               <TextInput
                 style={styles.input}
-                placeholder="Email (optional)"
+                placeholder="Email (optionnel)"
                 value={email}
                 onChangeText={setEmail}
                 autoCapitalize="none"
@@ -88,7 +88,7 @@ export default function RegisterScreen() {
               <User size={20} color={colors.textSecondary} />
               <TextInput
                 style={styles.input}
-                placeholder="Agent ID"
+                placeholder="ID Agent"
                 value={agentId}
                 onChangeText={setAgentId}
                 autoCapitalize="none"
@@ -99,7 +99,7 @@ export default function RegisterScreen() {
               <Lock size={20} color={colors.textSecondary} />
               <TextInput
                 style={styles.input}
-                placeholder="PIN (4-6 digits)"
+                placeholder="PIN (4-6 chiffres)"
                 value={pin}
                 onChangeText={setPin}
                 secureTextEntry
@@ -112,7 +112,7 @@ export default function RegisterScreen() {
               <Lock size={20} color={colors.textSecondary} />
               <TextInput
                 style={styles.input}
-                placeholder="Confirm PIN"
+                placeholder="Confirmer le PIN"
                 value={confirmPin}
                 onChangeText={setConfirmPin}
                 secureTextEntry
@@ -130,7 +130,7 @@ export default function RegisterScreen() {
               ]}
               onPress={handleRegister}
             >
-              <Text style={styles.registerButtonText}>Register</Text>
+              <Text style={styles.registerButtonText}>S&apos;inscrire</Text>
             </Pressable>
 
             <Pressable
@@ -138,8 +138,8 @@ export default function RegisterScreen() {
               style={styles.loginLink}
             >
               <Text style={styles.loginText}>
-                Already have an account?{" "}
-                <Text style={styles.loginHighlight}>Log In</Text>
+                Vous avez déjà un compte?{" "}
+                <Text style={styles.loginHighlight}>Se connecter</Text>
               </Text>
             </Pressable>
           </View>

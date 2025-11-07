@@ -28,7 +28,7 @@ export default function AddClientScreen() {
 
   const handleAddClient = async () => {
     if (!name || !phone) {
-      Alert.alert("Missing Information", "Please enter client name and phone number");
+      Alert.alert("Informations manquantes", "Veuillez entrer le nom et le numéro de téléphone du client");
       return;
     }
 
@@ -45,12 +45,12 @@ export default function AddClientScreen() {
       });
 
       Alert.alert(
-        "Client Added",
-        `${name} has been successfully registered`,
+        "Client ajouté",
+        `${name} a été inscrit avec succès`,
         [{ text: "OK", onPress: () => router.back() }]
       );
     } catch (error) {
-      Alert.alert("Error", "Failed to add client. Please try again.");
+      Alert.alert("Érreur", "Impossible d'ajouter le client. Veuillez réessayer.");
     } finally {
       setIsLoading(false);
     }
@@ -62,7 +62,7 @@ export default function AddClientScreen() {
         <Pressable style={styles.backButton} onPress={() => router.back()}>
           <ChevronLeft size={24} color={colors.text} />
         </Pressable>
-        <Text style={styles.headerTitle}>Add New Client</Text>
+        <Text style={styles.headerTitle}>Ajouter un nouveau client</Text>
         <View style={styles.placeholder} />
       </View>
 
@@ -72,13 +72,13 @@ export default function AddClientScreen() {
       >
         <ScrollView style={styles.scrollView}>
           <View style={styles.formContainer}>
-            <Text style={styles.sectionTitle}>Client Information</Text>
+            <Text style={styles.sectionTitle}>Informations du client</Text>
 
             <View style={styles.inputContainer}>
               <User size={20} color={colors.textSecondary} />
               <TextInput
                 style={styles.input}
-                placeholder="Full Name"
+                placeholder="Nom complet"
                 value={name}
                 onChangeText={setName}
               />
@@ -88,7 +88,7 @@ export default function AddClientScreen() {
               <Phone size={20} color={colors.textSecondary} />
               <TextInput
                 style={styles.input}
-                placeholder="Phone Number"
+                placeholder="Numéro de téléphone"
                 value={phone}
                 onChangeText={setPhone}
                 keyboardType="phone-pad"
@@ -99,13 +99,13 @@ export default function AddClientScreen() {
               <MapPin size={20} color={colors.textSecondary} />
               <TextInput
                 style={styles.input}
-                placeholder="Address (Optional)"
+                placeholder="Adresse (Optionnelle)"
                 value={address}
                 onChangeText={setAddress}
               />
             </View>
 
-            <Text style={styles.sectionTitle}>Initial Deposit</Text>
+            <Text style={styles.sectionTitle}>Dépôt initial</Text>
 
             <View style={styles.inputContainer}>
               <Text style={styles.currencyPrefix}>FCFA</Text>
@@ -119,7 +119,7 @@ export default function AddClientScreen() {
             </View>
 
             <Text style={styles.infoText}>
-              You can add an initial deposit or leave it empty
+              Vous pouvez ajouter un dépôt initial ou le laisser vide
             </Text>
 
             <Pressable
@@ -132,7 +132,7 @@ export default function AddClientScreen() {
               disabled={isLoading}
             >
               <Text style={styles.addButtonText}>
-                {isLoading ? "Adding..." : "Add Client"}
+                {isLoading ? "Ajout en cours..." : "Ajouter le client"}
               </Text>
             </Pressable>
           </View>

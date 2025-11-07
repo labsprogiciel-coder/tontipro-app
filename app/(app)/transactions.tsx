@@ -43,7 +43,7 @@ export default function TransactionsScreen() {
                 filter === "all" && styles.filterTextActive,
               ]}
             >
-              All
+              Tous
             </Text>
           </Pressable>
           <Pressable
@@ -59,7 +59,7 @@ export default function TransactionsScreen() {
                 filter === "deposits" && styles.filterTextActive,
               ]}
             >
-              Deposits
+              Dépôts
             </Text>
           </Pressable>
           <Pressable
@@ -75,7 +75,7 @@ export default function TransactionsScreen() {
                 filter === "withdrawals" && styles.filterTextActive,
               ]}
             >
-              Withdrawals
+              Retraits
             </Text>
           </Pressable>
         </View>
@@ -160,7 +160,7 @@ export default function TransactionsScreen() {
                       },
                     ]}
                   >
-                    {item.status === "completed" ? "Synced" : "Pending"}
+                    {item.status === "completed" ? "Synchronisé" : "En attente"}
                   </Text>
                 </View>
               </View>
@@ -168,7 +168,7 @@ export default function TransactionsScreen() {
           )}
           ListEmptyComponent={
             <View style={styles.emptyContainer}>
-              <Text style={styles.emptyText}>No transactions found</Text>
+              <Text style={styles.emptyText}>Aucune transaction trouvée</Text>
             </View>
           }
           contentContainerStyle={styles.listContent}

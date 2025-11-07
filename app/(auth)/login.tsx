@@ -26,7 +26,7 @@ export default function LoginScreen() {
 
   const handleLogin = async () => {
     if (!agentId || !pin) {
-      setError("Please enter your Agent ID and PIN");
+      setError("Veuillez entrer votre ID Agent et PIN");
       return;
     }
 
@@ -38,7 +38,7 @@ export default function LoginScreen() {
       await login(agentId, pin);
       router.replace("/dashboard");
     } catch {
-      setError("Invalid credentials. Please try again.");
+      setError("Identifiants invalides. Veuillez réessayer.");
     } finally {
       setIsLoading(false);
     }
@@ -53,17 +53,17 @@ export default function LoginScreen() {
         <View style={styles.content}>
           <View style={styles.logoContainer}>
             <Text style={styles.logoText}>ÉpargneMobile</Text>
-            <Text style={styles.tagline}>Agent Portal</Text>
+            <Text style={styles.tagline}>Portail Agent</Text>
           </View>
 
           <View style={styles.formContainer}>
-            <Text style={styles.welcomeText}>Welcome back</Text>
+            <Text style={styles.welcomeText}>Bon retour</Text>
             <Text style={styles.subtitle}>
-              Log in to continue managing your clients
+              Connectez-vous pour continuer à gérer vos clients
             </Text>
 
             <View style={styles.credentialsBox}>
-              <Text style={styles.credentialsTitle}>Demo Credentials:</Text>
+              <Text style={styles.credentialsTitle}>Identifiants de démo:</Text>
               {MOCK_AGENTS.map((agent) => (
                 <Text key={agent.id} style={styles.credentialsText}>
                   {agent.id} / {agent.pin}
@@ -75,7 +75,7 @@ export default function LoginScreen() {
               <User size={20} color={colors.textSecondary} />
               <TextInput
                 style={styles.input}
-                placeholder="Agent ID"
+                placeholder="ID Agent"
                 value={agentId}
                 onChangeText={setAgentId}
                 autoCapitalize="none"
@@ -107,7 +107,7 @@ export default function LoginScreen() {
               disabled={isLoading}
             >
               <Text style={styles.loginButtonText}>
-                {isLoading ? "Logging in..." : "Log In"}
+                {isLoading ? "Connexion..." : "Se connecter"}
               </Text>
             </Pressable>
 
@@ -116,7 +116,7 @@ export default function LoginScreen() {
               style={styles.registerLink}
             >
               <Text style={styles.registerText}>
-                New agent? <Text style={styles.registerHighlight}>Register</Text>
+                Nouvel agent? <Text style={styles.registerHighlight}>S&apos;inscrire</Text>
               </Text>
             </Pressable>
           </View>

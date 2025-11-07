@@ -42,19 +42,19 @@ export default function WithdrawalScreen() {
 
   const handleWithdrawal = async () => {
     if (!selectedClient) {
-      Alert.alert("Error", "Please select a client");
+      Alert.alert("Érreur", "Veuillez sélectionner un client");
       return;
     }
 
     if (!amount || parseInt(amount, 10) <= 0) {
-      Alert.alert("Error", "Please enter a valid amount");
+      Alert.alert("Érreur", "Veuillez entrer un montant valide");
       return;
     }
 
     const withdrawalAmount = parseInt(amount, 10);
     
     if (withdrawalAmount > selectedClient.balance) {
-      Alert.alert("Insufficient Balance", "The withdrawal amount exceeds the client's balance");
+      Alert.alert("Solde insuffisant", "Le montant du retrait dépasse le solde du client");
       return;
     }
 
@@ -69,12 +69,12 @@ export default function WithdrawalScreen() {
       });
 
       Alert.alert(
-        "Success",
-        `Withdrawal of ${withdrawalAmount.toLocaleString()} FCFA processed for ${selectedClient.name}`,
+        "Succès",
+        `Retrait de ${withdrawalAmount.toLocaleString()} FCFA traité pour ${selectedClient.name}`,
         [{ text: "OK", onPress: () => router.back() }]
       );
     } catch (error) {
-      Alert.alert("Error", "Failed to process withdrawal. Please try again.");
+      Alert.alert("Érreur", "Impossible de traiter le retrait. Veuillez réessayer.");
     } finally {
       setIsLoading(false);
     }
@@ -86,7 +86,7 @@ export default function WithdrawalScreen() {
         <Pressable style={styles.backButton} onPress={() => router.back()}>
           <ChevronLeft size={24} color={colors.text} />
         </Pressable>
-        <Text style={styles.headerTitle}>Process Withdrawal</Text>
+        <Text style={styles.headerTitle}>Traiter le retrait</Text>
         <View style={styles.placeholder} />
       </View>
 
@@ -98,7 +98,7 @@ export default function WithdrawalScreen() {
           <View style={styles.formContainer}>
             {!clientId && (
               <>
-                <Text style={styles.sectionTitle}>Select Client</Text>
+                <Text style={styles.sectionTitle}>Sélectionner un client</Text>
                 <Pressable
                   style={styles.clientSelector}
                   onPress={() => setShowClientPicker(!showClientPicker)}
@@ -114,7 +114,7 @@ export default function WithdrawalScreen() {
                         </Text>
                       </>
                     ) : (
-                      <Text style={styles.placeholderText}>Select a client</Text>
+                      <Text style={styles.placeholderText}>Sélectionner un client</Text>
                     )}
                   </View>
                   <ChevronDown size={20} color={colors.textSecondary} />
@@ -152,14 +152,14 @@ export default function WithdrawalScreen() {
 
             {selectedClient && (
               <View style={styles.balanceInfo}>
-                <Text style={styles.balanceLabel}>Available Balance</Text>
+                <Text style={styles.balanceLabel}>Solde disponible</Text>
                 <Text style={styles.balanceAmount}>
                   {selectedClient.balance.toLocaleString()} FCFA
                 </Text>
               </View>
             )}
 
-            <Text style={styles.sectionTitle}>Withdrawal Amount</Text>
+            <Text style={styles.sectionTitle}>Montant du retrait</Text>
             <View style={styles.amountContainer}>
               <Text style={styles.currencyPrefix}>FCFA</Text>
               <TextInput
@@ -171,10 +171,10 @@ export default function WithdrawalScreen() {
               />
             </View>
 
-            <Text style={styles.sectionTitle}>Reason for Withdrawal</Text>
+            <Text style={styles.sectionTitle}>Raison du retrait</Text>
             <TextInput
               style={styles.reasonInput}
-              placeholder="Enter reason for withdrawal"
+              placeholder="Entrer la raison du retrait"
               value={reason}
               onChangeText={setReason}
               multiline
@@ -192,7 +192,7 @@ export default function WithdrawalScreen() {
               disabled={isLoading}
             >
               <Text style={styles.submitButtonText}>
-                {isLoading ? "Processing..." : "Process Withdrawal"}
+                {isLoading ? "Traitement..." : "Traiter le retrait"}
               </Text>
             </Pressable>
           </View>

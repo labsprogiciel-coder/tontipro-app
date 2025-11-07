@@ -37,7 +37,7 @@ export default function TransactionDetailScreen() {
           setClient(clientData);
         }
       } else {
-        Alert.alert("Error", "Transaction not found");
+        Alert.alert("Érreur", "Transaction introuvable");
         router.back();
       }
       setIsLoading(false);
@@ -59,11 +59,11 @@ export default function TransactionDetailScreen() {
           <Pressable style={styles.backButton} onPress={() => router.back()}>
             <ChevronLeft size={24} color={colors.text} />
           </Pressable>
-          <Text style={styles.headerTitle}>Transaction Details</Text>
+          <Text style={styles.headerTitle}>Détails de la transaction</Text>
           <View style={styles.placeholder} />
         </View>
         <View style={styles.errorContainer}>
-          <Text style={styles.errorText}>Transaction not found</Text>
+          <Text style={styles.errorText}>Transaction introuvable</Text>
         </View>
       </SafeAreaView>
     );
@@ -75,7 +75,7 @@ export default function TransactionDetailScreen() {
         <Pressable style={styles.backButton} onPress={() => router.back()}>
           <ChevronLeft size={24} color={colors.text} />
         </Pressable>
-        <Text style={styles.headerTitle}>Transaction Details</Text>
+        <Text style={styles.headerTitle}>Détails de la transaction</Text>
         <View style={styles.placeholder} />
       </View>
 
@@ -99,7 +99,7 @@ export default function TransactionDetailScreen() {
             )}
           </View>
           <Text style={styles.transactionType}>
-            {transaction.type === "deposit" ? "Deposit" : "Withdrawal"}
+            {transaction.type === "deposit" ? "Dépôt" : "Retrait"}
           </Text>
           <Text
             style={[
@@ -121,7 +121,7 @@ export default function TransactionDetailScreen() {
               <Clock size={20} color={colors.primary} />
             </View>
             <View style={styles.detailContent}>
-              <Text style={styles.detailLabel}>Date & Time</Text>
+              <Text style={styles.detailLabel}>Date & Heure</Text>
               <Text style={styles.detailValue}>
                 {new Date(transaction.date).toLocaleString()}
               </Text>
@@ -148,7 +148,7 @@ export default function TransactionDetailScreen() {
               <FileText size={20} color={colors.primary} />
             </View>
             <View style={styles.detailContent}>
-              <Text style={styles.detailLabel}>Status</Text>
+              <Text style={styles.detailLabel}>Statut</Text>
               <View
                 style={[
                   styles.statusBadge,
@@ -171,7 +171,7 @@ export default function TransactionDetailScreen() {
                     },
                   ]}
                 >
-                  {transaction.status === "completed" ? "Synced" : "Pending"}
+                  {transaction.status === "completed" ? "Synchronisé" : "En attente"}
                 </Text>
               </View>
             </View>
@@ -191,11 +191,11 @@ export default function TransactionDetailScreen() {
         {transaction.status === "pending" && (
           <View style={styles.actionContainer}>
             <Text style={styles.syncInfo}>
-              This transaction is pending synchronization with the server.
-              It will be automatically synced when you have an internet connection.
+              Cette transaction est en attente de synchronisation avec le serveur.
+              Elle sera automatiquement synchronisée lorsque vous aurez une connexion Internet.
             </Text>
             <Pressable style={styles.syncButton}>
-              <Text style={styles.syncButtonText}>Sync Now</Text>
+              <Text style={styles.syncButtonText}>Synchroniser maintenant</Text>
             </Pressable>
           </View>
         )}

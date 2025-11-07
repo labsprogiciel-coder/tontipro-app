@@ -34,7 +34,7 @@ export default function ClientDetailScreen() {
         setClient(clientData);
         setTransactions(getTransactionsByClientId(id));
       } else {
-        Alert.alert("Error", "Client not found");
+        Alert.alert("Érreur", "Client introuvable");
         router.back();
       }
       setIsLoading(false);
@@ -69,7 +69,7 @@ export default function ClientDetailScreen() {
         <Pressable style={styles.backButton} onPress={() => router.back()}>
           <ChevronLeft size={24} color={colors.text} />
         </Pressable>
-        <Text style={styles.headerTitle}>Client Details</Text>
+        <Text style={styles.headerTitle}>Détails du client</Text>
         <View style={styles.placeholder} />
       </View>
 
@@ -84,7 +84,7 @@ export default function ClientDetailScreen() {
             <Text style={styles.phoneNumber}>{client?.phone}</Text>
           </View>
           <View style={styles.balanceContainer}>
-            <Text style={styles.balanceLabel}>Current Balance</Text>
+            <Text style={styles.balanceLabel}>Solde actuel</Text>
             <Text style={styles.balanceAmount}>
               {client?.balance?.toLocaleString()} FCFA
             </Text>
@@ -96,23 +96,23 @@ export default function ClientDetailScreen() {
             <View style={[styles.actionIcon, { backgroundColor: colors.secondaryLight }]}>
               <ArrowDownCircle size={24} color={colors.secondary} />
             </View>
-            <Text style={styles.actionText}>New Deposit</Text>
+            <Text style={styles.actionText}>Nouveau dépôt</Text>
           </Pressable>
 
           <Pressable style={styles.actionButton} onPress={handleNewWithdrawal}>
             <View style={[styles.actionIcon, { backgroundColor: colors.error + "20" }]}>
               <ArrowUpCircle size={24} color={colors.error} />
             </View>
-            <Text style={styles.actionText}>Withdrawal</Text>
+            <Text style={styles.actionText}>Retrait</Text>
           </Pressable>
         </View>
 
         <View style={styles.transactionsSection}>
-          <Text style={styles.sectionTitle}>Transaction History</Text>
+          <Text style={styles.sectionTitle}>Historique des transactions</Text>
           
           {transactions.length === 0 ? (
             <View style={styles.emptyContainer}>
-              <Text style={styles.emptyText}>No transactions yet</Text>
+              <Text style={styles.emptyText}>Aucune transaction pour le moment</Text>
             </View>
           ) : (
             transactions.map((transaction) => (
@@ -136,7 +136,7 @@ export default function ClientDetailScreen() {
                 </View>
                 <View style={styles.transactionInfo}>
                   <Text style={styles.transactionType}>
-                    {transaction.type === "deposit" ? "Deposit" : "Withdrawal"}
+                    {transaction.type === "deposit" ? "Dépôt" : "Retrait"}
                   </Text>
                   <Text style={styles.transactionDate}>
                     {new Date(transaction.date).toLocaleDateString()}

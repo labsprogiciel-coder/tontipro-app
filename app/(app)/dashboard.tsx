@@ -51,10 +51,10 @@ export default function DashboardScreen() {
       <ScrollView style={styles.scrollView}>
         <View style={styles.header}>
           <Text style={styles.greeting}>
-            Hello, {user?.name || "Agent"}
+            Bonjour, {user?.name || "Agent"}
           </Text>
           <Text style={styles.date}>
-            {new Date().toLocaleDateString("en-US", {
+            {new Date().toLocaleDateString("fr-FR", {
               weekday: "long",
               year: "numeric",
               month: "long",
@@ -71,7 +71,7 @@ export default function DashboardScreen() {
             <View style={[styles.actionIcon, { backgroundColor: colors.primaryLight }]}>
               <Users size={24} color={colors.primary} />
             </View>
-            <Text style={styles.actionText}>New Client</Text>
+            <Text style={styles.actionText}>Nouveau Client</Text>
           </Pressable>
 
           <Pressable
@@ -81,58 +81,58 @@ export default function DashboardScreen() {
             <View style={[styles.actionIcon, { backgroundColor: colors.secondaryLight }]}>
               <PlusCircle size={24} color={colors.secondary} />
             </View>
-            <Text style={styles.actionText}>New Deposit</Text>
+            <Text style={styles.actionText}>Nouveau Dépôt</Text>
           </Pressable>
         </View>
 
-        <Text style={styles.sectionTitle}>Overview</Text>
+        <Text style={styles.sectionTitle}>Aperçu</Text>
 
         <View style={styles.statsContainer}>
           <View style={styles.statCard}>
             <View style={styles.statHeader}>
-              <Text style={styles.statTitle}>Total Collected</Text>
+              <Text style={styles.statTitle}>Total collecté</Text>
               <Wallet size={20} color={colors.primary} />
             </View>
             <Text style={styles.statValue}>
               {dashboardData.totalCollected.toLocaleString()} FCFA
             </Text>
-            <Text style={styles.statSubtext}>This month</Text>
+            <Text style={styles.statSubtext}>Ce mois-ci</Text>
           </View>
 
           <View style={styles.statCard}>
             <View style={styles.statHeader}>
-              <Text style={styles.statTitle}>Active Clients</Text>
+              <Text style={styles.statTitle}>Clients actifs</Text>
               <Users size={20} color={colors.primary} />
             </View>
             <Text style={styles.statValue}>{dashboardData.clientCount}</Text>
-            <Text style={styles.statSubtext}>Total registered</Text>
+            <Text style={styles.statSubtext}>Total inscrits</Text>
           </View>
         </View>
 
         <View style={styles.statsContainer}>
           <View style={styles.statCard}>
             <View style={styles.statHeader}>
-              <Text style={styles.statTitle}>Pending Sync</Text>
+              <Text style={styles.statTitle}>Synchro en attente</Text>
               <Wallet size={20} color={colors.warning} />
             </View>
             <Text style={styles.statValue}>{dashboardData.pendingTransactions}</Text>
-            <Text style={styles.statSubtext}>Offline transactions</Text>
+            <Text style={styles.statSubtext}>Transactions hors ligne</Text>
           </View>
 
           <View style={styles.statCard}>
             <View style={styles.statHeader}>
-              <Text style={styles.statTitle}>Target</Text>
+              <Text style={styles.statTitle}>Objectif</Text>
               <TrendingUp size={20} color={colors.secondary} />
             </View>
             <Text style={styles.statValue}>{dashboardData.targetCompletion}%</Text>
-            <Text style={styles.statSubtext}>Monthly goal</Text>
+            <Text style={styles.statSubtext}>Objectif mensuel</Text>
           </View>
         </View>
 
-        <Text style={styles.sectionTitle}>Recent Activity</Text>
+        <Text style={styles.sectionTitle}>Activité récente</Text>
         
         <View style={styles.activityContainer}>
-          <Text style={styles.emptyText}>No recent activity to display</Text>
+          <Text style={styles.emptyText}>Aucune activité récente à afficher</Text>
         </View>
       </ScrollView>
     </View>
