@@ -16,6 +16,8 @@ interface ClientStoreState {
     phone: string;
     address?: string;
     initialDeposit?: number;
+    idNumber?: string;
+    idType?: "cni" | "passport" | "permis" | "autre";
   }) => Promise<Client>;
   updateClient: (id: string, clientData: Partial<Client>) => Promise<Client>;
   getClientById: (id: string) => Client | undefined;
@@ -40,6 +42,10 @@ export const useClientStore = create<ClientStoreState>()(
             balance: clientData.initialDeposit || 0,
             joinDate: new Date().toISOString(),
             status: "active",
+            idNumber: clientData.idNumber,
+            idType: clientData.idType,
+            kycVerified: !!clientData.idNumber,
+            kycDate: clientData.idNumber ? new Date().toISOString() : undefined,
           };
           
           set((state) => ({

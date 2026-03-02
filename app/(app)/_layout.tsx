@@ -61,6 +61,14 @@ export default function AppLayout() {
         }}
       />
       <Tabs.Screen
+        name="clients/scan"
+        options={{
+          href: null,
+          title: "Scanner ID",
+          headerShown: false,
+        }}
+      />
+      <Tabs.Screen
         name="transactions"
         options={{
           title: "Transactions",

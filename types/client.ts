@@ -7,4 +7,8 @@ export interface Client {
   lastDeposit?: string;
   status: "active" | "inactive";
   address?: string;
+  idNumber?: string;
+  idType?: "cni" | "passport" | "permis" | "autre";
+  kycVerified?: boolean;
+  kycDate?: string;
 }

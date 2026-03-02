@@ -2,7 +2,6 @@ import { useEffect, useState } from "react";
 import {
   ActivityIndicator,
   Alert,
-  FlatList,
   Pressable,
   ScrollView,
   StyleSheet,
@@ -11,17 +10,34 @@ import {
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useLocalSearchParams, useRouter } from "expo-router";
-import { ArrowDownCircle, ArrowUpCircle, ChevronLeft, Phone, PlusCircle, User } from "lucide-react-native";
+import {
+  ArrowDownCircle,
+  ArrowUpCircle,
+  ChevronLeft,
+  Phone,
+  User,
+  ShieldCheck,
+  ShieldAlert,
+  ScanLine,
+  CreditCard,
+} from "lucide-react-native";
 
 import { colors } from "@/constants/colors";
 import { useClientStore } from "@/stores/client-store";
 import { useTransactionStore } from "@/stores/transaction-store";
 import { Transaction } from "@/types/transaction";
 
+const ID_TYPE_LABELS: Record<string, string> = {
+  cni: "CNI",
+  passport: "Passeport",
+  permis: "Permis",
+  autre: "Autre",
+};
+
 export default function ClientDetailScreen() {
   const router = useRouter();
-  const { id } = useLocalSearchParams<{ id: string }>();
-  const { getClientById } = useClientStore();
+  const { id, scannedId } = useLocalSearchParams<{ id: string; scannedId?: string }>();
+  const { getClientById, updateClient } = useClientStore();
   const { getTransactionsByClientId } = useTransactionStore();
   const [isLoading, setIsLoading] = useState(true);
   const [client, setClient] = useState<any>(null);
@@ -34,24 +50,45 @@ export default function ClientDetailScreen() {
         setClient(clientData);
         setTransactions(getTransactionsByClientId(id));
       } else {
-        Alert.alert("Érreur", "Client introuvable");
+        Alert.alert("Erreur", "Client introuvable");
         router.back();
       }
       setIsLoading(false);
     }
   }, [id, getClientById, getTransactionsByClientId, router]);
 
+  useEffect(() => {
+    if (scannedId && id && client) {
+      console.log("[ClientDetail] Received scanned ID:", scannedId);
+      updateClient(id, {
+        idNumber: scannedId,
+        kycVerified: true,
+        kycDate: new Date().toISOString(),
+      }).then((updated) => {
+        setClient(updated);
+        Alert.alert("KYC mis à jour", `Numéro d'identité enregistré : ${scannedId}`);
+      });
+    }
+  }, [scannedId, id, client, updateClient]);
+
   const handleNewDeposit = () => {
     router.push({
       pathname: "/(app)/transactions/new",
-      params: { clientId: id }
+      params: { clientId: id },
     });
   };
 
   const handleNewWithdrawal = () => {
     router.push({
       pathname: "/(app)/transactions/withdraw",
-      params: { clientId: id }
+      params: { clientId: id },
+    });
+  };
+
+  const handleScanKyc = () => {
+    router.push({
+      pathname: "/(app)/clients/scan",
+      params: { clientId: id },
     });
   };
 
@@ -91,16 +128,89 @@ export default function ClientDetailScreen() {
           </View>
         </View>
 
+        <View style={styles.kycCard}>
+          <View style={styles.kycHeaderRow}>
+            {client?.kycVerified ? (
+              <ShieldCheck size={22} color={colors.secondary} />
+            ) : (
+              <ShieldAlert size={22} color={colors.warning} />
+            )}
+            <Text style={styles.kycTitle}>Statut KYC</Text>
+            {client?.kycVerified ? (
+              <View style={styles.kycVerifiedBadge}>
+                <Text style={styles.kycVerifiedText}>Vérifié</Text>
+              </View>
+            ) : (
+              <View style={styles.kycPendingBadge}>
+                <Text style={styles.kycPendingText}>En attente</Text>
+              </View>
+            )}
+          </View>
+
+          {client?.idNumber ? (
+            <View style={styles.kycDetails}>
+              <View style={styles.kycDetailRow}>
+                <CreditCard size={16} color={colors.textSecondary} />
+                <Text style={styles.kycDetailLabel}>Type :</Text>
+                <Text style={styles.kycDetailValue}>
+                  {ID_TYPE_LABELS[client.idType ?? ""] ?? "Non spécifié"}
+                </Text>
+              </View>
+              <View style={styles.kycDetailRow}>
+                <Text style={styles.kycIdNumber}>{client.idNumber}</Text>
+              </View>
+              {client.kycDate && (
+                <Text style={styles.kycDate}>
+                  Vérifié le {new Date(client.kycDate).toLocaleDateString("fr-FR")}
+                </Text>
+              )}
+            </View>
+          ) : (
+            <View style={styles.kycEmpty}>
+              <Text style={styles.kycEmptyText}>
+                {"Aucune pièce d\u2019identité enregistrée"}
+              </Text>
+              <Pressable
+                style={({ pressed }) => [styles.kycScanBtn, pressed && { opacity: 0.8 }]}
+                onPress={handleScanKyc}
+              >
+                <ScanLine size={18} color="#fff" />
+                <Text style={styles.kycScanBtnText}>{"Scanner la pièce d\u2019identité"}</Text>
+              </Pressable>
+            </View>
+          )}
+
+          {client?.idNumber && (
+            <Pressable
+              style={({ pressed }) => [styles.kycRescanBtn, pressed && { opacity: 0.7 }]}
+              onPress={handleScanKyc}
+            >
+              <ScanLine size={16} color={colors.primary} />
+              <Text style={styles.kycRescanText}>Rescanner</Text>
+            </Pressable>
+          )}
+        </View>
+
         <View style={styles.actionsContainer}>
           <Pressable style={styles.actionButton} onPress={handleNewDeposit}>
-            <View style={[styles.actionIcon, { backgroundColor: colors.secondaryLight }]}>
+            <View
+              style={[
+                styles.actionIcon,
+                { backgroundColor: colors.secondaryLight },
+              ]}
+            >
               <ArrowDownCircle size={24} color={colors.secondary} />
             </View>
             <Text style={styles.actionText}>Nouveau dépôt</Text>
           </Pressable>
 
           <Pressable style={styles.actionButton} onPress={handleNewWithdrawal}>
-            <View style={[styles.actionIcon, { backgroundColor: colors.error + "20" }]}>
+            <View
+              style={[
+                styles.actionIcon,
+                { backgroundColor: colors.error + "20" },
+              ]}
+            >
               <ArrowUpCircle size={24} color={colors.error} />
             </View>
             <Text style={styles.actionText}>Retrait</Text>
@@ -109,10 +219,12 @@ export default function ClientDetailScreen() {
 
         <View style={styles.transactionsSection}>
           <Text style={styles.sectionTitle}>Historique des transactions</Text>
-          
+
           {transactions.length === 0 ? (
             <View style={styles.emptyContainer}>
-              <Text style={styles.emptyText}>Aucune transaction pour le moment</Text>
+              <Text style={styles.emptyText}>
+                Aucune transaction pour le moment
+              </Text>
             </View>
           ) : (
             transactions.map((transaction) => (
@@ -192,7 +304,7 @@ const styles = StyleSheet.create({
   },
   headerTitle: {
     fontSize: 18,
-    fontWeight: "600",
+    fontWeight: "600" as const,
     color: colors.text,
   },
   placeholder: {
@@ -218,7 +330,7 @@ const styles = StyleSheet.create({
   },
   clientName: {
     fontSize: 24,
-    fontWeight: "bold",
+    fontWeight: "bold" as const,
     color: colors.text,
     marginBottom: 8,
   },
@@ -242,8 +354,118 @@ const styles = StyleSheet.create({
   },
   balanceAmount: {
     fontSize: 28,
-    fontWeight: "bold",
+    fontWeight: "bold" as const,
     color: colors.text,
+  },
+  kycCard: {
+    margin: 16,
+    backgroundColor: colors.card,
+    borderRadius: 14,
+    padding: 18,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.06,
+    shadowRadius: 6,
+    elevation: 2,
+  },
+  kycHeaderRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+    marginBottom: 14,
+  },
+  kycTitle: {
+    flex: 1,
+    fontSize: 16,
+    fontWeight: "600" as const,
+    color: colors.text,
+  },
+  kycVerifiedBadge: {
+    backgroundColor: colors.secondary + "18",
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 12,
+  },
+  kycVerifiedText: {
+    fontSize: 12,
+    fontWeight: "600" as const,
+    color: colors.secondary,
+  },
+  kycPendingBadge: {
+    backgroundColor: colors.warning + "18",
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 12,
+  },
+  kycPendingText: {
+    fontSize: 12,
+    fontWeight: "600" as const,
+    color: colors.warning,
+  },
+  kycDetails: {
+    gap: 8,
+  },
+  kycDetailRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+  },
+  kycDetailLabel: {
+    fontSize: 14,
+    color: colors.textSecondary,
+  },
+  kycDetailValue: {
+    fontSize: 14,
+    fontWeight: "500" as const,
+    color: colors.text,
+  },
+  kycIdNumber: {
+    fontSize: 17,
+    fontWeight: "700" as const,
+    color: colors.text,
+    letterSpacing: 0.5,
+  },
+  kycDate: {
+    fontSize: 12,
+    color: colors.textSecondary,
+    marginTop: 4,
+  },
+  kycEmpty: {
+    alignItems: "center",
+    gap: 14,
+  },
+  kycEmptyText: {
+    fontSize: 14,
+    color: colors.textSecondary,
+  },
+  kycScanBtn: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+    backgroundColor: colors.primary,
+    borderRadius: 10,
+    paddingVertical: 12,
+    paddingHorizontal: 20,
+  },
+  kycScanBtnText: {
+    color: "#fff",
+    fontSize: 14,
+    fontWeight: "600" as const,
+  },
+  kycRescanBtn: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 6,
+    marginTop: 12,
+    paddingVertical: 8,
+    borderRadius: 8,
+    backgroundColor: colors.primary + "0A",
+  },
+  kycRescanText: {
+    color: colors.primary,
+    fontSize: 13,
+    fontWeight: "500" as const,
   },
   actionsContainer: {
     flexDirection: "row",
@@ -272,7 +494,7 @@ const styles = StyleSheet.create({
   },
   actionText: {
     fontSize: 14,
-    fontWeight: "500",
+    fontWeight: "500" as const,
     color: colors.text,
   },
   transactionsSection: {
@@ -280,7 +502,7 @@ const styles = StyleSheet.create({
   },
   sectionTitle: {
     fontSize: 18,
-    fontWeight: "600",
+    fontWeight: "600" as const,
     color: colors.text,
     marginBottom: 16,
   },
@@ -319,7 +541,7 @@ const styles = StyleSheet.create({
   },
   transactionType: {
     fontSize: 16,
-    fontWeight: "600",
+    fontWeight: "600" as const,
     color: colors.text,
   },
   transactionDate: {
@@ -331,6 +553,6 @@ const styles = StyleSheet.create({
   },
   amountText: {
     fontSize: 16,
-    fontWeight: "600",
+    fontWeight: "600" as const,
   },
 });
