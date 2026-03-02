@@ -1,5 +1,7 @@
 # 📱 ÉpargneMobile Ex: Yembi
 
+![alt text]([image-url](https://github.com/Dokal-Marketplace/Yembi/blob/main/assets/screenshots/Screenshot%202026-03-02%20at%2014.02.26.png)) ![alt text](image-url) ![alt text]([image-url](https://github.com/Dokal-Marketplace/Yembi/blob/main/assets/screenshots/Screenshot%202026-03-02%20at%2014.02.26.png)) ![alt text]([image-url](https://github.com/Dokal-Marketplace/Yembi/blob/main/assets/screenshots/Screenshot%202026-03-02%20at%2014.02.26.png))
+
 **ÉpargneMobile** est une application mobile de gestion d'épargne destinée aux agents de terrain en Afrique francophone. Elle permet de gérer les comptes clients, d'enregistrer les transactions (dépôts/retraits) et de suivre les performances, même sans connexion internet.
 
 > **Note :** L'application est optimisée pour un usage **offline-first** afin de pallier les problèmes de connectivité dans les zones reculées.
