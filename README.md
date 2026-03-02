@@ -1,6 +1,6 @@
 # 📱 ÉpargneMobile Ex: Yembi
 
-![Screen 1](assets/screenshots/1.png) ![Screen 2](assets/screenshots/2.png) ![Screen 3](assets/screenshots/3.png) ![Screen 4](assets/screenshots/4.png)
+<img src="assets/screenshots/1.png" width="22%"> <img src="assets/screenshots/2.png" width="22%"> <img src="assets/screenshots/3.png" width="22%"> <img src="assets/screenshots/4.png" width="22%">
 
 **ÉpargneMobile** est une application mobile de gestion d'épargne destinée aux agents de terrain en Afrique francophone. Elle permet de gérer les comptes clients, d'enregistrer les transactions (dépôts/retraits) et de suivre les performances, même sans connexion internet.
 
