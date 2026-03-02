@@ -6,6 +6,11 @@ export interface Client {
   joinDate: string;
   lastDeposit?: string;
   status: "active" | "inactive";
+  address?: string;
+  idNumber?: string;
+  idType?: "cni" | "passport" | "permis" | "autre";
+  kycVerified?: boolean;
+  kycDate?: string;
 }
 
 export const mockClients: Client[] = [
@@ -17,6 +22,10 @@ export const mockClients: Client[] = [
     joinDate: "2023-01-15",
     lastDeposit: "2023-05-10",
     status: "active",
+    idNumber: "SN-CNI-2845739",
+    idType: "cni",
+    kycVerified: true,
+    kycDate: "2023-01-15",
   },
   {
     id: "CL002",
@@ -26,6 +35,10 @@ export const mockClients: Client[] = [
     joinDate: "2023-02-03",
     lastDeposit: "2023-05-08",
     status: "active",
+    idNumber: "SN-PASS-A4829174",
+    idType: "passport",
+    kycVerified: true,
+    kycDate: "2023-02-03",
   },
   {
     id: "CL003",
