@@ -33,7 +33,7 @@ export default function ClientsScreen() {
           <Search size={20} color={colors.textSecondary} />
           <TextInput
             style={styles.searchInput}
-            placeholder="Search clients..."
+            placeholder="Rechercher des clients..."
             value={searchQuery}
             onChangeText={setSearchQuery}
           />
@@ -67,7 +67,7 @@ export default function ClientsScreen() {
                 <Text style={styles.clientPhone}>{item.phone}</Text>
               </View>
               <View style={styles.balanceContainer}>
-                <Text style={styles.balanceLabel}>Balance</Text>
+                <Text style={styles.balanceLabel}>Solde</Text>
                 <Text style={styles.balanceAmount}>
                   {item.balance.toLocaleString()} FCFA
                 </Text>
@@ -76,7 +76,7 @@ export default function ClientsScreen() {
           )}
           ListEmptyComponent={
             <View style={styles.emptyContainer}>
-              <Text style={styles.emptyText}>No clients found</Text>
+              <Text style={styles.emptyText}>Aucun client trouvé</Text>
             </View>
           }
           contentContainerStyle={styles.listContent}

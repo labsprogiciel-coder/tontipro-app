@@ -34,15 +34,15 @@ export default function SettingsScreen() {
 
   const handleLogout = () => {
     Alert.alert(
-      "Logout",
-      "Are you sure you want to logout?",
+      "Déconnexion",
+      "Êtes-vous sûr de vouloir vous déconnecter?",
       [
         {
-          text: "Cancel",
+          text: "Annuler",
           style: "cancel",
         },
         {
-          text: "Logout",
+          text: "Déconnexion",
           style: "destructive",
           onPress: () => {
             logout();
@@ -62,19 +62,19 @@ export default function SettingsScreen() {
             <User size={32} color={colors.primary} />
           </View>
           <View style={styles.profileInfo}>
-            <Text style={styles.profileName}>{user?.name || "Agent Name"}</Text>
+            <Text style={styles.profileName}>{user?.name || "Nom de l'agent"}</Text>
             <Text style={styles.profileId}>ID: {user?.id || "AG12345"}</Text>
           </View>
           <Pressable
             style={styles.profileEditButton}
             onPress={() => router.push("/(app)/settings/profile")}
           >
-            <Text style={styles.profileEditText}>Edit</Text>
+            <Text style={styles.profileEditText}>Modifier</Text>
           </Pressable>
         </View>
 
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Preferences</Text>
+          <Text style={styles.sectionTitle}>Préférences</Text>
           <View style={styles.settingCard}>
             <View style={styles.settingRow}>
               <View style={styles.settingIconContainer}>
@@ -100,7 +100,7 @@ export default function SettingsScreen() {
               <View style={styles.settingIconContainer}>
                 <Moon size={20} color={colors.primary} />
               </View>
-              <Text style={styles.settingText}>Dark Mode</Text>
+              <Text style={styles.settingText}>Mode sombre</Text>
               <Switch
                 value={darkModeEnabled}
                 onValueChange={setDarkModeEnabled}
@@ -129,7 +129,7 @@ export default function SettingsScreen() {
                   <Wifi size={20} color={colors.primary} />
                 )}
               </View>
-              <Text style={styles.settingText}>Offline Mode</Text>
+              <Text style={styles.settingText}>Mode hors ligne</Text>
               <Switch
                 value={offlineModeEnabled}
                 onValueChange={setOfflineModeEnabled}
@@ -146,7 +146,7 @@ export default function SettingsScreen() {
         </View>
 
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Security</Text>
+          <Text style={styles.sectionTitle}>Sécurité</Text>
           <View style={styles.settingCard}>
             <Pressable
               style={styles.settingButton}
@@ -155,7 +155,7 @@ export default function SettingsScreen() {
               <View style={styles.settingIconContainer}>
                 <Lock size={20} color={colors.primary} />
               </View>
-              <Text style={styles.settingText}>Change PIN</Text>
+              <Text style={styles.settingText}>Changer le PIN</Text>
               <ChevronRight size={20} color={colors.textSecondary} />
             </Pressable>
           </View>
@@ -171,7 +171,7 @@ export default function SettingsScreen() {
               <View style={styles.settingIconContainer}>
                 <HelpCircle size={20} color={colors.primary} />
               </View>
-              <Text style={styles.settingText}>Help & Support</Text>
+              <Text style={styles.settingText}>Aide & Support</Text>
               <ChevronRight size={20} color={colors.textSecondary} />
             </Pressable>
           </View>
@@ -179,7 +179,7 @@ export default function SettingsScreen() {
 
         <Pressable style={styles.logoutButton} onPress={handleLogout}>
           <LogOut size={20} color={colors.error} />
-          <Text style={styles.logoutText}>Logout</Text>
+          <Text style={styles.logoutText}>Déconnexion</Text>
         </Pressable>
 
         <Text style={styles.versionText}>Version 1.0.0</Text>

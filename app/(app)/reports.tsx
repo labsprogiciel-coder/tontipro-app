@@ -18,7 +18,7 @@ export default function ReportsScreen() {
     <SafeAreaView edges={["bottom"]} style={styles.container}>
       <ScrollView style={styles.scrollView}>
         <View style={styles.header}>
-          <Text style={styles.title}>Performance Overview</Text>
+          <Text style={styles.title}>Aperçu des performances</Text>
           <View style={styles.periodSelector}>
             <Pressable
               style={[
@@ -33,7 +33,7 @@ export default function ReportsScreen() {
                   period === "week" && styles.periodTextActive,
                 ]}
               >
-                Week
+                Semaine
               </Text>
             </Pressable>
             <Pressable
@@ -49,7 +49,7 @@ export default function ReportsScreen() {
                   period === "month" && styles.periodTextActive,
                 ]}
               >
-                Month
+                Mois
               </Text>
             </Pressable>
             <Pressable
@@ -65,7 +65,7 @@ export default function ReportsScreen() {
                   period === "year" && styles.periodTextActive,
                 ]}
               >
-                Year
+                Année
               </Text>
             </Pressable>
           </View>
@@ -81,57 +81,57 @@ export default function ReportsScreen() {
               <Calendar size={16} color={colors.textSecondary} />
               <Text style={styles.dateText}>
                 {period === "week"
-                  ? "This Week"
+                  ? "Cette semaine"
                   : period === "month"
-                  ? "This Month"
-                  : "This Year"}
+                  ? "Ce mois-ci"
+                  : "Cette année"}
               </Text>
             </View>
           </View>
           <View style={styles.chartPlaceholder}>
-            <Text style={styles.chartPlaceholderText}>Chart Visualization</Text>
+            <Text style={styles.chartPlaceholderText}>Visualisation graphique</Text>
           </View>
           <View style={styles.chartStats}>
             <View style={styles.statItem}>
-              <Text style={styles.statLabel}>Total Collected</Text>
+              <Text style={styles.statLabel}>Total collecté</Text>
               <Text style={styles.statValue}>125,000 FCFA</Text>
             </View>
             <View style={styles.statItem}>
-              <Text style={styles.statLabel}>Target</Text>
+              <Text style={styles.statLabel}>Objectif</Text>
               <Text style={styles.statValue}>200,000 FCFA</Text>
             </View>
             <View style={styles.statItem}>
-              <Text style={styles.statLabel}>Progress</Text>
+              <Text style={styles.statLabel}>Progression</Text>
               <Text style={styles.statValue}>62.5%</Text>
             </View>
           </View>
         </View>
 
         <View style={styles.summarySection}>
-          <Text style={styles.sectionTitle}>Summary</Text>
+          <Text style={styles.sectionTitle}>Résumé</Text>
           <View style={styles.summaryCard}>
             <View style={styles.summaryRow}>
-              <Text style={styles.summaryLabel}>Total Clients</Text>
+              <Text style={styles.summaryLabel}>Total clients</Text>
               <Text style={styles.summaryValue}>42</Text>
             </View>
             <View style={styles.divider} />
             <View style={styles.summaryRow}>
-              <Text style={styles.summaryLabel}>Active Clients</Text>
+              <Text style={styles.summaryLabel}>Clients actifs</Text>
               <Text style={styles.summaryValue}>38</Text>
             </View>
             <View style={styles.divider} />
             <View style={styles.summaryRow}>
-              <Text style={styles.summaryLabel}>New Clients</Text>
+              <Text style={styles.summaryLabel}>Nouveaux clients</Text>
               <Text style={styles.summaryValue}>5</Text>
             </View>
             <View style={styles.divider} />
             <View style={styles.summaryRow}>
-              <Text style={styles.summaryLabel}>Total Transactions</Text>
+              <Text style={styles.summaryLabel}>Total transactions</Text>
               <Text style={styles.summaryValue}>156</Text>
             </View>
             <View style={styles.divider} />
             <View style={styles.summaryRow}>
-              <Text style={styles.summaryLabel}>Commission Earned</Text>
+              <Text style={styles.summaryLabel}>Commission gagnée</Text>
               <Text style={styles.summaryValue}>12,500 FCFA</Text>
             </View>
           </View>
@@ -140,7 +140,7 @@ export default function ReportsScreen() {
         <View style={styles.exportSection}>
           <Pressable style={styles.exportButton}>
             <Download size={20} color="white" />
-            <Text style={styles.exportText}>Export Report</Text>
+            <Text style={styles.exportText}>Exporter le rapport</Text>
           </Pressable>
         </View>
       </ScrollView>

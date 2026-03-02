@@ -42,12 +42,12 @@ export default function NewTransactionScreen() {
 
   const handleAddTransaction = async () => {
     if (!selectedClient) {
-      Alert.alert("Error", "Please select a client");
+      Alert.alert("Érreur", "Veuillez sélectionner un client");
       return;
     }
 
     if (!amount || parseInt(amount, 10) <= 0) {
-      Alert.alert("Error", "Please enter a valid amount");
+      Alert.alert("Érreur", "Veuillez entrer un montant valide");
       return;
     }
 
@@ -62,12 +62,12 @@ export default function NewTransactionScreen() {
       });
 
       Alert.alert(
-        "Success",
-        `Deposit of ${parseInt(amount, 10).toLocaleString()} FCFA recorded for ${selectedClient.name}`,
+        "Succès",
+        `Dépôt de ${parseInt(amount, 10).toLocaleString()} FCFA enregistré pour ${selectedClient.name}`,
         [{ text: "OK", onPress: () => router.back() }]
       );
     } catch (error) {
-      Alert.alert("Error", "Failed to record deposit. Please try again.");
+      Alert.alert("Érreur", "Impossible d'enregistrer le dépôt. Veuillez réessayer.");
     } finally {
       setIsLoading(false);
     }
@@ -79,7 +79,7 @@ export default function NewTransactionScreen() {
         <Pressable style={styles.backButton} onPress={() => router.back()}>
           <ChevronLeft size={24} color={colors.text} />
         </Pressable>
-        <Text style={styles.headerTitle}>New Deposit</Text>
+        <Text style={styles.headerTitle}>Nouveau dépôt</Text>
         <View style={styles.placeholder} />
       </View>
 
@@ -91,7 +91,7 @@ export default function NewTransactionScreen() {
           <View style={styles.formContainer}>
             {!clientId && (
               <>
-                <Text style={styles.sectionTitle}>Select Client</Text>
+                <Text style={styles.sectionTitle}>Sélectionner un client</Text>
                 <Pressable
                   style={styles.clientSelector}
                   onPress={() => setShowClientPicker(!showClientPicker)}
@@ -107,7 +107,7 @@ export default function NewTransactionScreen() {
                         </Text>
                       </>
                     ) : (
-                      <Text style={styles.placeholderText}>Select a client</Text>
+                      <Text style={styles.placeholderText}>Sélectionner un client</Text>
                     )}
                   </View>
                   <ChevronDown size={20} color={colors.textSecondary} />
@@ -140,7 +140,7 @@ export default function NewTransactionScreen() {
               </>
             )}
 
-            <Text style={styles.sectionTitle}>Deposit Amount</Text>
+            <Text style={styles.sectionTitle}>Montant du dépôt</Text>
             <View style={styles.amountContainer}>
               <Text style={styles.currencyPrefix}>FCFA</Text>
               <TextInput
@@ -152,10 +152,10 @@ export default function NewTransactionScreen() {
               />
             </View>
 
-            <Text style={styles.sectionTitle}>Notes (Optional)</Text>
+            <Text style={styles.sectionTitle}>Notes (Optionnelles)</Text>
             <TextInput
               style={styles.notesInput}
-              placeholder="Add any additional information"
+              placeholder="Ajouter des informations supplémentaires"
               value={notes}
               onChangeText={setNotes}
               multiline
@@ -173,7 +173,7 @@ export default function NewTransactionScreen() {
               disabled={isLoading}
             >
               <Text style={styles.submitButtonText}>
-                {isLoading ? "Processing..." : "Record Deposit"}
+                {isLoading ? "Traitement..." : "Enregistrer le dépôt"}
               </Text>
             </Pressable>
           </View>
