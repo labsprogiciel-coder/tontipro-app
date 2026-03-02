@@ -7,6 +7,7 @@
   <img src="assets/screenshots/4.png" width="22%">
 </p>
 
+
 **ÉpargneMobile** est une application mobile de gestion d'épargne destinée aux agents de terrain en Afrique francophone. Elle permet de gérer les comptes clients, d'enregistrer les transactions (dépôts/retraits) et de suivre les performances, même sans connexion internet.
 
 > **Note :** L'application est optimisée pour un usage **offline-first** afin de pallier les problèmes de connectivité dans les zones reculées.
