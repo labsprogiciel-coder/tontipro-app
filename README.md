@@ -43,7 +43,7 @@
 
 ```text
 app/
-├── (auth)/                # Flux d'authentification (login, register, splash)
+├── (auth)/                # Flux d'authentification (login, register,splash)
 ├── (app)/                 # Application principale (système d'onglets)
 │   ├── dashboard.tsx      # Accueil et statistiques
 │   ├── clients.tsx        # Répertoire client
