@@ -44,7 +44,8 @@
         {
           "origin": "https://rork.app/"
         }
-      ]
+      ],
+      "expo-secure-store"
     ],
     "experiments": {
       "typedRoutes": true
