@@ -1,5 +1,5 @@
 import { useRouter } from "expo-router";
-import { useState } from "react";
+import { useState, useCallback, useRef } from "react";
 import {
   KeyboardAvoidingView,
   Platform,
@@ -10,35 +10,98 @@ import {
   View,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { Lock, User } from "lucide-react-native";
+import { Phone, Hash } from "lucide-react-native";
 
 import { colors } from "@/constants/colors";
 import { useAuthStore } from "@/stores/auth-store";
-import { MOCK_AGENTS } from "@/mocks/auth";
 
 export default function LoginScreen() {
   const router = useRouter();
-  const { login } = useAuthStore();
-  const [agentId, setAgentId] = useState("");
-  const [pin, setPin] = useState("");
-  const [isLoading, setIsLoading] = useState(false);
-  const [error, setError] = useState("");
+  const { sendOtp, verifyOtp } = useAuthStore();
 
-  const handleLogin = async () => {
-    if (!agentId || !pin) {
-      setError("Veuillez entrer votre ID Agent et PIN");
+  // Étape : "phone" ou "otp"
+  const [step, setStep] = useState<"phone" | "otp">("phone");
+
+  const [phoneNumber, setPhoneNumber] = useState("");
+  const [otp, setOtp] = useState("");
+  const [isLoading, setIsLoading] = useState(false);
+  const [phoneError, setPhoneError] = useState("");
+  const [otpError, setOtpError] = useState("");
+
+  const phoneInputRef = useRef<TextInput>(null);
+  const otpInputRef = useRef<TextInput>(null);
+
+  const validatePhone = useCallback((phone: string) => {
+    const localRegex = /^[0-9]{8}$/;
+    const fullRegex = /^\+226[0-9]{8}$/;
+    return localRegex.test(phone) || fullRegex.test(phone);
+  }, []);
+
+  const normalizePhone = (phone: string) => {
+    if (/^[0-9]{8}$/.test(phone)) return `+226${phone}`;
+    return phone;
+  };
+
+  const handlePhoneChange = (text: string) => {
+    setPhoneNumber(text);
+    if (phoneError && validatePhone(text)) setPhoneError("");
+  };
+
+  // ── Étape 1 : envoyer l'OTP ──────────────────────────────────
+  const handleSendOtp = async () => {
+    setPhoneError("");
+
+    if (!phoneNumber) {
+      setPhoneError("Veuillez entrer votre numéro de téléphone");
+      phoneInputRef.current?.focus();
+      return;
+    }
+    if (!validatePhone(phoneNumber)) {
+      setPhoneError("Numéro invalide. Ex: 70000000 ou +22670000000");
+      phoneInputRef.current?.focus();
       return;
     }
 
     setIsLoading(true);
-    setError("");
-
     try {
-      // In a real app, this would validate credentials against an API
-      await login(agentId, pin);
+      await sendOtp(normalizePhone(phoneNumber));
+      setStep("otp"); // passe à l'étape 2
+    } catch (error: any) {
+      setPhoneError(error.message ?? "Erreur lors de l'envoi du code");
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  // ── Étape 2 : vérifier l'OTP ─────────────────────────────────
+  const handleVerifyOtp = async () => {
+    setOtpError("");
+
+    if (!otp || otp.length < 6) {
+      setOtpError("Veuillez entrer le code à 6 chiffres");
+      otpInputRef.current?.focus();
+      return;
+    }
+
+    setIsLoading(true);
+    try {
+      await verifyOtp(normalizePhone(phoneNumber), otp);
       router.replace("/dashboard");
-    } catch {
-      setError("Identifiants invalides. Veuillez réessayer.");
+    } catch (error: any) {
+      setOtpError(error.message ?? "Code incorrect ou expiré");
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleResendOtp = async () => {
+    setOtpError("");
+    setOtp("");
+    setIsLoading(true);
+    try {
+      await sendOtp(normalizePhone(phoneNumber));
+    } catch (error: any) {
+      setOtpError(error.message ?? "Erreur lors du renvoi");
     } finally {
       setIsLoading(false);
     }
@@ -57,68 +120,143 @@ export default function LoginScreen() {
           </View>
 
           <View style={styles.formContainer}>
-            <Text style={styles.welcomeText}>Bon retour</Text>
+            <Text style={styles.welcomeText}>
+              {step === "phone" ? "Bienvenue" : "Code de vérification"}
+            </Text>
             <Text style={styles.subtitle}>
-              Connectez-vous pour continuer à gérer vos clients
+              {step === "phone"
+                ? "Entrez votre numéro pour recevoir un code SMS"
+                : `Code envoyé au ${normalizePhone(phoneNumber)}`}
             </Text>
 
-            <View style={styles.credentialsBox}>
-              <Text style={styles.credentialsTitle}>Identifiants de démo:</Text>
-              {MOCK_AGENTS.map((agent) => (
-                <Text key={agent.id} style={styles.credentialsText}>
-                  {agent.id} / {agent.pin}
+            {/* ── Étape 1 : saisie du numéro ── */}
+            {step === "phone" && (
+              <>
+                <Pressable
+                  style={[
+                    styles.inputContainer,
+                    phoneError ? styles.inputContainerError : null,
+                  ]}
+                  onPress={() => phoneInputRef.current?.focus()}
+                >
+                  <Phone size={20} color={colors.textSecondary} />
+                  <TextInput
+                    ref={phoneInputRef}
+                    style={styles.input}
+                    placeholder="70 00 00 00"
+                    placeholderTextColor={colors.inactive}
+                    value={phoneNumber}
+                    onChangeText={handlePhoneChange}
+                    keyboardType="phone-pad"
+                    autoCapitalize="none"
+                  />
+                </Pressable>
+
+                {phoneError ? (
+                  <Text style={styles.errorText}>{phoneError}</Text>
+                ) : null}
+
+                <Pressable
+                  style={({ pressed }) => [
+                    styles.loginButton,
+                    pressed && styles.buttonPressed,
+                    isLoading && styles.buttonDisabled,
+                  ]}
+                  onPress={handleSendOtp}
+                  disabled={isLoading}
+                >
+                  <Text style={styles.loginButtonText}>
+                    {isLoading ? "Envoi en cours..." : "Recevoir le code SMS"}
+                  </Text>
+                </Pressable>
+              </>
+            )}
+
+            {/* ── Étape 2 : saisie du code OTP ── */}
+            {step === "otp" && (
+              <>
+                <Pressable
+                  style={[
+                    styles.inputContainer,
+                    otpError ? styles.inputContainerError : null,
+                  ]}
+                  onPress={() => otpInputRef.current?.focus()}
+                >
+                  <Hash size={20} color={colors.textSecondary} />
+                  <TextInput
+                    ref={otpInputRef}
+                    style={styles.input}
+                    placeholder="Code à 6 chiffres"
+                    placeholderTextColor={colors.inactive}
+                    value={otp}
+                    onChangeText={(text) => {
+                      setOtp(text);
+                      if (otpError) setOtpError("");
+                    }}
+                    keyboardType="number-pad"
+                    maxLength={6}
+                    autoFocus
+                  />
+                </Pressable>
+
+                {otpError ? (
+                  <Text style={styles.errorText}>{otpError}</Text>
+                ) : null}
+
+                <Pressable
+                  style={({ pressed }) => [
+                    styles.loginButton,
+                    pressed && styles.buttonPressed,
+                    isLoading && styles.buttonDisabled,
+                  ]}
+                  onPress={handleVerifyOtp}
+                  disabled={isLoading}
+                >
+                  <Text style={styles.loginButtonText}>
+                    {isLoading ? "Vérification..." : "Se connecter"}
+                  </Text>
+                </Pressable>
+
+                {/* Renvoyer le code */}
+                <Pressable
+                  onPress={handleResendOtp}
+                  style={styles.resendRow}
+                  disabled={isLoading}
+                >
+                  <Text style={styles.resendText}>
+                    Pas reçu le code ?{" "}
+                    <Text style={styles.resendHighlight}>Renvoyer</Text>
+                  </Text>
+                </Pressable>
+
+                {/* Changer de numéro */}
+                <Pressable
+                  onPress={() => {
+                    setStep("phone");
+                    setOtp("");
+                    setOtpError("");
+                  }}
+                  style={styles.changeNumberRow}
+                >
+                  <Text style={styles.changeNumberText}>
+                    ← Changer de numéro
+                  </Text>
+                </Pressable>
+              </>
+            )}
+
+            {/* Lien inscription (visible uniquement à l'étape 1) */}
+            {step === "phone" && (
+              <Pressable
+                onPress={() => router.push("/(auth)/register")}
+                style={styles.registerLink}
+              >
+                <Text style={styles.registerText}>
+                  Nouvel agent?{" "}
+                  <Text style={styles.registerHighlight}>S&apos;inscrire</Text>
                 </Text>
-              ))}
-            </View>
-
-            <View style={styles.inputContainer}>
-              <User size={20} color={colors.textSecondary} />
-              <TextInput
-                style={styles.input}
-                placeholder="ID Agent"
-                value={agentId}
-                onChangeText={setAgentId}
-                autoCapitalize="none"
-              />
-            </View>
-
-            <View style={styles.inputContainer}>
-              <Lock size={20} color={colors.textSecondary} />
-              <TextInput
-                style={styles.input}
-                placeholder="PIN"
-                value={pin}
-                onChangeText={setPin}
-                secureTextEntry
-                keyboardType="numeric"
-                maxLength={6}
-              />
-            </View>
-
-            {error ? <Text style={styles.errorText}>{error}</Text> : null}
-
-            <Pressable
-              style={({ pressed }) => [
-                styles.loginButton,
-                pressed && styles.buttonPressed,
-                isLoading && styles.buttonDisabled,
-              ]}
-              onPress={handleLogin}
-              disabled={isLoading}
-            >
-              <Text style={styles.loginButtonText}>
-                {isLoading ? "Connexion..." : "Se connecter"}
-              </Text>
-            </Pressable>
-
-            <Pressable
-              onPress={() => router.push("/(auth)/register")}
-              style={styles.registerLink}
-            >
-              <Text style={styles.registerText}>
-                Nouvel agent? <Text style={styles.registerHighlight}>S&apos;inscrire</Text>
-              </Text>
-            </Pressable>
+              </Pressable>
+            )}
           </View>
         </View>
       </KeyboardAvoidingView>
@@ -168,11 +306,13 @@ const styles = StyleSheet.create({
     fontWeight: "bold",
     color: colors.text,
     marginBottom: 8,
+    textAlign: "center",
   },
   subtitle: {
     fontSize: 14,
     color: colors.textSecondary,
     marginBottom: 24,
+    textAlign: "center",
   },
   inputContainer: {
     flexDirection: "row",
@@ -182,18 +322,24 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: colors.border,
     paddingHorizontal: 12,
-    marginBottom: 16,
+    marginBottom: 8,
     height: 50,
+  },
+  inputContainerError: {
+    borderColor: colors.error,
+    borderWidth: 2,
   },
   input: {
     flex: 1,
-    height: 50,
     marginLeft: 8,
     color: colors.text,
+    paddingVertical: 0,
+    height: "100%",
   },
   errorText: {
     color: colors.error,
-    marginBottom: 16,
+    fontSize: 12,
+    marginBottom: 8,
   },
   loginButton: {
     backgroundColor: colors.primary,
@@ -214,6 +360,26 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: "600",
   },
+  resendRow: {
+    marginTop: 16,
+    alignItems: "center",
+  },
+  resendText: {
+    fontSize: 14,
+    color: colors.textSecondary,
+  },
+  resendHighlight: {
+    color: colors.primary,
+    fontWeight: "600",
+  },
+  changeNumberRow: {
+    marginTop: 12,
+    alignItems: "center",
+  },
+  changeNumberText: {
+    fontSize: 13,
+    color: colors.textSecondary,
+  },
   registerLink: {
     marginTop: 24,
     alignItems: "center",
@@ -225,25 +391,5 @@ const styles = StyleSheet.create({
   registerHighlight: {
     color: colors.primary,
     fontWeight: "600",
-  },
-  credentialsBox: {
-    backgroundColor: colors.background,
-    padding: 12,
-    borderRadius: 8,
-    marginBottom: 16,
-    borderWidth: 1,
-    borderColor: colors.border,
-  },
-  credentialsTitle: {
-    fontSize: 12,
-    fontWeight: "600",
-    color: colors.primary,
-    marginBottom: 8,
-  },
-  credentialsText: {
-    fontSize: 11,
-    color: colors.textSecondary,
-    fontFamily: Platform.OS === "ios" ? "Courier" : "monospace",
-    marginBottom: 2,
   },
 });

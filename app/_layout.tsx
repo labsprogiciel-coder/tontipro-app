@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { ActivityIndicator, Platform, StatusBar, StyleSheet, View } from "react-native";
 import { useFonts } from "expo-font";
-import { Stack } from "expo-router";
+import { Stack, useRouter, useSegments } from "expo-router";
 import * as SplashScreen from "expo-splash-screen";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
 import { SafeAreaProvider } from "react-native-safe-area-context";
@@ -9,20 +9,19 @@ import { SafeAreaProvider } from "react-native-safe-area-context";
 import { colors } from "@/constants/colors";
 import ErrorBoundary from "@/app/error-boundary";
 import { useNavigationStore } from "@/stores/navigation-store";
+import { supabase } from "@/lib/supabase";
+import { useAuthStore } from "@/stores/auth-store";
 
 export const unstable_settings = {
   initialRouteName: "(auth)",
 };
 
-// Prevent the splash screen from auto-hiding before asset loading is complete
 SplashScreen.preventAutoHideAsync();
 
 export default function RootLayout() {
-  const [loaded, error] = useFonts({
-    // We'll use system fonts for now
-  });
+  const [loaded, error] = useFonts({});
   const [isNavigationReady, setIsNavigationReady] = useState(Platform.OS === "web");
-  
+
   const clearNavigationState = useCallback(() => {
     useNavigationStore.getState().clearNavigationState();
   }, []);
@@ -36,11 +35,9 @@ export default function RootLayout() {
   }, [error]);
 
   useEffect(() => {
-    // Set navigation as ready after a short delay to allow state restoration
     const timer = setTimeout(() => {
       setIsNavigationReady(true);
     }, 500);
-
     return () => clearTimeout(timer);
   }, []);
 
@@ -59,18 +56,13 @@ export default function RootLayout() {
   }
 
   return (
-    <ErrorBoundary
-      onError={() => {
-        // Clear navigation state if there's an error in the app
-        clearNavigationState();
-      }}
-    >
+    <ErrorBoundary onError={clearNavigationState}>
       <SafeAreaProvider>
         <GestureHandlerRootView style={{ flex: 1 }}>
-          <StatusBar 
-            barStyle="dark-content" 
+          <StatusBar
+            barStyle="dark-content"
             backgroundColor={colors.background}
-            translucent={Platform.OS === 'android'}
+            translucent={Platform.OS === "android"}
           />
           <RootLayoutNav />
         </GestureHandlerRootView>
@@ -80,6 +72,81 @@ export default function RootLayout() {
 }
 
 function RootLayoutNav() {
+  const router = useRouter();
+  const segments = useSegments();
+  const { isAuthenticated, isInitialized } = useAuthStore();
+
+  // ✅ Tâche 4 : Restaurer la session au démarrage une seule fois
+  useEffect(() => {
+    const restoreSession = async () => {
+      try {
+        const { data: { session } } = await supabase.auth.getSession();
+
+        if (session?.user) {
+          const { data: profile } = await supabase
+            .from("profiles")
+            .select("id, name, email, phone, role")
+            .eq("id", session.user.id)
+            .single();
+
+          useAuthStore.setState({
+            isAuthenticated: true,
+            isInitialized: true,
+            user: {
+              id: session.user.id,
+              name: profile?.name ?? "Agent",
+              email: profile?.email ?? session.user.email,
+              phone: profile?.phone ?? session.user.phone,
+              role: profile?.role ?? "agent",
+            },
+          });
+        } else {
+          useAuthStore.setState({ isAuthenticated: false, isInitialized: true, user: null });
+        }
+      } catch (e) {
+        console.error("Erreur restauration session:", e);
+        useAuthStore.setState({ isAuthenticated: false, isInitialized: true, user: null });
+      }
+    };
+
+    restoreSession();
+
+    // ✅ Tâche 5 : Écouter uniquement SIGNED_OUT pour forcer le retour au login
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event) => {
+      if (event === "SIGNED_OUT") {
+        useAuthStore.setState({ isAuthenticated: false, isInitialized: true, user: null });
+      }
+    });
+
+    return () => subscription.unsubscribe();
+  }, []);
+
+  // ✅ Tâche 8 : Redirection basée sur isInitialized + isAuthenticated
+  useEffect(() => {
+    if (!isInitialized) return; // Attend que la session soit vérifiée
+
+    const inAuthGroup = segments[0] === "(auth)";
+
+    if (isAuthenticated && inAuthGroup) {
+      // Connecté mais sur une page auth → dashboard
+      // @ts-ignore
+      router.replace("/dashboard");
+    } else if (!isAuthenticated && !inAuthGroup) {
+      // Non connecté mais sur une page protégée → login
+      // @ts-ignore
+      router.replace("/login");
+    }
+  }, [isAuthenticated, isInitialized, segments]);
+
+  // Loader pendant la vérification de session
+  if (!isInitialized) {
+    return (
+      <View style={styles.loadingContainer}>
+        <ActivityIndicator size="large" color={colors.primary} />
+      </View>
+    );
+  }
+
   return (
     <Stack screenOptions={{ headerShown: false }}>
       <Stack.Screen name="(auth)" options={{ headerShown: false }} />

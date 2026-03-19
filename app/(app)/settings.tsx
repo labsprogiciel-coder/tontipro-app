@@ -44,14 +44,19 @@ export default function SettingsScreen() {
         {
           text: "Déconnexion",
           style: "destructive",
-          onPress: () => {
-            logout();
+          onPress: async () => {
+            await logout();
+            // @ts-ignore
             router.replace("/(auth)");
           },
         },
       ],
       { cancelable: true }
     );
+  };
+
+  const handleComingSoon = (feature: string) => {
+    Alert.alert("Bientôt disponible", `La fonctionnalité "${feature}" sera disponible prochainement.`);
   };
 
   return (
@@ -67,7 +72,7 @@ export default function SettingsScreen() {
           </View>
           <Pressable
             style={styles.profileEditButton}
-            onPress={() => router.push("/(app)/settings/profile")}
+            onPress={() => handleComingSoon("Modifier le profil")}
           >
             <Text style={styles.profileEditText}>Modifier</Text>
           </Pressable>
@@ -84,13 +89,8 @@ export default function SettingsScreen() {
               <Switch
                 value={notificationsEnabled}
                 onValueChange={setNotificationsEnabled}
-                trackColor={{
-                  false: colors.inactive,
-                  true: colors.primaryLight,
-                }}
-                thumbColor={
-                  notificationsEnabled ? colors.primary : colors.background
-                }
+                trackColor={{ false: colors.inactive, true: colors.primaryLight }}
+                thumbColor={notificationsEnabled ? colors.primary : colors.background}
               />
             </View>
 
@@ -104,10 +104,7 @@ export default function SettingsScreen() {
               <Switch
                 value={darkModeEnabled}
                 onValueChange={setDarkModeEnabled}
-                trackColor={{
-                  false: colors.inactive,
-                  true: colors.primaryLight,
-                }}
+                trackColor={{ false: colors.inactive, true: colors.primaryLight }}
                 thumbColor={darkModeEnabled ? colors.primary : colors.background}
               />
             </View>
@@ -118,9 +115,7 @@ export default function SettingsScreen() {
               <View
                 style={[
                   styles.settingIconContainer,
-                  offlineModeEnabled
-                    ? { backgroundColor: colors.warning + "20" }
-                    : null,
+                  offlineModeEnabled ? { backgroundColor: colors.warning + "20" } : null,
                 ]}
               >
                 {offlineModeEnabled ? (
@@ -133,13 +128,8 @@ export default function SettingsScreen() {
               <Switch
                 value={offlineModeEnabled}
                 onValueChange={setOfflineModeEnabled}
-                trackColor={{
-                  false: colors.inactive,
-                  true: colors.warning + "80",
-                }}
-                thumbColor={
-                  offlineModeEnabled ? colors.warning : colors.background
-                }
+                trackColor={{ false: colors.inactive, true: colors.warning + "80" }}
+                thumbColor={offlineModeEnabled ? colors.warning : colors.background}
               />
             </View>
           </View>
@@ -150,7 +140,7 @@ export default function SettingsScreen() {
           <View style={styles.settingCard}>
             <Pressable
               style={styles.settingButton}
-              onPress={() => router.push("/(app)/settings/change-pin")}
+              onPress={() => handleComingSoon("Changer le PIN")}
             >
               <View style={styles.settingIconContainer}>
                 <Lock size={20} color={colors.primary} />
@@ -166,7 +156,7 @@ export default function SettingsScreen() {
           <View style={styles.settingCard}>
             <Pressable
               style={styles.settingButton}
-              onPress={() => router.push("/(app)/settings/help")}
+              onPress={() => handleComingSoon("Aide & Support")}
             >
               <View style={styles.settingIconContainer}>
                 <HelpCircle size={20} color={colors.primary} />
