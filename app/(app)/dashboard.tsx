@@ -12,10 +12,15 @@ import { PlusCircle, TrendingUp, Users, Wallet } from "lucide-react-native";
 
 import { colors } from "@/constants/colors";
 import { useAuthStore } from "@/stores/auth-store";
+import { useClientStore } from "@/stores/client-store";
+import { useTransactionStore } from "@/stores/transaction-store";
 
 export default function DashboardScreen() {
   const router = useRouter();
   const { user } = useAuthStore();
+  const { loadDevMocks: loadClientMocks } = useClientStore();
+  const { loadDevMocks: loadTransactionMocks } = useTransactionStore();
+
   const [isLoading, setIsLoading] = useState(true);
   const [dashboardData, setDashboardData] = useState({
     totalCollected: 0,
@@ -25,7 +30,11 @@ export default function DashboardScreen() {
   });
 
   useEffect(() => {
-    const timer = setTimeout(() => {
+    const init = async () => {
+      // ✅ Charge les mocks uniquement si EXPO_PUBLIC_DEV_LOAD_MOCKS=true dans .env
+      await loadClientMocks();
+      await loadTransactionMocks();
+
       setDashboardData({
         totalCollected: 125000,
         clientCount: 42,
@@ -33,9 +42,9 @@ export default function DashboardScreen() {
         targetCompletion: 68,
       });
       setIsLoading(false);
-    }, 1000);
+    };
 
-    return () => clearTimeout(timer);
+    init();
   }, []);
 
   if (isLoading) {
@@ -130,7 +139,7 @@ export default function DashboardScreen() {
         </View>
 
         <Text style={styles.sectionTitle}>Activité récente</Text>
-        
+
         <View style={styles.activityContainer}>
           <Text style={styles.emptyText}>Aucune activité récente à afficher</Text>
         </View>

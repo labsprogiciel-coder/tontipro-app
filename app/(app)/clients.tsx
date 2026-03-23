@@ -13,14 +13,15 @@ import { useRouter } from "expo-router";
 import { Plus, Search, User } from "lucide-react-native";
 
 import { colors } from "@/constants/colors";
-import { mockClients } from "@/mocks/clients";
+import { useClientStore } from "@/stores/client-store";
 
 export default function ClientsScreen() {
   const router = useRouter();
   const [searchQuery, setSearchQuery] = useState("");
   const [isLoading, setIsLoading] = useState(false);
+  const clients = useClientStore((state) => state.clients);
 
-  const filteredClients = mockClients.filter(
+  const filteredClients = clients.filter(
     (client) =>
       client.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
       client.phone.includes(searchQuery)

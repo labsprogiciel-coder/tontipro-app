@@ -12,14 +12,15 @@ import { useRouter } from "expo-router";
 import { ArrowDownCircle, ArrowUpCircle, Plus } from "lucide-react-native";
 
 import { colors } from "@/constants/colors";
-import { mockTransactions } from "@/mocks/transactions";
+import { useTransactionStore } from "@/stores/transaction-store";
 
 export default function TransactionsScreen() {
   const router = useRouter();
   const [isLoading, setIsLoading] = useState(false);
   const [filter, setFilter] = useState("all"); // all, deposits, withdrawals
+  const transactions = useTransactionStore((state) => state.transactions);
 
-  const filteredTransactions = mockTransactions.filter((transaction) => {
+  const filteredTransactions = transactions.filter((transaction) => {
     if (filter === "all") return true;
     if (filter === "deposits") return transaction.type === "deposit";
     if (filter === "withdrawals") return transaction.type === "withdrawal";

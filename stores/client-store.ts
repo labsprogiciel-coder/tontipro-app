@@ -3,14 +3,15 @@ import { createJSONStorage, persist } from "zustand/middleware";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { generateId } from "@/utils/id-generator";
 import { Client } from "@/types/client";
-import { mockClients } from "@/mocks/clients";
+
+// ✅ Plus d'import de mockClients — tableau vide en production
+// Les données fictives sont dans __dev__/mocks/clients.ts si besoin en dev
 
 interface ClientStoreState {
   clients: Client[];
   isLoading: boolean;
   error: string | null;
-  
-  // Actions
+
   addClient: (clientData: {
     name: string;
     phone: string;
@@ -22,18 +23,25 @@ interface ClientStoreState {
   updateClient: (id: string, clientData: Partial<Client>) => Promise<Client>;
   getClientById: (id: string) => Client | undefined;
   updateClientBalance: (id: string, amount: number) => Promise<void>;
+  loadDevMocks: () => Promise<void>; // ✅ Chargement optionnel des mocks en dev
 }
 
 export const useClientStore = create<ClientStoreState>()(
   persist(
     (set, get) => ({
-      clients: mockClients,
+      clients: [], // ✅ Tableau vide — pas de données fictives en production
       isLoading: false,
       error: null,
-      
+
+      // ✅ Charge les mocks uniquement si DEV_LOAD_MOCKS=true dans .env
+      loadDevMocks: async () => {
+        if (process.env.EXPO_PUBLIC_DEV_LOAD_MOCKS !== "true") return;
+        const { mockClients } = await import("@/__dev__/mocks/clients");
+        set({ clients: mockClients });
+      },
+
       addClient: async (clientData) => {
         set({ isLoading: true, error: null });
-        
         try {
           const newClient: Client = {
             id: generateId("CL"),
@@ -47,28 +55,27 @@ export const useClientStore = create<ClientStoreState>()(
             kycVerified: !!clientData.idNumber,
             kycDate: clientData.idNumber ? new Date().toISOString() : undefined,
           };
-          
+
           set((state) => ({
             clients: [...state.clients, newClient],
             isLoading: false,
           }));
-          
+
           return newClient;
         } catch (error) {
-          set({ 
-            isLoading: false, 
-            error: error instanceof Error ? error.message : "Failed to add client" 
+          set({
+            isLoading: false,
+            error: error instanceof Error ? error.message : "Failed to add client",
           });
           throw error;
         }
       },
-      
+
       updateClient: async (id, clientData) => {
         set({ isLoading: true, error: null });
-        
         try {
           let updatedClient: Client | undefined;
-          
+
           set((state) => {
             const updatedClients = state.clients.map((client) => {
               if (client.id === id) {
@@ -77,31 +84,26 @@ export const useClientStore = create<ClientStoreState>()(
               }
               return client;
             });
-            
             return { clients: updatedClients, isLoading: false };
           });
-          
-          if (!updatedClient) {
-            throw new Error("Client not found");
-          }
-          
+
+          if (!updatedClient) throw new Error("Client not found");
           return updatedClient;
         } catch (error) {
-          set({ 
-            isLoading: false, 
-            error: error instanceof Error ? error.message : "Failed to update client" 
+          set({
+            isLoading: false,
+            error: error instanceof Error ? error.message : "Failed to update client",
           });
           throw error;
         }
       },
-      
+
       getClientById: (id) => {
         return get().clients.find((client) => client.id === id);
       },
-      
+
       updateClientBalance: async (id, amount) => {
         set({ isLoading: true, error: null });
-        
         try {
           set((state) => {
             const updatedClients = state.clients.map((client) => {
@@ -114,13 +116,12 @@ export const useClientStore = create<ClientStoreState>()(
               }
               return client;
             });
-            
             return { clients: updatedClients, isLoading: false };
           });
         } catch (error) {
-          set({ 
-            isLoading: false, 
-            error: error instanceof Error ? error.message : "Failed to update balance" 
+          set({
+            isLoading: false,
+            error: error instanceof Error ? error.message : "Failed to update balance",
           });
           throw error;
         }

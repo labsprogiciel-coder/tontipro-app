@@ -1,13 +1,6 @@
-export interface Transaction {
-  id: string;
-  clientId: string;
-  clientName: string;
-  amount: number;
-  type: "deposit" | "withdrawal";
-  date: string;
-  status: "completed" | "pending";
-  notes?: string;
-}
+// Utilisé uniquement quand EXPO_PUBLIC_DEV_LOAD_MOCKS=true dans .env
+
+import { Transaction } from "@/types/transaction";
 
 export const mockTransactions: Transaction[] = [
   {

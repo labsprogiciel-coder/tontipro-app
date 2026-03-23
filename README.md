@@ -76,6 +76,11 @@ utils/                     # Helpers (ID generator, network status)
 
 ## ⚙️ Installation & Lancement
 
+Avant de démarrer, copiez `.env.example` en `.env` (ou assurez-vous que le fichier `.env` existe), puis activez/désactivez les données fictives :
+
+- `EXPO_PUBLIC_DEV_LOAD_MOCKS=false` (production / données vides)
+- `EXPO_PUBLIC_DEV_LOAD_MOCKS=true` (dev local avec mocks)
+
 ```bash
 # 1. Installer les dépendances
 bun install
