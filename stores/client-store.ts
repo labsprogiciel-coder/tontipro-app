@@ -24,6 +24,7 @@ interface ClientStoreState {
   getClientById: (id: string) => Client | undefined;
   updateClientBalance: (id: string, amount: number) => Promise<void>;
   loadDevMocks: () => Promise<void>; // ✅ Chargement optionnel des mocks en dev
+  clearAll: () => void; // ✅ Nettoie le store (utile si on passe dev=false)
 }
 
 export const useClientStore = create<ClientStoreState>()(
@@ -125,6 +126,10 @@ export const useClientStore = create<ClientStoreState>()(
           });
           throw error;
         }
+      },
+
+      clearAll: () => {
+        set({ clients: [], isLoading: false, error: null });
       },
     }),
     {

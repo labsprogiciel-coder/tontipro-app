@@ -22,6 +22,20 @@ interface AuthState {
   logout: () => Promise<void>;
 }
 
+export const getUserDisplayName = (profile: any, supabaseUser: any): string => {
+  if (!profile && !supabaseUser) return "Agent";
+
+  // Colonne name de la table profiles
+  if (profile?.name) return profile.name;
+
+  // Fallback sur metadata ou email du user Supabase
+  if (supabaseUser?.user_metadata?.name) return supabaseUser.user_metadata.name;
+  if (supabaseUser?.email) return supabaseUser.email.split("@")[0];
+  if (supabaseUser?.phone) return supabaseUser.phone;
+
+  return "Agent";
+};
+
 export const useAuthStore = create<AuthState>()(
   persist(
     (set) => ({
@@ -51,7 +65,7 @@ export const useAuthStore = create<AuthState>()(
         // Récupère le profil depuis la table profiles
         const { data: profile } = await supabase
           .from("profiles")
-          .select("id, name, email, phone, role")
+          .select("id, name, agent_code, role, phone")
           .eq("id", supabaseUser.id)
           .single();
 
@@ -59,8 +73,8 @@ export const useAuthStore = create<AuthState>()(
           isAuthenticated: true,
           user: {
             id: supabaseUser.id,
-            name: profile?.name ?? "Agent",
-            email: profile?.email ?? supabaseUser.email,
+            name: getUserDisplayName(profile, supabaseUser),
+            email: supabaseUser.email,
             phone: profile?.phone ?? supabaseUser.phone,
             role: profile?.role ?? "agent",
           },

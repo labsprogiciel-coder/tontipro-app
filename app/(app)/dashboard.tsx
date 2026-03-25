@@ -17,35 +17,40 @@ import { useTransactionStore } from "@/stores/transaction-store";
 
 export default function DashboardScreen() {
   const router = useRouter();
-  const { user } = useAuthStore();
-  const { loadDevMocks: loadClientMocks } = useClientStore();
-  const { loadDevMocks: loadTransactionMocks } = useTransactionStore();
+  const user = useAuthStore((state) => state.user);
+  const loadClientMocks = useClientStore((state) => state.loadDevMocks);
+  const clients = useClientStore((state) => state.clients);
+  const loadTransactionMocks = useTransactionStore((state) => state.loadDevMocks);
+  const transactions = useTransactionStore((state) => state.transactions);
 
   const [isLoading, setIsLoading] = useState(true);
-  const [dashboardData, setDashboardData] = useState({
-    totalCollected: 0,
-    clientCount: 0,
-    pendingTransactions: 0,
-    targetCompletion: 0,
-  });
 
   useEffect(() => {
     const init = async () => {
-      // ✅ Charge les mocks uniquement si EXPO_PUBLIC_DEV_LOAD_MOCKS=true dans .env
-      await loadClientMocks();
-      await loadTransactionMocks();
-
-      setDashboardData({
-        totalCollected: 125000,
-        clientCount: 42,
-        pendingTransactions: 3,
-        targetCompletion: 68,
-      });
+      // ✅ Si on est en prod (false), nettoyer les vieilles données de mocks
+      if (process.env.EXPO_PUBLIC_DEV_LOAD_MOCKS !== "true") {
+        useClientStore.getState().clearAll();
+        useTransactionStore.getState().clearAll();
+      } else {
+        // ✅ Sinon charger les mocks
+        await loadClientMocks();
+        await loadTransactionMocks();
+      }
       setIsLoading(false);
     };
 
     init();
-  }, []);
+  }, [loadClientMocks, loadTransactionMocks]);
+
+  const totalCollected = transactions.reduce((sum, tx) => {
+    if (tx.type === "deposit") return sum + tx.amount;
+    if (tx.type === "withdrawal") return sum - tx.amount;
+    return sum;
+  }, 0);
+
+  const pendingTransactions = transactions.filter((tx) => tx.status === "pending").length;
+  const clientCount = clients.length;
+  const targetCompletion = clientCount === 0 ? 0 : Math.min(100, Math.round((clientCount / 100) * 100));
 
   if (isLoading) {
     return (
@@ -103,7 +108,7 @@ export default function DashboardScreen() {
               <Wallet size={20} color={colors.primary} />
             </View>
             <Text style={styles.statValue}>
-              {dashboardData.totalCollected.toLocaleString()} FCFA
+              {totalCollected.toLocaleString()} FCFA
             </Text>
             <Text style={styles.statSubtext}>Ce mois-ci</Text>
           </View>
@@ -113,7 +118,7 @@ export default function DashboardScreen() {
               <Text style={styles.statTitle}>Clients actifs</Text>
               <Users size={20} color={colors.primary} />
             </View>
-            <Text style={styles.statValue}>{dashboardData.clientCount}</Text>
+            <Text style={styles.statValue}>{clientCount}</Text>
             <Text style={styles.statSubtext}>Total inscrits</Text>
           </View>
         </View>
@@ -124,7 +129,7 @@ export default function DashboardScreen() {
               <Text style={styles.statTitle}>Synchro en attente</Text>
               <Wallet size={20} color={colors.warning} />
             </View>
-            <Text style={styles.statValue}>{dashboardData.pendingTransactions}</Text>
+            <Text style={styles.statValue}>{pendingTransactions}</Text>
             <Text style={styles.statSubtext}>Transactions hors ligne</Text>
           </View>
 
@@ -133,7 +138,7 @@ export default function DashboardScreen() {
               <Text style={styles.statTitle}>Objectif</Text>
               <TrendingUp size={20} color={colors.secondary} />
             </View>
-            <Text style={styles.statValue}>{dashboardData.targetCompletion}%</Text>
+            <Text style={styles.statValue}>{targetCompletion}%</Text>
             <Text style={styles.statSubtext}>Objectif mensuel</Text>
           </View>
         </View>

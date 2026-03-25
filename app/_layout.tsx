@@ -10,7 +10,7 @@ import { colors } from "@/constants/colors";
 import ErrorBoundary from "@/app/error-boundary";
 import { useNavigationStore } from "@/stores/navigation-store";
 import { supabase } from "@/lib/supabase";
-import { useAuthStore } from "@/stores/auth-store";
+import { useAuthStore, getUserDisplayName } from "@/stores/auth-store";
 
 export const unstable_settings = {
   initialRouteName: "(auth)",
@@ -74,7 +74,8 @@ export default function RootLayout() {
 function RootLayoutNav() {
   const router = useRouter();
   const segments = useSegments();
-  const { isAuthenticated, isInitialized } = useAuthStore();
+  const isAuthenticated = useAuthStore((state) => state.isAuthenticated);
+  const isInitialized = useAuthStore((state) => state.isInitialized);
 
   // ✅ Tâche 4 : Restaurer la session au démarrage une seule fois
   useEffect(() => {
@@ -85,27 +86,26 @@ function RootLayoutNav() {
         if (session?.user) {
           const { data: profile } = await supabase
             .from("profiles")
-            .select("id, name, email, phone, role")
+            .select("id, name, agent_code, role, phone")
             .eq("id", session.user.id)
             .single();
 
-          useAuthStore.setState({
+          (useAuthStore as any).setState({
             isAuthenticated: true,
             isInitialized: true,
             user: {
               id: session.user.id,
-              name: profile?.name ?? "Agent",
-              email: profile?.email ?? session.user.email,
+              name: getUserDisplayName(profile, session.user),
               phone: profile?.phone ?? session.user.phone,
               role: profile?.role ?? "agent",
             },
           });
         } else {
-          useAuthStore.setState({ isAuthenticated: false, isInitialized: true, user: null });
+          (useAuthStore as any).setState({ isAuthenticated: false, isInitialized: true, user: null });
         }
       } catch (e) {
         console.error("Erreur restauration session:", e);
-        useAuthStore.setState({ isAuthenticated: false, isInitialized: true, user: null });
+        (useAuthStore as any).setState({ isAuthenticated: false, isInitialized: true, user: null });
       }
     };
 
@@ -114,7 +114,7 @@ function RootLayoutNav() {
     // ✅ Tâche 5 : Écouter uniquement SIGNED_OUT pour forcer le retour au login
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event) => {
       if (event === "SIGNED_OUT") {
-        useAuthStore.setState({ isAuthenticated: false, isInitialized: true, user: null });
+        (useAuthStore as any).setState({ isAuthenticated: false, isInitialized: true, user: null });
       }
     });
 

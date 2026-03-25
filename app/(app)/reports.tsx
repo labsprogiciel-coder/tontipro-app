@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import {
   ScrollView,
   StyleSheet,
@@ -10,9 +10,36 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { BarChart3, Calendar, Download } from "lucide-react-native";
 
 import { colors } from "@/constants/colors";
+import { useClientStore } from "@/stores/client-store";
+import { useTransactionStore } from "@/stores/transaction-store";
 
 export default function ReportsScreen() {
   const [period, setPeriod] = useState("week"); // week, month, year
+  const clients = useClientStore((state) => state.clients);
+  const clearClients = useClientStore((state) => state.clearAll);
+  const transactions = useTransactionStore((state) => state.transactions);
+  const clearTransactions = useTransactionStore((state) => state.clearAll);
+
+  // ✅ Nettoyer les données si mode dev=false
+  useEffect(() => {
+    if (process.env.EXPO_PUBLIC_DEV_LOAD_MOCKS !== "true") {
+      clearClients();
+      clearTransactions();
+    }
+  }, [clearClients, clearTransactions]);
+
+  // Calculs dynamiques
+  const totalCollected = transactions.reduce((sum, tx) => {
+    if (tx.type === "deposit") return sum + tx.amount;
+    if (tx.type === "withdrawal") return sum - tx.amount;
+    return sum;
+  }, 0);
+
+  const activeClients = clients.filter((c) => c.status === "active").length;
+  const newClients = 0; // À intégrer si tu ajoutes une colonne dans clients
+  const depositTransactions = transactions.filter((tx) => tx.type === "deposit").length;
+  const commissionRate = 0.1; // 10% de commission
+  const commission = totalCollected * commissionRate;
 
   return (
     <SafeAreaView edges={["bottom"]} style={styles.container}>
@@ -94,7 +121,7 @@ export default function ReportsScreen() {
           <View style={styles.chartStats}>
             <View style={styles.statItem}>
               <Text style={styles.statLabel}>Total collecté</Text>
-              <Text style={styles.statValue}>125,000 FCFA</Text>
+              <Text style={styles.statValue}>{totalCollected.toLocaleString()} FCFA</Text>
             </View>
             <View style={styles.statItem}>
               <Text style={styles.statLabel}>Objectif</Text>
@@ -102,7 +129,7 @@ export default function ReportsScreen() {
             </View>
             <View style={styles.statItem}>
               <Text style={styles.statLabel}>Progression</Text>
-              <Text style={styles.statValue}>62.5%</Text>
+              <Text style={styles.statValue}>{Math.round((totalCollected / 200000) * 100)}%</Text>
             </View>
           </View>
         </View>
@@ -112,27 +139,27 @@ export default function ReportsScreen() {
           <View style={styles.summaryCard}>
             <View style={styles.summaryRow}>
               <Text style={styles.summaryLabel}>Total clients</Text>
-              <Text style={styles.summaryValue}>42</Text>
+              <Text style={styles.summaryValue}>{clients.length}</Text>
             </View>
             <View style={styles.divider} />
             <View style={styles.summaryRow}>
               <Text style={styles.summaryLabel}>Clients actifs</Text>
-              <Text style={styles.summaryValue}>38</Text>
+              <Text style={styles.summaryValue}>{activeClients}</Text>
             </View>
             <View style={styles.divider} />
             <View style={styles.summaryRow}>
               <Text style={styles.summaryLabel}>Nouveaux clients</Text>
-              <Text style={styles.summaryValue}>5</Text>
+              <Text style={styles.summaryValue}>{newClients}</Text>
             </View>
             <View style={styles.divider} />
             <View style={styles.summaryRow}>
               <Text style={styles.summaryLabel}>Total transactions</Text>
-              <Text style={styles.summaryValue}>156</Text>
+              <Text style={styles.summaryValue}>{transactions.length}</Text>
             </View>
             <View style={styles.divider} />
             <View style={styles.summaryRow}>
               <Text style={styles.summaryLabel}>Commission gagnée</Text>
-              <Text style={styles.summaryValue}>12,500 FCFA</Text>
+              <Text style={styles.summaryValue}>{Math.round(commission).toLocaleString()} FCFA</Text>
             </View>
           </View>
         </View>

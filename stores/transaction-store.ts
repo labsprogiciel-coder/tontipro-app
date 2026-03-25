@@ -24,6 +24,7 @@ interface TransactionStoreState {
   getTransactionsByClientId: (clientId: string) => Transaction[];
   syncPendingTransactions: () => Promise<void>;
   loadDevMocks: () => Promise<void>; // ✅ Chargement optionnel des mocks en dev
+  clearAll: () => void; // ✅ Nettoie le store (utile si on passe dev=false)
 }
 
 export const useTransactionStore = create<TransactionStoreState>()(
@@ -122,6 +123,10 @@ export const useTransactionStore = create<TransactionStoreState>()(
           });
           throw error;
         }
+      },
+
+      clearAll: () => {
+        set({ transactions: [], pendingTransactions: [], isLoading: false, error: null });
       },
     }),
     {
