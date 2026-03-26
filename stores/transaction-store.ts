@@ -5,9 +5,6 @@ import { generateId } from "@/utils/id-generator";
 import { Transaction } from "@/types/transaction";
 import { useClientStore } from "./client-store";
 
-// ✅ Plus d'import de mockTransactions — tableau vide en production
-// Les données fictives sont dans __dev__/mocks/transactions.ts si besoin en dev
-
 interface TransactionStoreState {
   transactions: Transaction[];
   pendingTransactions: Transaction[];
@@ -23,19 +20,18 @@ interface TransactionStoreState {
   getTransactionById: (id: string) => Transaction | undefined;
   getTransactionsByClientId: (clientId: string) => Transaction[];
   syncPendingTransactions: () => Promise<void>;
-  loadDevMocks: () => Promise<void>; // ✅ Chargement optionnel des mocks en dev
-  clearAll: () => void; // ✅ Nettoie le store (utile si on passe dev=false)
+  loadDevMocks: () => Promise<void>;
+  clearAll: () => void;
 }
 
 export const useTransactionStore = create<TransactionStoreState>()(
   persist(
     (set, get) => ({
-      transactions: [], // ✅ Tableau vide — pas de données fictives en production
+      transactions: [],
       pendingTransactions: [],
       isLoading: false,
       error: null,
 
-      // ✅ Charge les mocks uniquement si DEV_LOAD_MOCKS=true dans .env
       loadDevMocks: async () => {
         if (process.env.EXPO_PUBLIC_DEV_LOAD_MOCKS !== "true") return;
         const { mockTransactions } = await import("@/__dev__/mocks/transactions");
@@ -100,28 +96,29 @@ export const useTransactionStore = create<TransactionStoreState>()(
           .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
       },
 
+      // ✅ Sync les transactions en attente quand l'appareil revient en ligne
       syncPendingTransactions: async () => {
+        const pendingCount = get().transactions.filter(
+          (t) => t.status === "pending"
+        ).length;
+
+        if (pendingCount === 0) return;
+
         set({ isLoading: true, error: null });
         try {
-          set((state) => {
-            const updatedTransactions = state.transactions.map((transaction) => {
-              if (transaction.status === "pending") {
-                return { ...transaction, status: "completed" as const };
-              }
-              return transaction;
-            });
-            return {
-              transactions: updatedTransactions,
-              pendingTransactions: [],
-              isLoading: false,
-            };
-          });
-        } catch (error) {
-          set({
+          // Pour l'instant marque toutes les pending comme completed
+          // À remplacer par un vrai appel Supabase dans une prochaine issue
+          set((state) => ({
+            transactions: state.transactions.map((t) =>
+              t.status === "pending" ? { ...t, status: "completed" as const } : t
+            ),
+            pendingTransactions: [],
             isLoading: false,
-            error: error instanceof Error ? error.message : "Failed to sync transactions",
-          });
-          throw error;
+          }));
+        } catch (error) {
+          // ✅ Erreur silencieuse — les items restent en pending pour réessayer
+          console.error("Sync transactions failed:", error);
+          set({ isLoading: false, error: error instanceof Error ? error.message : "Sync failed" });
         }
       },
 

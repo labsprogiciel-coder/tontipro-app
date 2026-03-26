@@ -1,9 +1,10 @@
 import { Tabs } from "expo-router";
 import { Home, Users, Wallet, BarChart3, Settings } from "lucide-react-native";
-
 import { colors } from "@/constants/colors";
+import { useNetworkSync } from "@/hooks/useNetworkSync";
 
 export default function AppLayout() {
+  useNetworkSync(); // ✅ Sync automatique en arrière-plan
   return (
     <Tabs
       screenOptions={{

@@ -4,11 +4,9 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
 import { generateId } from "@/utils/id-generator";
 import { Client } from "@/types/client";
 
-// ✅ Plus d'import de mockClients — tableau vide en production
-// Les données fictives sont dans __dev__/mocks/clients.ts si besoin en dev
-
 interface ClientStoreState {
   clients: Client[];
+  pendingClients: Client[]; // ✅ Clients en attente de sync
   isLoading: boolean;
   error: string | null;
 
@@ -23,18 +21,19 @@ interface ClientStoreState {
   updateClient: (id: string, clientData: Partial<Client>) => Promise<Client>;
   getClientById: (id: string) => Client | undefined;
   updateClientBalance: (id: string, amount: number) => Promise<void>;
-  loadDevMocks: () => Promise<void>; // ✅ Chargement optionnel des mocks en dev
-  clearAll: () => void; // ✅ Nettoie le store (utile si on passe dev=false)
+  syncPendingClients: () => Promise<void>; // ✅ Sync hors ligne → en ligne
+  loadDevMocks: () => Promise<void>;
+  clearAll: () => void;
 }
 
 export const useClientStore = create<ClientStoreState>()(
   persist(
     (set, get) => ({
-      clients: [], // ✅ Tableau vide — pas de données fictives en production
+      clients: [],
+      pendingClients: [], // ✅ Tableau des clients en attente de sync
       isLoading: false,
       error: null,
 
-      // ✅ Charge les mocks uniquement si DEV_LOAD_MOCKS=true dans .env
       loadDevMocks: async () => {
         if (process.env.EXPO_PUBLIC_DEV_LOAD_MOCKS !== "true") return;
         const { mockClients } = await import("@/__dev__/mocks/clients");
@@ -128,8 +127,34 @@ export const useClientStore = create<ClientStoreState>()(
         }
       },
 
+      // ✅ Sync les clients en attente quand l'appareil revient en ligne
+      syncPendingClients: async () => {
+        const { pendingClients } = get();
+        if (pendingClients.length === 0) return;
+
+        set({ isLoading: true, error: null });
+        try {
+          // Pour l'instant marque tous les pending comme syncés
+          // À remplacer par un vrai appel Supabase dans une prochaine issue
+          set((state) => ({
+            clients: [
+              ...state.clients,
+              ...state.pendingClients.filter(
+                (pc) => !state.clients.find((c) => c.id === pc.id)
+              ),
+            ],
+            pendingClients: [],
+            isLoading: false,
+          }));
+        } catch (error) {
+          // ✅ Erreur silencieuse — les items restent en pending pour réessayer
+          console.error("Sync clients failed:", error);
+          set({ isLoading: false, error: error instanceof Error ? error.message : "Sync failed" });
+        }
+      },
+
       clearAll: () => {
-        set({ clients: [], isLoading: false, error: null });
+        set({ clients: [], pendingClients: [], isLoading: false, error: null });
       },
     }),
     {
