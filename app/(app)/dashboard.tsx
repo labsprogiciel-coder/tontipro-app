@@ -20,8 +20,9 @@ export default function DashboardScreen() {
   const router = useRouter();
   const user = useAuthStore((state) => state.user);
   const loadClientMocks = useClientStore((state) => state.loadDevMocks);
+  const loadClientsFromSupabase = useClientStore((state) => state.loadClientsFromSupabase);
+  const isLoadingClients = useClientStore((state) => state.isLoadingClients);
   const clients = useClientStore((state) => state.clients);
-  const pendingClients = useClientStore((state) => state.pendingClients);
   const loadTransactionMocks = useTransactionStore((state) => state.loadDevMocks);
   const transactions = useTransactionStore((state) => state.transactions);
 
@@ -37,18 +38,25 @@ export default function DashboardScreen() {
 
   useEffect(() => {
     const init = async () => {
-      if (process.env.EXPO_PUBLIC_DEV_LOAD_MOCKS !== "true") {
+      // ✅ Si en mode dev avec mocks, charger les mocks
+      if (process.env.EXPO_PUBLIC_DEV_LOAD_MOCKS === "true") {
         useClientStore.getState().clearAll();
         useTransactionStore.getState().clearAll();
-      } else {
         await loadClientMocks();
         await loadTransactionMocks();
+      } else if (user && !isLoadingClients) {
+        // ✅ Sinon en production, recharger depuis Supabase pour avoir les données fraîches
+        try {
+          await loadClientsFromSupabase();
+        } catch (error) {
+          console.error("Failed to load clients from Supabase:", error);
+        }
       }
       setIsLoading(false);
     };
 
     init();
-  }, [loadClientMocks, loadTransactionMocks]);
+  }, [user, loadClientMocks, loadTransactionMocks, isLoadingClients, loadClientsFromSupabase]);
 
   const totalCollected = transactions.reduce((sum, tx) => {
     if (tx.type === "deposit") return sum + tx.amount;
@@ -57,7 +65,7 @@ export default function DashboardScreen() {
   }, 0);
 
   const pendingTransactionsCount = transactions.filter((tx) => tx.status === "pending").length;
-  const pendingClientsCount = pendingClients?.length ?? 0;
+  const pendingClientsCount = clients.filter((c) => c.syncStatus === "pending").length;
   const totalPending = pendingTransactionsCount + pendingClientsCount;
   const clientCount = clients.length;
   const targetCompletion = clientCount === 0 ? 0 : Math.min(100, Math.round((clientCount / 100) * 100));

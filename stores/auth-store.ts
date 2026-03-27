@@ -2,6 +2,7 @@ import { create } from "zustand";
 import { createJSONStorage, persist } from "zustand/middleware";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { supabase } from "@/lib/supabase";
+import { useClientStore } from "@/stores/client-store";
 
 export interface User {
   id: string;
@@ -14,6 +15,7 @@ export interface User {
 interface AuthState {
   isAuthenticated: boolean;
   isInitialized: boolean;
+  isLoadingClients: boolean;
   user: User | null;
   // Étape 1 : envoie le SMS OTP
   sendOtp: (phone: string) => Promise<void>;
@@ -41,6 +43,7 @@ export const useAuthStore = create<AuthState>()(
     (set) => ({
       isAuthenticated: false,
       isInitialized: false,
+      isLoadingClients: false,
       user: null,
 
       // ✅ Étape 1 : envoie le code OTP par SMS
@@ -71,6 +74,7 @@ export const useAuthStore = create<AuthState>()(
 
         set({
           isAuthenticated: true,
+          isLoadingClients: true,
           user: {
             id: supabaseUser.id,
             name: getUserDisplayName(profile, supabaseUser),
@@ -79,12 +83,22 @@ export const useAuthStore = create<AuthState>()(
             role: profile?.role ?? "agent",
           },
         });
+
+        // ✅ Load clients from Supabase after successful login
+        try {
+          await useClientStore.getState().loadClientsFromSupabase();
+          set({ isLoadingClients: false });
+        } catch (error) {
+          console.error("Failed to load clients after login:", error);
+          set({ isLoadingClients: false });
+          // Don't throw - login should succeed even if client load fails
+        }
       },
 
       // ✅ Déconnexion
       logout: async () => {
         await supabase.auth.signOut();
-        set({ isAuthenticated: false, user: null });
+        set({ isAuthenticated: false, isLoadingClients: false, user: null });
       },
     }),
     {

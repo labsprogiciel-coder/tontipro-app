@@ -11,4 +11,5 @@ export interface Client {
   idType?: "cni" | "passport" | "permis" | "autre";
   kycVerified?: boolean;
   kycDate?: string;
+  syncStatus?: "synced" | "pending";
 }

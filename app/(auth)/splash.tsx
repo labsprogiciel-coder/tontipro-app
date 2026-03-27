@@ -8,19 +8,20 @@ import { useAuthStore } from "@/stores/auth-store";
 
 export default function AuthSplash() {
   const router = useRouter();
-  const { isAuthenticated } = useAuthStore();
+  const { isAuthenticated, isLoadingClients } = useAuthStore();
 
   useEffect(() => {
     const timer = setTimeout(() => {
-      if (isAuthenticated) {
+      // ✅ Wait for clients to load after authentication
+      if (isAuthenticated && !isLoadingClients) {
         router.replace("/dashboard");
-      } else {
+      } else if (!isAuthenticated) {
         router.replace("/(auth)/login");
       }
     }, 100);
 
     return () => clearTimeout(timer);
-  }, [isAuthenticated, router]);
+  }, [isAuthenticated, isLoadingClients, router]);
 
   return (
     <SafeAreaView style={styles.container}>
