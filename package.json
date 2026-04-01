@@ -30,7 +30,7 @@
     "expo-image-picker": "~17.0.8",
     "expo-linear-gradient": "~15.0.7",
     "expo-linking": "~8.0.8",
-    "expo-location": "~19.0.7",
+    "expo-location": "~19.0.8",
     "expo-router": "~6.0.14",
     "expo-secure-store": "~15.0.8",
     "expo-splash-screen": "~31.0.10",
@@ -56,9 +56,6 @@
     "@types/react": "~19.1.10",
     "babel-preset-expo": "^54.0.6",
     "typescript": "~5.9.2"
-  },
-    "overrides": {
-    "expo-location": "~19.0.8"
   },
   "private": true
 }
