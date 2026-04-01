@@ -1,16 +1,43 @@
 import { create } from "zustand";
 import { createJSONStorage, persist } from "zustand/middleware";
 import AsyncStorage from "@react-native-async-storage/async-storage";
+import type { RealtimeChannel } from "@supabase/supabase-js";
 import { generateId } from "@/utils/id-generator";
+import { isConnected } from "@/utils/network";
+import { supabase } from "@/lib/supabase";
+import { rowToTransaction, transactionToInsertRow } from "@/lib/transaction-supabase";
 import { Transaction } from "@/types/transaction";
 import { useClientStore } from "./client-store";
+
+function sortByDateDesc(a: Transaction, b: Transaction): number {
+  return new Date(b.date).getTime() - new Date(a.date).getTime();
+}
+
+export function mergeTransactionsSorted(
+  synced: Transaction[],
+  pending: Transaction[]
+): Transaction[] {
+  const byId = new Map<string, Transaction>();
+  for (const t of synced) {
+    byId.set(t.id, t);
+  }
+  for (const p of pending) {
+    if (!byId.has(p.id)) {
+      byId.set(p.id, p);
+    }
+  }
+  return [...byId.values()].sort(sortByDateDesc);
+}
 
 interface TransactionStoreState {
   transactions: Transaction[];
   pendingTransactions: Transaction[];
   isLoading: boolean;
   error: string | null;
+  /** Nombre d’éléments de `pendingTransactions` dont la dernière sync a échoué */
+  transactionSyncFailures: number;
 
+  loadTransactionsFromSupabase: () => Promise<void>;
   addTransaction: (transactionData: {
     clientId: string;
     amount: number;
@@ -20,6 +47,7 @@ interface TransactionStoreState {
   getTransactionById: (id: string) => Transaction | undefined;
   getTransactionsByClientId: (clientId: string) => Transaction[];
   syncPendingTransactions: () => Promise<void>;
+  subscribeToTransactionsRealtime: (userId: string) => () => void;
   loadDevMocks: () => Promise<void>;
   clearAll: () => void;
 }
@@ -31,11 +59,53 @@ export const useTransactionStore = create<TransactionStoreState>()(
       pendingTransactions: [],
       isLoading: false,
       error: null,
+      transactionSyncFailures: 0,
 
       loadDevMocks: async () => {
         if (process.env.EXPO_PUBLIC_DEV_LOAD_MOCKS !== "true") return;
         const { mockTransactions } = await import("@/__dev__/mocks/transactions");
-        set({ transactions: mockTransactions });
+        set({ transactions: mockTransactions, pendingTransactions: [] });
+      },
+
+      loadTransactionsFromSupabase: async () => {
+        set({ isLoading: true, error: null });
+        try {
+          const {
+            data: { user },
+          } = await supabase.auth.getUser();
+
+          if (!user) {
+            throw new Error("No authenticated user");
+          }
+
+          const { data: rows, error } = await supabase
+            .from("transactions")
+            .select("*")
+            .eq("agent_id", user.id)
+            .order("date", { ascending: false });
+
+          if (error) {
+            throw new Error(error.message);
+          }
+
+          const fromServer: Transaction[] = (rows || []).map((row: any) => rowToTransaction(row));
+
+          set((state) => {
+            const serverIds = new Set(fromServer.map((t) => t.id));
+            const stillPending = state.pendingTransactions.filter((p) => !serverIds.has(p.id));
+            return {
+              transactions: fromServer,
+              pendingTransactions: stillPending,
+              isLoading: false,
+            };
+          });
+        } catch (error) {
+          set({
+            isLoading: false,
+            error: error instanceof Error ? error.message : "Failed to load transactions",
+          });
+          throw error;
+        }
       },
 
       addTransaction: async (transactionData) => {
@@ -53,6 +123,8 @@ export const useTransactionStore = create<TransactionStoreState>()(
             throw new Error("Insufficient balance");
           }
 
+          const online = await isConnected();
+
           const newTransaction: Transaction = {
             id: generateId("TR"),
             clientId: transactionData.clientId,
@@ -60,7 +132,7 @@ export const useTransactionStore = create<TransactionStoreState>()(
             amount: transactionData.amount,
             type: transactionData.type,
             date: new Date().toISOString(),
-            status: "completed",
+            status: online ? "completed" : "pending",
             notes: transactionData.notes,
           };
 
@@ -69,12 +141,40 @@ export const useTransactionStore = create<TransactionStoreState>()(
               ? transactionData.amount
               : -transactionData.amount;
 
-          await clientStore.updateClientBalance(transactionData.clientId, balanceChange);
+          if (online) {
+            const {
+              data: { user },
+            } = await supabase.auth.getUser();
 
-          set((state) => ({
-            transactions: [newTransaction, ...state.transactions],
-            isLoading: false,
-          }));
+            if (!user) {
+              throw new Error("No authenticated user");
+            }
+
+            const row = transactionToInsertRow(
+              { ...newTransaction, status: "completed" },
+              user.id
+            );
+
+            const { error: insertError } = await supabase.from("transactions").insert(row);
+
+            if (insertError) {
+              throw new Error(insertError.message);
+            }
+
+            await clientStore.updateClientBalance(transactionData.clientId, balanceChange);
+
+            set((state) => ({
+              transactions: [newTransaction, ...state.transactions],
+              isLoading: false,
+            }));
+          } else {
+            await clientStore.updateClientBalance(transactionData.clientId, balanceChange);
+
+            set((state) => ({
+              pendingTransactions: [newTransaction, ...state.pendingTransactions],
+              isLoading: false,
+            }));
+          }
 
           return newTransaction;
         } catch (error) {
@@ -87,48 +187,151 @@ export const useTransactionStore = create<TransactionStoreState>()(
       },
 
       getTransactionById: (id) => {
-        return get().transactions.find((transaction) => transaction.id === id);
+        const { transactions, pendingTransactions } = get();
+        return (
+          transactions.find((t) => t.id === id) ||
+          pendingTransactions.find((t) => t.id === id)
+        );
       },
 
       getTransactionsByClientId: (clientId) => {
-        return get()
-          .transactions.filter((transaction) => transaction.clientId === clientId)
-          .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+        const { transactions, pendingTransactions } = get();
+        return [...transactions, ...pendingTransactions]
+          .filter((t) => t.clientId === clientId)
+          .sort(sortByDateDesc);
       },
 
-      // ✅ Sync les transactions en attente quand l'appareil revient en ligne
       syncPendingTransactions: async () => {
-        const pendingCount = get().transactions.filter(
-          (t) => t.status === "pending"
-        ).length;
+        const pending = get().pendingTransactions;
+        if (pending.length === 0) {
+          set({ transactionSyncFailures: 0 });
+          return;
+        }
 
-        if (pendingCount === 0) return;
-
-        set({ isLoading: true, error: null });
+        set({ isLoading: true, error: null, transactionSyncFailures: 0 });
         try {
-          // Pour l'instant marque toutes les pending comme completed
-          // À remplacer par un vrai appel Supabase dans une prochaine issue
+          const {
+            data: { user },
+          } = await supabase.auth.getUser();
+
+          if (!user) {
+            throw new Error("No authenticated user");
+          }
+
+          let failures = 0;
+          const toMove: Transaction[] = [];
+          const stillPending: Transaction[] = [];
+
+          for (const tx of pending) {
+            const completed: Transaction = { ...tx, status: "completed" };
+            const row = transactionToInsertRow(completed, user.id);
+
+            const { error: insertError } = await supabase.from("transactions").insert(row);
+
+            if (insertError) {
+              failures++;
+              stillPending.push(tx);
+              console.error("Sync transaction failed:", insertError.message, tx.id);
+              continue;
+            }
+
+            toMove.push(completed);
+
+            const client = useClientStore.getState().getClientById(tx.clientId);
+            if (client) {
+              const { error: balErr } = await supabase
+                .from("clients")
+                .update({ balance: client.balance })
+                .eq("id", tx.clientId)
+                .eq("agent_id", user.id);
+
+              if (balErr) {
+                console.error("Sync client balance after transaction:", balErr.message);
+              }
+            }
+          }
+
           set((state) => ({
-            transactions: state.transactions.map((t) =>
-              t.status === "pending" ? { ...t, status: "completed" as const } : t
-            ),
-            pendingTransactions: [],
+            transactions: [...toMove, ...state.transactions].sort(sortByDateDesc),
+            pendingTransactions: stillPending,
             isLoading: false,
+            transactionSyncFailures: failures,
+            error:
+              failures > 0
+                ? `${failures} transaction(s) n’ont pas pu être synchronisée(s)`
+                : null,
           }));
         } catch (error) {
-          // ✅ Erreur silencieuse — les items restent en pending pour réessayer
           console.error("Sync transactions failed:", error);
-          set({ isLoading: false, error: error instanceof Error ? error.message : "Sync failed" });
+          set({
+            isLoading: false,
+            error: error instanceof Error ? error.message : "Sync failed",
+            transactionSyncFailures: get().pendingTransactions.length,
+          });
         }
       },
 
+      subscribeToTransactionsRealtime: (userId: string) => {
+        const channel: RealtimeChannel = supabase
+          .channel(`agent-transactions-${userId}`)
+          .on(
+            "postgres_changes",
+            {
+              event: "INSERT",
+              schema: "public",
+              table: "transactions",
+              filter: `agent_id=eq.${userId}`,
+            },
+            (payload) => {
+              const row = payload.new;
+              if (!row || typeof row !== "object" || !("id" in row)) return;
+              const incoming = rowToTransaction(row as any);
+
+              set((state) => {
+                if (state.transactions.some((t) => t.id === incoming.id)) {
+                  return state;
+                }
+                const wasPending = state.pendingTransactions.some((p) => p.id === incoming.id);
+                return {
+                  transactions: [incoming, ...state.transactions].sort(sortByDateDesc),
+                  pendingTransactions: wasPending
+                    ? state.pendingTransactions.filter((p) => p.id !== incoming.id)
+                    : state.pendingTransactions,
+                };
+              });
+            }
+          )
+          .subscribe();
+
+        return () => {
+          supabase.removeChannel(channel);
+        };
+      },
+
       clearAll: () => {
-        set({ transactions: [], pendingTransactions: [], isLoading: false, error: null });
+        set({
+          transactions: [],
+          pendingTransactions: [],
+          isLoading: false,
+          error: null,
+          transactionSyncFailures: 0,
+        });
       },
     }),
     {
       name: "transaction-storage",
       storage: createJSONStorage(() => AsyncStorage),
+      partialize: (state) => ({
+        transactions: state.transactions,
+        pendingTransactions: state.pendingTransactions,
+      }),
+      onRehydrateStorage: () => (state) => {
+        if (state) {
+          state.isLoading = false;
+          state.error = null;
+          state.transactionSyncFailures = 0;
+        }
+      },
     }
   )
 );

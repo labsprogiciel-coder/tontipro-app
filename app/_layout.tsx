@@ -11,6 +11,8 @@ import ErrorBoundary from "@/app/error-boundary";
 import { useNavigationStore } from "@/stores/navigation-store";
 import { supabase } from "@/lib/supabase";
 import { useAuthStore, getUserDisplayName } from "@/stores/auth-store";
+import { useClientStore } from "@/stores/client-store";
+import { useTransactionStore } from "@/stores/transaction-store";
 
 export const unstable_settings = {
   initialRouteName: "(auth)",
@@ -100,6 +102,13 @@ function RootLayoutNav() {
               role: profile?.role ?? "agent",
             },
           });
+
+          try {
+            await useClientStore.getState().loadClientsFromSupabase();
+            await useTransactionStore.getState().loadTransactionsFromSupabase();
+          } catch (e) {
+            console.error("Chargement données après restauration session:", e);
+          }
         } else {
           (useAuthStore as any).setState({ isAuthenticated: false, isInitialized: true, user: null });
         }
@@ -114,6 +123,8 @@ function RootLayoutNav() {
     // ✅ Tâche 5 : Écouter uniquement SIGNED_OUT pour forcer le retour au login
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event) => {
       if (event === "SIGNED_OUT") {
+        useClientStore.getState().clearAll();
+        useTransactionStore.getState().clearAll();
         (useAuthStore as any).setState({ isAuthenticated: false, isInitialized: true, user: null });
       }
     });

@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import {
   ActivityIndicator,
   ScrollView,
@@ -13,7 +13,7 @@ import { PlusCircle, TrendingUp, Users, Wallet, Wifi, WifiOff, RefreshCw } from 
 import { colors } from "@/constants/colors";
 import { useAuthStore } from "@/stores/auth-store";
 import { useClientStore } from "@/stores/client-store";
-import { useTransactionStore } from "@/stores/transaction-store";
+import { mergeTransactionsSorted, useTransactionStore } from "@/stores/transaction-store";
 import { isConnected, subscribeToNetworkChanges } from "@/utils/network";
 
 export default function DashboardScreen() {
@@ -25,6 +25,10 @@ export default function DashboardScreen() {
   const clients = useClientStore((state) => state.clients);
   const loadTransactionMocks = useTransactionStore((state) => state.loadDevMocks);
   const transactions = useTransactionStore((state) => state.transactions);
+  const pendingTxList = useTransactionStore((state) => state.pendingTransactions);
+  const transactionSyncFailures = useTransactionStore(
+    (state) => state.transactionSyncFailures
+  );
 
   const [isLoading, setIsLoading] = useState(true);
   const [online, setOnline] = useState(true);
@@ -45,7 +49,7 @@ export default function DashboardScreen() {
         await loadClientMocks();
         await loadTransactionMocks();
       } else if (user && !isLoadingClients) {
-        // ✅ Sinon en production, recharger depuis Supabase pour avoir les données fraîches
+        // ✅ Données déjà chargées à la connexion / restauration session ; rafraîchir au besoin
         try {
           await loadClientsFromSupabase();
         } catch (error) {
@@ -58,13 +62,18 @@ export default function DashboardScreen() {
     init();
   }, [user, loadClientMocks, loadTransactionMocks, isLoadingClients, loadClientsFromSupabase]);
 
-  const totalCollected = transactions.reduce((sum, tx) => {
+  const mergedTransactions = useMemo(
+    () => mergeTransactionsSorted(transactions, pendingTxList),
+    [transactions, pendingTxList]
+  );
+
+  const totalCollected = mergedTransactions.reduce((sum, tx) => {
     if (tx.type === "deposit") return sum + tx.amount;
     if (tx.type === "withdrawal") return sum - tx.amount;
     return sum;
   }, 0);
 
-  const pendingTransactionsCount = transactions.filter((tx) => tx.status === "pending").length;
+  const pendingTransactionsCount = pendingTxList.length;
   const pendingClientsCount = clients.filter((c) => c.syncStatus === "pending").length;
   const totalPending = pendingTransactionsCount + pendingClientsCount;
   const clientCount = clients.length;
@@ -73,8 +82,16 @@ export default function DashboardScreen() {
   // ✅ Calcul du statut de synchronisation
   const getSyncStatus = () => {
     if (!online) return { color: "#9CA3AF", label: "Hors ligne", icon: "offline" };
-    if (totalPending > 0) return { color: "#F59E0B", label: `${totalPending} en attente`, icon: "pending" };
-    return { color: "#10B981", label: "Synchronisé", icon: "synced" };
+    const syncFailSuffix =
+      transactionSyncFailures > 0 ? ` (${transactionSyncFailures} erreur(s) sync)` : "";
+    if (totalPending > 0 || transactionSyncFailures > 0) {
+      return {
+        color: "#F59E0B",
+        label: `${totalPending} en attente${syncFailSuffix}`,
+        icon: "pending" as const,
+      };
+    }
+    return { color: "#10B981", label: "Synchronisé", icon: "synced" as const };
   };
 
   const syncStatus = getSyncStatus();

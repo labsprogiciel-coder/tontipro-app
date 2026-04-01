@@ -2,9 +2,13 @@ import { Tabs } from "expo-router";
 import { Home, Users, Wallet, BarChart3, Settings } from "lucide-react-native";
 import { colors } from "@/constants/colors";
 import { useNetworkSync } from "@/hooks/useNetworkSync";
+import { useTransactionRealtimeSubscribe } from "@/hooks/useTransactionRealtime";
+import { useAuthStore } from "@/stores/auth-store";
 
 export default function AppLayout() {
+  const userId = useAuthStore((s) => s.user?.id);
   useNetworkSync(); // ✅ Sync automatique en arrière-plan
+  useTransactionRealtimeSubscribe(userId);
   return (
     <Tabs
       screenOptions={{

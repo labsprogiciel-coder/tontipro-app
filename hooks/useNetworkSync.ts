@@ -39,11 +39,9 @@ export function useNetworkSync() {
             const syncTransactions = useTransactionStore.getState().syncPendingTransactions;
             const syncClients = useClientStore.getState().syncPendingClients;
 
-            // Sync en parallèle
-            await Promise.allSettled([
-              syncTransactions(),
-              syncClients(),
-            ]);
+            // Clients d’abord (FK `transactions.client_id`), puis transactions + soldes serveur
+            await syncClients();
+            await syncTransactions();
           } catch (error) {
             // ✅ Erreur silencieuse — l'app ne plante pas
             console.error("Network sync error:", error);

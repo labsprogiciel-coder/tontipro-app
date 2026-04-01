@@ -3,6 +3,7 @@ import { createJSONStorage, persist } from "zustand/middleware";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { supabase } from "@/lib/supabase";
 import { useClientStore } from "@/stores/client-store";
+import { useTransactionStore } from "@/stores/transaction-store";
 
 export interface User {
   id: string;
@@ -84,19 +85,22 @@ export const useAuthStore = create<AuthState>()(
           },
         });
 
-        // ✅ Load clients from Supabase after successful login
+        // ✅ Load clients and transactions from Supabase after successful login
         try {
           await useClientStore.getState().loadClientsFromSupabase();
+          await useTransactionStore.getState().loadTransactionsFromSupabase();
           set({ isLoadingClients: false });
         } catch (error) {
-          console.error("Failed to load clients after login:", error);
+          console.error("Failed to load data after login:", error);
           set({ isLoadingClients: false });
-          // Don't throw - login should succeed even if client load fails
+          // Don't throw - login should succeed even if load fails
         }
       },
 
       // ✅ Déconnexion
       logout: async () => {
+        useClientStore.getState().clearAll();
+        useTransactionStore.getState().clearAll();
         await supabase.auth.signOut();
         set({ isAuthenticated: false, isLoadingClients: false, user: null });
       },

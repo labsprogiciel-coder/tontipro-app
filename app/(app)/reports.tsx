@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useMemo, useState } from "react";
 import {
   ScrollView,
   StyleSheet,
@@ -11,25 +11,21 @@ import { BarChart3, Calendar, Download } from "lucide-react-native";
 
 import { colors } from "@/constants/colors";
 import { useClientStore } from "@/stores/client-store";
-import { useTransactionStore } from "@/stores/transaction-store";
+import { mergeTransactionsSorted, useTransactionStore } from "@/stores/transaction-store";
 
 export default function ReportsScreen() {
   const [period, setPeriod] = useState("week"); // week, month, year
   const clients = useClientStore((state) => state.clients);
-  const clearClients = useClientStore((state) => state.clearAll);
   const transactions = useTransactionStore((state) => state.transactions);
-  const clearTransactions = useTransactionStore((state) => state.clearAll);
+  const pendingTransactions = useTransactionStore((state) => state.pendingTransactions);
 
-  // ✅ Nettoyer les données si mode dev=false
-  useEffect(() => {
-    if (process.env.EXPO_PUBLIC_DEV_LOAD_MOCKS !== "true") {
-      clearClients();
-      clearTransactions();
-    }
-  }, [clearClients, clearTransactions]);
+  const mergedTransactions = useMemo(
+    () => mergeTransactionsSorted(transactions, pendingTransactions),
+    [transactions, pendingTransactions]
+  );
 
   // Calculs dynamiques
-  const totalCollected = transactions.reduce((sum, tx) => {
+  const totalCollected = mergedTransactions.reduce((sum, tx) => {
     if (tx.type === "deposit") return sum + tx.amount;
     if (tx.type === "withdrawal") return sum - tx.amount;
     return sum;
@@ -37,7 +33,6 @@ export default function ReportsScreen() {
 
   const activeClients = clients.filter((c) => c.status === "active").length;
   const newClients = 0; // À intégrer si tu ajoutes une colonne dans clients
-  const depositTransactions = transactions.filter((tx) => tx.type === "deposit").length;
   const commissionRate = 0.1; // 10% de commission
   const commission = totalCollected * commissionRate;
 
@@ -154,7 +149,7 @@ export default function ReportsScreen() {
             <View style={styles.divider} />
             <View style={styles.summaryRow}>
               <Text style={styles.summaryLabel}>Total transactions</Text>
-              <Text style={styles.summaryValue}>{transactions.length}</Text>
+              <Text style={styles.summaryValue}>{mergedTransactions.length}</Text>
             </View>
             <View style={styles.divider} />
             <View style={styles.summaryRow}>
