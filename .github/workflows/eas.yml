@@ -1,25 +1,57 @@
+name: EAS Build Local
+
 on:
   push:
     branches:
       - main
+  workflow_dispatch:
+
 jobs:
-  update:
+  build:
     runs-on: ubuntu-latest
+
     steps:
-      - name: 🏗 Setup repo
+      - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: 🏗 Setup Bun
-        uses: oven-sh/setup-bun@v2
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@v1
+        with:
+          bun-version: latest
 
-      - name: 🏗 Setup EAS
+      - name: Setup Node.js
+        # EAS CLI and internal Expo tools still rely on a Node environment
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Setup Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'temurin'
+          java-version: '17'
+
+      - name: Setup Expo and EAS CLI
         uses: expo/expo-github-action@v8
         with:
           eas-version: latest
           token: ${{ secrets.EXPO_TOKEN }}
 
-      - name: 📦 Install dependencies
-        run: bun install
+      - name: Install dependencies
+        # --frozen-lockfile is the Bun equivalent of 'npm ci'
+        run: bun install --frozen-lockfile
 
-      - name: 🚀 Create update
-        run: eas update --auto --non-interactive
+      - name: Build Android APK (Local)
+        run: |
+          eas build --local \
+            --platform android \
+            --profile preview \
+            --non-interactive \
+            --output=./app-release.apk
+
+      - name: Upload APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: android-build-apk
+          path: ./app-release.apk
+          if-no-files-found: error
