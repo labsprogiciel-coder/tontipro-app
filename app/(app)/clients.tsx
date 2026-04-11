@@ -1,6 +1,5 @@
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import {
-  ActivityIndicator,
   FlatList,
   Pressable,
   StyleSheet,
@@ -18,13 +17,16 @@ import { useClientStore } from "@/stores/client-store";
 export default function ClientsScreen() {
   const router = useRouter();
   const [searchQuery, setSearchQuery] = useState("");
-  const [isLoading, setIsLoading] = useState(false);
   const clients = useClientStore((state) => state.clients);
 
-  const filteredClients = clients.filter(
-    (client) =>
-      client.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      client.phone.includes(searchQuery)
+  const filteredClients = useMemo(
+    () =>
+      clients.filter(
+        (client) =>
+          client.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+          client.phone.includes(searchQuery)
+      ),
+    [clients, searchQuery]
   );
 
   return (
@@ -34,7 +36,8 @@ export default function ClientsScreen() {
           <Search size={20} color={colors.textSecondary} />
           <TextInput
             style={styles.searchInput}
-            placeholder="Rechercher des clients..."
+            placeholder="Rechercher des clients…"
+            accessibilityLabel="Rechercher des clients"
             value={searchQuery}
             onChangeText={setSearchQuery}
           />
@@ -42,17 +45,14 @@ export default function ClientsScreen() {
         <Pressable
           style={styles.addButton}
           onPress={() => router.push("/(app)/clients/add")}
+          accessibilityLabel="Ajouter un client"
+          accessibilityRole="button"
         >
           <Plus size={24} color="white" />
         </Pressable>
       </View>
 
-      {isLoading ? (
-        <View style={styles.loadingContainer}>
-          <ActivityIndicator size="large" color={colors.primary} />
-        </View>
-      ) : (
-        <FlatList
+      <FlatList
           data={filteredClients}
           keyExtractor={(item) => item.id}
           renderItem={({ item }) => (
@@ -70,7 +70,7 @@ export default function ClientsScreen() {
               <View style={styles.balanceContainer}>
                 <Text style={styles.balanceLabel}>Solde</Text>
                 <Text style={styles.balanceAmount}>
-                  {item.balance.toLocaleString()} FCFA
+                  {new Intl.NumberFormat("fr-FR").format(item.balance)} FCFA
                 </Text>
               </View>
             </Pressable>
@@ -82,7 +82,6 @@ export default function ClientsScreen() {
           }
           contentContainerStyle={styles.listContent}
         />
-      )}
     </SafeAreaView>
   );
 }
@@ -118,11 +117,6 @@ const styles = StyleSheet.create({
     height: 44,
     borderRadius: 22,
     backgroundColor: colors.primary,
-    justifyContent: "center",
-    alignItems: "center",
-  },
-  loadingContainer: {
-    flex: 1,
     justifyContent: "center",
     alignItems: "center",
   },

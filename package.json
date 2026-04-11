@@ -57,7 +57,7 @@
     "babel-preset-expo": "^54.0.6",
     "typescript": "~5.9.2"
   },
-  "resolutions": {
+  "overrides": {
     "expo-location": "~19.0.8"
   },
   "private": true

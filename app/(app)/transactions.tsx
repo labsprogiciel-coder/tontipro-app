@@ -1,6 +1,6 @@
 import { useMemo, useState } from "react";
+// useState kept for filter state
 import {
-  ActivityIndicator,
   FlatList,
   Pressable,
   StyleSheet,
@@ -16,7 +16,6 @@ import { mergeTransactionsSorted, useTransactionStore } from "@/stores/transacti
 
 export default function TransactionsScreen() {
   const router = useRouter();
-  const [isLoading, setIsLoading] = useState(false);
   const [filter, setFilter] = useState("all"); // all, deposits, withdrawals
   const transactions = useTransactionStore((state) => state.transactions);
   const pendingTransactions = useTransactionStore((state) => state.pendingTransactions);
@@ -89,17 +88,14 @@ export default function TransactionsScreen() {
         <Pressable
           style={styles.addButton}
           onPress={() => router.push("/(app)/transactions/new")}
+          accessibilityLabel="Nouvelle transaction"
+          accessibilityRole="button"
         >
           <Plus size={24} color="white" />
         </Pressable>
       </View>
 
-      {isLoading ? (
-        <View style={styles.loadingContainer}>
-          <ActivityIndicator size="large" color={colors.primary} />
-        </View>
-      ) : (
-        <FlatList
+      <FlatList
           data={filteredTransactions}
           keyExtractor={(item) => item.id}
           renderItem={({ item }) => (
@@ -127,7 +123,7 @@ export default function TransactionsScreen() {
               <View style={styles.transactionInfo}>
                 <Text style={styles.clientName}>{item.clientName}</Text>
                 <Text style={styles.transactionDate}>
-                  {new Date(item.date).toLocaleDateString()}
+                  {new Intl.DateTimeFormat("fr-FR").format(new Date(item.date))}
                 </Text>
               </View>
               <View style={styles.amountContainer}>
@@ -143,7 +139,7 @@ export default function TransactionsScreen() {
                   ]}
                 >
                   {item.type === "deposit" ? "+" : "-"}
-                  {item.amount.toLocaleString()} FCFA
+                  {new Intl.NumberFormat("fr-FR").format(item.amount)} FCFA
                 </Text>
                 <View
                   style={[
@@ -180,7 +176,6 @@ export default function TransactionsScreen() {
           }
           contentContainerStyle={styles.listContent}
         />
-      )}
     </SafeAreaView>
   );
 }
@@ -226,11 +221,6 @@ const styles = StyleSheet.create({
     height: 44,
     borderRadius: 22,
     backgroundColor: colors.primary,
-    justifyContent: "center",
-    alignItems: "center",
-  },
-  loadingContainer: {
-    flex: 1,
     justifyContent: "center",
     alignItems: "center",
   },

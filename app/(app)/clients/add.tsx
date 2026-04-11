@@ -39,7 +39,6 @@ export default function AddClientScreen() {
 
   useEffect(() => {
     if (params.scannedId) {
-      console.log("[AddClient] Received scanned ID:", params.scannedId);
       setIdNumber(params.scannedId);
     }
   }, [params.scannedId]);
@@ -85,7 +84,12 @@ export default function AddClientScreen() {
   return (
     <SafeAreaView edges={["bottom"]} style={styles.container}>
       <View style={styles.header}>
-        <Pressable style={styles.backButton} onPress={() => router.back()}>
+        <Pressable
+          style={styles.backButton}
+          onPress={() => router.back()}
+          accessibilityLabel="Retour"
+          accessibilityRole="button"
+        >
           <ChevronLeft size={24} color={colors.text} />
         </Pressable>
         <Text style={styles.headerTitle}>Ajouter un nouveau client</Text>
@@ -104,7 +108,8 @@ export default function AddClientScreen() {
               <User size={20} color={colors.textSecondary} />
               <TextInput
                 style={styles.input}
-                placeholder="Nom complet"
+                placeholder="Nom complet…"
+                accessibilityLabel="Nom complet"
                 placeholderTextColor={colors.inactive}
                 value={name}
                 onChangeText={setName}
@@ -115,11 +120,13 @@ export default function AddClientScreen() {
               <Phone size={20} color={colors.textSecondary} />
               <TextInput
                 style={styles.input}
-                placeholder="Numéro de téléphone"
+                placeholder="Numéro de téléphone…"
+                accessibilityLabel="Numéro de téléphone"
                 placeholderTextColor={colors.inactive}
                 value={phone}
                 onChangeText={setPhone}
                 keyboardType="phone-pad"
+                inputMode="tel"
               />
             </View>
 
@@ -127,7 +134,8 @@ export default function AddClientScreen() {
               <MapPin size={20} color={colors.textSecondary} />
               <TextInput
                 style={styles.input}
-                placeholder="Adresse (Optionnelle)"
+                placeholder="Adresse (Optionnelle)…"
+                accessibilityLabel="Adresse"
                 placeholderTextColor={colors.inactive}
                 value={address}
                 onChangeText={setAddress}
@@ -184,7 +192,8 @@ export default function AddClientScreen() {
                   <CreditCard size={20} color={colors.textSecondary} />
                   <TextInput
                     style={styles.input}
-                    placeholder="Numéro d'identité"
+                    placeholder="Numéro d'identité…"
+                    accessibilityLabel="Numéro d'identité"
                     placeholderTextColor={colors.inactive}
                     value={idNumber}
                     onChangeText={setIdNumber}
@@ -194,6 +203,8 @@ export default function AddClientScreen() {
                 <Pressable
                   style={({ pressed }) => [styles.scanButton, pressed && { opacity: 0.8 }]}
                   onPress={handleScanId}
+                  accessibilityLabel="Scanner la pièce d'identité"
+                  accessibilityRole="button"
                 >
                   <ScanLine size={22} color="#fff" />
                 </Pressable>
@@ -239,7 +250,7 @@ export default function AddClientScreen() {
               disabled={isLoading}
             >
               <Text style={styles.addButtonText}>
-                {isLoading ? "Ajout en cours..." : "Ajouter le client"}
+                {isLoading ? "Ajout en cours…" : "Ajouter le client"}
               </Text>
             </Pressable>
           </View>

@@ -26,6 +26,7 @@ import { colors } from "@/constants/colors";
 import { useClientStore } from "@/stores/client-store";
 import { useTransactionStore } from "@/stores/transaction-store";
 import { Transaction } from "@/types/transaction";
+import { Client } from "@/types/client";
 
 const ID_TYPE_LABELS: Record<string, string> = {
   cni: "CNI",
@@ -40,7 +41,7 @@ export default function ClientDetailScreen() {
   const { getClientById, updateClient } = useClientStore();
   const { getTransactionsByClientId } = useTransactionStore();
   const [isLoading, setIsLoading] = useState(true);
-  const [client, setClient] = useState<any>(null);
+  const [client, setClient] = useState<Client | null>(null);
   const [transactions, setTransactions] = useState<Transaction[]>([]);
 
   useEffect(() => {
@@ -59,7 +60,6 @@ export default function ClientDetailScreen() {
 
   useEffect(() => {
     if (scannedId && id && client) {
-      console.log("[ClientDetail] Received scanned ID:", scannedId);
       updateClient(id, {
         idNumber: scannedId,
         kycVerified: true,
@@ -103,7 +103,12 @@ export default function ClientDetailScreen() {
   return (
     <SafeAreaView edges={["bottom"]} style={styles.container}>
       <View style={styles.header}>
-        <Pressable style={styles.backButton} onPress={() => router.back()}>
+        <Pressable
+          style={styles.backButton}
+          onPress={() => router.back()}
+          accessibilityLabel="Retour"
+          accessibilityRole="button"
+        >
           <ChevronLeft size={24} color={colors.text} />
         </Pressable>
         <Text style={styles.headerTitle}>Détails du client</Text>
@@ -123,7 +128,7 @@ export default function ClientDetailScreen() {
           <View style={styles.balanceContainer}>
             <Text style={styles.balanceLabel}>Solde actuel</Text>
             <Text style={styles.balanceAmount}>
-              {client?.balance?.toLocaleString()} FCFA
+              {client?.balance != null ? new Intl.NumberFormat("fr-FR").format(client.balance) : "—"} FCFA
             </Text>
           </View>
         </View>
@@ -251,7 +256,7 @@ export default function ClientDetailScreen() {
                     {transaction.type === "deposit" ? "Dépôt" : "Retrait"}
                   </Text>
                   <Text style={styles.transactionDate}>
-                    {new Date(transaction.date).toLocaleDateString()}
+                    {new Intl.DateTimeFormat("fr-FR").format(new Date(transaction.date))}
                   </Text>
                 </View>
                 <View style={styles.transactionAmount}>
@@ -267,7 +272,7 @@ export default function ClientDetailScreen() {
                     ]}
                   >
                     {transaction.type === "deposit" ? "+" : "-"}
-                    {transaction.amount.toLocaleString()} FCFA
+                    {new Intl.NumberFormat("fr-FR").format(transaction.amount)} FCFA
                   </Text>
                 </View>
               </View>

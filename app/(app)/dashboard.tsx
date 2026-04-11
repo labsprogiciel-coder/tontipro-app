@@ -8,7 +8,7 @@ import {
   Pressable,
 } from "react-native";
 import { useRouter } from "expo-router";
-import { PlusCircle, TrendingUp, Users, Wallet, Wifi, WifiOff, RefreshCw } from "lucide-react-native";
+import { PlusCircle, TrendingUp, Users, RefreshCw, Wifi, WifiOff } from "lucide-react-native";
 
 import { colors } from "@/constants/colors";
 import { useAuthStore } from "@/stores/auth-store";
@@ -77,7 +77,8 @@ export default function DashboardScreen() {
   const pendingClientsCount = clients.filter((c) => c.syncStatus === "pending").length;
   const totalPending = pendingTransactionsCount + pendingClientsCount;
   const clientCount = clients.length;
-  const targetCompletion = clientCount === 0 ? 0 : Math.min(100, Math.round((clientCount / 100) * 100));
+  const MONTHLY_CLIENT_TARGET = 50;
+  const targetCompletion = clientCount === 0 ? 0 : Math.min(100, Math.round((clientCount / MONTHLY_CLIENT_TARGET) * 100));
 
   // ✅ Calcul du statut de synchronisation
   const getSyncStatus = () => {
@@ -125,7 +126,6 @@ export default function DashboardScreen() {
 
             {/* ✅ Indicateur de statut de synchronisation */}
             <View style={[styles.syncBadge, { borderColor: syncStatus.color }]}>
-              <View style={[styles.syncDot, { backgroundColor: syncStatus.color }]} />
               {syncStatus.icon === "offline" && (
                 <WifiOff size={12} color={syncStatus.color} />
               )}
@@ -192,7 +192,7 @@ export default function DashboardScreen() {
           <View style={styles.statCard}>
             <View style={styles.statHeader}>
               <Text style={styles.statTitle}>Synchro en attente</Text>
-              <Wallet size={20} color={colors.warning} />
+              <RefreshCw size={20} color={colors.warning} />
             </View>
             <Text style={styles.statValue}>{pendingTransactionsCount}</Text>
             <Text style={styles.statSubtext}>Transactions hors ligne</Text>
@@ -260,11 +260,6 @@ const styles = StyleSheet.create({
     paddingVertical: 5,
     gap: 4,
     marginTop: 4,
-  },
-  syncDot: {
-    width: 6,
-    height: 6,
-    borderRadius: 3,
   },
   syncLabel: {
     fontSize: 11,

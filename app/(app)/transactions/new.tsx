@@ -42,12 +42,12 @@ export default function NewTransactionScreen() {
 
   const handleAddTransaction = async () => {
     if (!selectedClient) {
-      Alert.alert("Érreur", "Veuillez sélectionner un client");
+      Alert.alert("Erreur", "Veuillez sélectionner un client");
       return;
     }
 
     if (!amount || parseInt(amount, 10) <= 0) {
-      Alert.alert("Érreur", "Veuillez entrer un montant valide");
+      Alert.alert("Erreur", "Veuillez entrer un montant valide");
       return;
     }
 
@@ -67,7 +67,7 @@ export default function NewTransactionScreen() {
         [{ text: "OK", onPress: () => router.back() }]
       );
     } catch (error) {
-      Alert.alert("Érreur", "Impossible d'enregistrer le dépôt. Veuillez réessayer.");
+      Alert.alert("Erreur", "Impossible d'enregistrer le dépôt. Veuillez réessayer.");
     } finally {
       setIsLoading(false);
     }
@@ -76,7 +76,12 @@ export default function NewTransactionScreen() {
   return (
     <SafeAreaView edges={["bottom"]} style={styles.container}>
       <View style={styles.header}>
-        <Pressable style={styles.backButton} onPress={() => router.back()}>
+        <Pressable
+          style={styles.backButton}
+          onPress={() => router.back()}
+          accessibilityLabel="Retour"
+          accessibilityRole="button"
+        >
           <ChevronLeft size={24} color={colors.text} />
         </Pressable>
         <Text style={styles.headerTitle}>Nouveau dépôt</Text>
@@ -146,16 +151,19 @@ export default function NewTransactionScreen() {
               <TextInput
                 style={styles.amountInput}
                 placeholder="0"
+                accessibilityLabel="Montant du dépôt"
                 value={amount}
                 onChangeText={setAmount}
                 keyboardType="numeric"
+                inputMode="numeric"
               />
             </View>
 
             <Text style={styles.sectionTitle}>Notes (Optionnelles)</Text>
             <TextInput
               style={styles.notesInput}
-              placeholder="Ajouter des informations supplémentaires"
+              placeholder="Ajouter des informations supplémentaires…"
+              accessibilityLabel="Notes"
               value={notes}
               onChangeText={setNotes}
               multiline
@@ -173,7 +181,7 @@ export default function NewTransactionScreen() {
               disabled={isLoading}
             >
               <Text style={styles.submitButtonText}>
-                {isLoading ? "Traitement..." : "Enregistrer le dépôt"}
+                {isLoading ? "Traitement…" : "Enregistrer le dépôt"}
               </Text>
             </Pressable>
           </View>
