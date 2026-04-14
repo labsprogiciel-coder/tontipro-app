@@ -2,7 +2,8 @@ name: Lint, test, then run EAS Workflow to build or update
 
 on:
   push:
-    branches: [main]
+    branches: [develop]
+  workflow_dispatch:
 
 jobs:
   run-eas-workflow:
