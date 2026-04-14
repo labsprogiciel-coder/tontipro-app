@@ -1,249 +1,251 @@
-import { useRouter } from "expo-router";
-import { useState } from "react";
+import React, { useState } from 'react';
+import { View, Text, StyleSheet, ScrollView, Pressable, Switch, Alert } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import {
-  KeyboardAvoidingView,
-  Platform,
-  Pressable,
-  StyleSheet,
-  Text,
-  TextInput,
-  View,
-} from "react-native";
-import { SafeAreaView } from "react-native-safe-area-context";
-import { Lock, User, Mail } from "lucide-react-native";
+  User,
+  ShieldCheck,
+  Bell,
+  CloudSunIcon,
+  Languages,
+  Info,
+  LogOut,
+  ChevronRight,
+  Database,
+  LucideIcon,
+  Upload,
+  DatabaseBackup,
+  AlertTriangle,
+  Download,
+  Users2
+} from 'lucide-react-native';
 
-import { colors } from "@/constants/colors";
+interface SettingItemProps {
+  icon: LucideIcon;
+  label: string;
+  value?: string;
+  onPress: () => void;
+  destructive?: boolean;
+}
 
-export default function RegisterScreen() {
-  const router = useRouter();
-  const [name, setName] = useState("");
-  const [email, setEmail] = useState("");
-  const [agentId, setAgentId] = useState("");
-  const [pin, setPin] = useState("");
-  const [confirmPin, setConfirmPin] = useState("");
-  const [error, setError] = useState("");
+const SettingItem = ({ icon: Icon, label, value, onPress, destructive = false }: SettingItemProps) => (
+  <Pressable
+    onPress={onPress}
+    style={({ pressed }) => [styles.item, pressed && styles.pressed]}
+  >
+    <View style={[styles.itemLeft, destructive && styles.destructiveBg]}>
+      <Icon size={20} color={destructive ? "#a32d2d" : "#5f5e5a"} />
+      <Text style={[styles.itemLabel, destructive && styles.destructiveText]}>{label}</Text>
+    </View>
+    <View style={styles.itemRight}>
+      {value && <Text style={styles.itemValue}>{value}</Text>}
+      <ChevronRight size={18} color="#888780" />
+    </View>
+  </Pressable>
+);
+const SettingsScreen = () => {
+  const [isBiometricActive, setIsBiometricActive] = useState(true);
+  const [isOfflineMode, setIsOfflineMode] = useState(false);
 
-  const handleRegister = async () => {
-    if (!name || !agentId || !pin || !confirmPin) {
-      setError("Veuillez remplir tous les champs");
-      return;
-    }
+  const handleExport = () => {
+    Alert.alert(
+      "Exporter les données",
+      "Voulez-vous créer une sauvegarde locale de toutes vos transactions et clients ?",
+      [
+        { text: "Annuler", style: "cancel" },
+        { text: "Exporter", onPress: () => console.log("Exporting JSON...") }
+      ]
+    );
+  };
 
-    if (pin !== confirmPin) {
-      setError("Les PIN ne correspondent pas");
-      return;
-    }
-
-    if (pin.length < 4) {
-      setError("Le PIN doit contenir au moins 4 chiffres");
-      return;
-    }
-
-    setError("");
-    router.replace("/(auth)/login");
+  const handleImport = () => {
+    Alert.alert(
+      "Attention : Importation",
+      "L'importation de données écrasera votre base de données actuelle. Cette action est irréversible.",
+      [
+        { text: "Annuler", style: "cancel" },
+        { text: "Continuer", style: "destructive", onPress: () => console.log("Opening file picker...") }
+      ]
+    );
   };
 
   return (
     <SafeAreaView style={styles.container}>
-      <KeyboardAvoidingView
-        behavior={Platform.OS === "ios" ? "padding" : "height"}
-        style={styles.keyboardAvoid}
-      >
-        <View style={styles.content}>
-          <View style={styles.logoContainer}>
-            <Text style={styles.logoText}>ÉpargneMobile</Text>
-            <Text style={styles.tagline}>Inscription Agent</Text>
-          </View>
+      {/* Page Header */}
+      <View style={styles.header}>
+        <Text style={styles.headerTitle}>Paramètres</Text>
+      </View>
 
-          <View style={styles.formContainer}>
-            <Text style={styles.welcomeText}>Créer un compte</Text>
-            <Text style={styles.subtitle}>
-              Inscrivez-vous en tant que nouvel agent pour commencer
-            </Text>
+      <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
 
-            <View style={styles.inputContainer}>
-              <User size={20} color={colors.textSecondary} />
-              <TextInput
-                style={styles.input}
-                placeholder="Nom complet"
-                value={name}
-                onChangeText={setName}
-                autoCapitalize="words"
-              />
+        {/* Profile Card Summary */}
+        <View style={styles.section}>
+          <View style={styles.profileCard}>
+            <View style={styles.avatar}>
+              <Text style={styles.avatarText}>SW</Text>
             </View>
-
-            <View style={styles.inputContainer}>
-              <Mail size={20} color={colors.textSecondary} />
-              <TextInput
-                style={styles.input}
-                placeholder="Email (optionnel)"
-                value={email}
-                onChangeText={setEmail}
-                autoCapitalize="none"
-                keyboardType="email-address"
-              />
+            <View style={styles.profileInfo}>
+              <Text style={styles.profileName}>Serge Wilfried</Text>
+              <Text style={styles.profileId}>Agent ID: #782901</Text>
             </View>
-
-            <View style={styles.inputContainer}>
-              <User size={20} color={colors.textSecondary} />
-              <TextInput
-                style={styles.input}
-                placeholder="ID Agent"
-                value={agentId}
-                onChangeText={setAgentId}
-                autoCapitalize="none"
-              />
-            </View>
-
-            <View style={styles.inputContainer}>
-              <Lock size={20} color={colors.textSecondary} />
-              <TextInput
-                style={styles.input}
-                placeholder="PIN (4-6 chiffres)"
-                value={pin}
-                onChangeText={setPin}
-                secureTextEntry
-                keyboardType="numeric"
-                maxLength={6}
-              />
-            </View>
-
-            <View style={styles.inputContainer}>
-              <Lock size={20} color={colors.textSecondary} />
-              <TextInput
-                style={styles.input}
-                placeholder="Confirmer le PIN"
-                value={confirmPin}
-                onChangeText={setConfirmPin}
-                secureTextEntry
-                keyboardType="numeric"
-                maxLength={6}
-              />
-            </View>
-
-            {error ? <Text style={styles.errorText}>{error}</Text> : null}
-
-            <Pressable
-              style={({ pressed }) => [
-                styles.registerButton,
-                pressed && styles.buttonPressed,
-              ]}
-              onPress={handleRegister}
-            >
-              <Text style={styles.registerButtonText}>S&apos;inscrire</Text>
-            </Pressable>
-
-            <Pressable
-              onPress={() => router.back()}
-              style={styles.loginLink}
-            >
-              <Text style={styles.loginText}>
-                Vous avez déjà un compte?{" "}
-                <Text style={styles.loginHighlight}>Se connecter</Text>
-              </Text>
+            <Pressable style={styles.editBtn}>
+              <Text style={styles.editBtnText}>Modifier</Text>
             </Pressable>
           </View>
         </View>
-      </KeyboardAvoidingView>
+
+        {/* Security Section */}
+        <Text style={styles.sectionLabel}>Sécurité & Accès</Text>
+        <View style={styles.section}>
+          <SettingItem icon={ShieldCheck} label="Modifier le PIN" onPress={() => { }} />
+          <View style={styles.divider} />
+          <View style={styles.item}>
+            <View style={styles.itemLeft}>
+              <User size={20} color="#5f5e5a" />
+              <Text style={styles.itemLabel}>FaceID / Empreinte</Text>
+            </View>
+            <Switch
+              value={isBiometricActive}
+              onValueChange={setIsBiometricActive}
+              trackColor={{ false: "#d0cfc8", true: "#D85A30" }}
+            />
+          </View>
+          <View style={styles.divider} />
+          <SettingItem icon={Users2} label="Membres" onPress={() => { }} />
+
+        </View>
+        {/* Sync & Offline - CRITICAL for your market */}
+        <Text style={styles.sectionLabel}>Données & Synchronisation</Text>
+        <View style={styles.section}>
+          <View style={styles.item}>
+            <View style={styles.itemLeft}>
+              <Database size={20} color="#5f5e5a" />
+              <Text style={styles.itemLabel}>Mode Hors-ligne Forcé</Text>
+            </View>
+            <Switch
+              value={isOfflineMode}
+              onValueChange={setIsOfflineMode}
+              trackColor={{ false: "#d0cfc8", true: "#D85A30" }}
+            />
+          </View>
+          <View style={styles.divider} />
+          <SettingItem icon={CloudSunIcon} label="Forcer la Synchronisation" value="Sync à 14:10" onPress={() => { }} />
+          <View style={styles.divider} />
+          <SettingItem icon={Info} label="Espace de stockage" value="12.4 MB" onPress={() => { }} />
+        </View>
+        <View style={styles.container}>
+          <Text style={styles.sectionLabel}>Sauvegarde & Restauration</Text>
+          <View style={styles.section}>
+
+            {/* Export Feature */}
+            <SettingItem
+              icon={Download}
+              label="Exporter les données"
+              value="Format .JSON"
+              onPress={handleExport}
+            />
+
+            <View style={styles.divider} />
+
+            {/* Import Feature */}
+            <SettingItem
+              icon={Upload}
+              label="Importer une sauvegarde"
+              onPress={handleImport}
+            />
+
+            <View style={styles.divider} />
+
+            {/* Backup Status Info */}
+            <View style={styles.infoBox}>
+              <DatabaseBackup size={16} color="#888780" />
+              <Text style={styles.infoText}>
+                Dernière sauvegarde locale : Aujourd'hui à 10:45
+              </Text>
+            </View>
+          </View>
+
+          {/* Warning for agents */}
+          <View style={styles.warningContainer}>
+            <AlertTriangle size={14} color="#993C1D" />
+            <Text style={styles.warningText}>
+              Utilisez l'importation uniquement sous la supervision d'un administrateur.
+            </Text>
+          </View>
+        </View>
+        {/* General Preferences */}
+        <Text style={styles.sectionLabel}>Préférences</Text>
+        <View style={styles.section}>
+          <SettingItem icon={Languages} label="Langue" value="Français" onPress={() => { }} />
+          <View style={styles.divider} />
+          <SettingItem icon={Bell} label="Notifications" onPress={() => { }} />
+        </View>
+
+        {/* Sign Out */}
+        <View style={[styles.section, { marginTop: 10, marginBottom: 40 }]}>
+          <SettingItem
+            icon={LogOut}
+            label="Déconnexion"
+            onPress={() => { }}
+            destructive={true}
+          />
+        </View>
+
+        <Text style={styles.versionText}>Kauridorr v1.0.4 • Made with ❤️ for Burkina Faso</Text>
+      </ScrollView>
     </SafeAreaView>
   );
-}
+};
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: colors.background,
+  container: { flex: 1, backgroundColor: '#eeede8' },
+  header: { paddingHorizontal: 20, paddingVertical: 15, backgroundColor: '#ffffff', borderBottomWidth: 0.5, borderBottomColor: 'rgba(0,0,0,0.1)' },
+  headerTitle: { fontSize: 22, fontWeight: '700', color: '#1a1a18' },
+  scrollContent: { padding: 16 },
+  sectionLabel: { fontSize: 11, fontWeight: '600', color: '#888780', textTransform: 'uppercase', marginBottom: 8, marginLeft: 4 },
+  section: { backgroundColor: '#ffffff', borderRadius: 14, borderWidth: 0.5, borderColor: 'rgba(0,0,0,0.1)', overflow: 'hidden', marginBottom: 20 },
+  profileCard: { flexDirection: 'row', alignItems: 'center', padding: 16 },
+  avatar: { width: 50, height: 50, borderRadius: 25, backgroundColor: '#D85A30', justifyContent: 'center', alignItems: 'center' },
+  avatarText: { color: 'white', fontWeight: '700', fontSize: 18 },
+  profileInfo: { flex: 1, marginLeft: 12 },
+  profileName: { fontSize: 16, fontWeight: '600', color: '#1a1a18' },
+  profileId: { fontSize: 12, color: '#5f5e5a', marginTop: 2 },
+  editBtn: { backgroundColor: '#f5f4f0', paddingHorizontal: 12, paddingVertical: 6, borderRadius: 8 },
+  editBtnText: { fontSize: 12, fontWeight: '600', color: '#5f5e5a' },
+  item: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', padding: 16, height: 56 },
+  itemLeft: { flexDirection: 'row', alignItems: 'center', gap: 12 },
+  itemLabel: { fontSize: 14, color: '#1a1a18', fontWeight: '500' },
+  itemRight: { flexDirection: 'row', alignItems: 'center', gap: 8 },
+  itemValue: { fontSize: 13, color: '#888780' },
+  divider: { height: 0.5, backgroundColor: 'rgba(0,0,0,0.05)', marginLeft: 48 },
+  pressed: { backgroundColor: '#f5f4f0' },
+  destructiveText: { color: '#a32d2d' },
+  versionText: { textAlign: 'center', color: '#888780', fontSize: 11, marginBottom: 20 },
+  destructiveBg: { backgroundColor: 'rgba(163, 45, 45, 0.1)' },
+  infoBox: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: 16,
+    backgroundColor: '#f9f9f7',
+    gap: 10,
   },
-  keyboardAvoid: {
-    flex: 1,
+  infoText: {
+    fontSize: 12,
+    color: '#888780',
+    fontStyle: 'italic',
   },
-  content: {
-    flex: 1,
-    padding: 24,
-    justifyContent: "center",
+  warningContainer: {
+    flexDirection: 'row',
+    paddingHorizontal: 8,
+    marginTop: -10,
+    marginBottom: 20,
+    gap: 6,
+    alignItems: 'center',
   },
-  logoContainer: {
-    alignItems: "center",
-    marginBottom: 32,
-  },
-  logoText: {
-    fontSize: 32,
-    fontWeight: "bold",
-    color: colors.primary,
-    marginBottom: 8,
-  },
-  tagline: {
-    fontSize: 16,
-    color: colors.textSecondary,
-  },
-  formContainer: {
-    backgroundColor: colors.card,
-    borderRadius: 16,
-    padding: 24,
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 8,
-    elevation: 2,
-  },
-  welcomeText: {
-    fontSize: 24,
-    fontWeight: "bold",
-    color: colors.text,
-    marginBottom: 8,
-  },
-  subtitle: {
-    fontSize: 14,
-    color: colors.textSecondary,
-    marginBottom: 24,
-  },
-  inputContainer: {
-    flexDirection: "row",
-    alignItems: "center",
-    backgroundColor: colors.background,
-    borderRadius: 8,
-    borderWidth: 1,
-    borderColor: colors.border,
-    paddingHorizontal: 12,
-    marginBottom: 16,
-    height: 50,
-  },
-  input: {
-    flex: 1,
-    height: 50,
-    marginLeft: 8,
-    color: colors.text,
-  },
-  errorText: {
-    color: colors.error,
-    marginBottom: 16,
-  },
-  registerButton: {
-    backgroundColor: colors.primary,
-    borderRadius: 8,
-    height: 50,
-    justifyContent: "center",
-    alignItems: "center",
-    marginTop: 8,
-  },
-  buttonPressed: {
-    opacity: 0.8,
-  },
-  registerButtonText: {
-    color: "white",
-    fontSize: 16,
-    fontWeight: "600",
-  },
-  loginLink: {
-    marginTop: 24,
-    alignItems: "center",
-  },
-  loginText: {
-    fontSize: 14,
-    color: colors.textSecondary,
-  },
-  loginHighlight: {
-    color: colors.primary,
-    fontWeight: "600",
+  warningText: {
+    fontSize: 11,
+    color: '#993C1D',
+    fontWeight: '500',
   },
 });
+
+export default SettingsScreen;

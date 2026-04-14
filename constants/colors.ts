@@ -16,6 +16,18 @@ export const colors = {
   inactive: '#9CA3AF',
 };
 
+// Color tokens derived from your HTML :root
+export const KAURIDORR_THEME = {
+  primary: "#D85A30",
+  bgTertiary: "#eeede8",
+  bgPrimary: "#ffffff",
+  textPrimary: "#1a1a18",
+  textSecondary: "#5f5e5a",
+  textTertiary: "#888780",
+  danger: "#a32d2d",
+  border: "rgba(0,0,0,0.1)",
+};
+
 // Theme configuration
 export const theme = {
   dark: false,

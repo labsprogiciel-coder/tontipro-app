@@ -1,0 +1,675 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Kauridorr — Configuration du compte</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --color-background-primary: #ffffff;
+      --color-background-secondary: #f5f4f0;
+      --color-background-tertiary: #eeede8;
+      --color-background-success: #eaf3de;
+      --color-text-primary: #1a1a18;
+      --color-text-secondary: #5f5e5a;
+      --color-text-tertiary: #888780;
+      --color-text-success: #3b6d11;
+      --color-border-tertiary: rgba(0,0,0,0.1);
+      --color-border-secondary: rgba(0,0,0,0.2);
+      --font-sans: -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif;
+      --orange: #D85A30;
+      --orange-dark: #993C1D;
+      --orange-light: #FAE8E0;
+    }
+
+    @media (prefers-color-scheme: dark) {
+      :root {
+        --color-background-primary: #1c1c1a;
+        --color-background-secondary: #252523;
+        --color-background-tertiary: #2c2c2a;
+        --color-background-success: #173404;
+        --color-text-primary: #f0efe9;
+        --color-text-secondary: #b4b2a9;
+        --color-text-tertiary: #888780;
+        --color-text-success: #97c459;
+        --color-border-tertiary: rgba(255,255,255,0.1);
+        --color-border-secondary: rgba(255,255,255,0.2);
+        --orange-light: #3a1a0c;
+      }
+    }
+
+    body {
+      font-family: var(--font-sans);
+      background: #c0bfb8;
+      min-height: 100vh;
+      display: flex;
+      justify-content: center;
+      align-items: flex-start;
+      padding: 32px 16px 48px;
+      gap: 24px;
+      flex-wrap: wrap;
+    }
+
+    /* ── Phone shell ── */
+    .phone {
+      width: 320px;
+      background: var(--color-background-primary);
+      border-radius: 36px;
+      border: 7px solid var(--color-background-primary);
+      box-shadow: 0 0 0 1px rgba(0,0,0,0.12), 0 20px 56px rgba(0,0,0,0.18);
+      overflow: hidden;
+      position: relative;
+      flex-shrink: 0;
+    }
+
+    .phone-label {
+      text-align: center;
+      font-size: 11px;
+      font-weight: 500;
+      color: rgba(0,0,0,0.4);
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+      margin-bottom: 8px;
+    }
+    .phone-wrap { display: flex; flex-direction: column; align-items: center; }
+
+    /* ── Status bar ── */
+    .status-bar {
+      display: flex; justify-content: space-between; align-items: center;
+      padding: 11px 18px 7px;
+      background: inherit;
+    }
+    .status-bar.dark-bg { background: var(--orange); }
+    .status-bar.white-bg { background: var(--color-background-primary); }
+    .s-time { font-size: 12px; font-weight: 500; }
+    .s-time.light { color: white; }
+    .s-time.dark { color: var(--color-text-primary); }
+    .s-icons { display: flex; gap: 4px; align-items: center; }
+    .s-icons svg { width: 12px; height: 12px; }
+    .s-icons.light svg { fill: white; }
+    .s-icons.dark svg { fill: var(--color-text-primary); }
+
+    /* ── Step indicator (dots) ── */
+    .step-dots {
+      display: flex; gap: 6px; justify-content: center;
+      padding: 12px 0 0;
+    }
+    .dot {
+      width: 6px; height: 6px; border-radius: 3px;
+      background: var(--color-border-tertiary);
+      transition: width 0.2s;
+    }
+    .dot.active { width: 18px; background: var(--orange); }
+    .dot.done { background: var(--orange); opacity: 0.35; }
+
+    /* ── SCREEN 1: Welcome ── */
+    .screen-welcome {
+      background: var(--orange);
+      min-height: 560px;
+      display: flex; flex-direction: column; align-items: center;
+      justify-content: space-between;
+      padding: 28px 24px 32px;
+      position: relative;
+      overflow: hidden;
+    }
+    .screen-welcome::before {
+      content: '';
+      position: absolute; top: -60px; right: -60px;
+      width: 220px; height: 220px; border-radius: 50%;
+      background: rgba(255,255,255,0.06);
+    }
+    .screen-welcome::after {
+      content: '';
+      position: absolute; bottom: 80px; left: -80px;
+      width: 200px; height: 200px; border-radius: 50%;
+      background: rgba(255,255,255,0.04);
+    }
+    .welcome-logo { display: flex; flex-direction: column; align-items: center; gap: 10px; margin-top: 20px; z-index: 1; }
+    .logo-circle {
+      width: 72px; height: 72px; border-radius: 22px;
+      background: rgba(255,255,255,0.2);
+      display: flex; align-items: center; justify-content: center;
+      border: 1.5px solid rgba(255,255,255,0.25);
+    }
+    .logo-circle svg { width: 36px; height: 36px; fill: white; }
+    .welcome-logo h1 { font-size: 26px; font-weight: 600; color: white; letter-spacing: -0.02em; }
+    .welcome-logo p { font-size: 13px; color: rgba(255,255,255,0.65); text-align: center; line-height: 1.5; }
+
+    .welcome-bottom { width: 100%; z-index: 1; }
+    .btn-white {
+      width: 100%; padding: 14px;
+      background: white; border: none; border-radius: 13px;
+      font-size: 14px; font-weight: 500; color: var(--orange);
+      cursor: pointer; font-family: var(--font-sans);
+      margin-bottom: 10px;
+    }
+    .btn-ghost {
+      width: 100%; padding: 12px;
+      background: transparent; border: 1.5px solid rgba(255,255,255,0.3);
+      border-radius: 13px; font-size: 13px; color: rgba(255,255,255,0.8);
+      cursor: pointer; font-family: var(--font-sans);
+    }
+    .welcome-footnote { font-size: 10px; color: rgba(255,255,255,0.4); text-align: center; margin-top: 12px; }
+
+    /* ── SCREEN 2: Phone entry ── */
+    .screen-phone {
+      background: var(--color-background-primary);
+      min-height: 560px;
+      display: flex; flex-direction: column;
+      padding: 16px 22px 28px;
+    }
+    .back-row {
+      display: flex; align-items: center; gap: 6px;
+      color: var(--color-text-tertiary); font-size: 13px; cursor: pointer;
+      margin-bottom: 28px;
+    }
+    .back-row svg { width: 16px; height: 16px; fill: none; stroke: var(--color-text-tertiary); stroke-width: 1.8; stroke-linecap: round; }
+
+    .screen-title { font-size: 22px; font-weight: 600; color: var(--color-text-primary); letter-spacing: -0.02em; line-height: 1.2; margin-bottom: 6px; }
+    .screen-sub { font-size: 13px; color: var(--color-text-secondary); line-height: 1.5; margin-bottom: 28px; }
+
+    .field-group { margin-bottom: 16px; }
+    .field-label { font-size: 11px; font-weight: 500; color: var(--color-text-tertiary); text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 6px; }
+    .phone-input-row {
+      display: flex; gap: 8px;
+    }
+    .country-select {
+      display: flex; align-items: center; gap: 5px;
+      background: var(--color-background-secondary);
+      border: 0.5px solid var(--color-border-tertiary);
+      border-radius: 10px; padding: 11px 10px;
+      font-size: 13px; color: var(--color-text-primary);
+      cursor: pointer; white-space: nowrap; flex-shrink: 0;
+    }
+    .country-select .flag { font-size: 16px; }
+    .country-select .code { font-weight: 500; }
+    .country-select svg { width: 12px; height: 12px; fill: none; stroke: var(--color-text-tertiary); stroke-width: 1.5; stroke-linecap: round; }
+
+    .text-input {
+      flex: 1; background: var(--color-background-secondary);
+      border: 0.5px solid var(--color-border-tertiary);
+      border-radius: 10px; padding: 11px 13px;
+      font-size: 15px; font-weight: 500; color: var(--color-text-primary);
+      font-family: var(--font-sans);
+      outline: none;
+    }
+    .text-input:focus { border-color: var(--orange); }
+    .text-input.filled { border-color: var(--orange); background: var(--orange-light); }
+
+    .input-note { font-size: 11px; color: var(--color-text-tertiary); margin-top: 6px; display: flex; align-items: center; gap: 4px; }
+    .input-note svg { width: 11px; height: 11px; fill: var(--color-text-tertiary); flex-shrink: 0; }
+
+    .divider-or {
+      display: flex; align-items: center; gap: 10px;
+      margin: 20px 0;
+    }
+    .divider-or hr { flex: 1; border: none; border-top: 0.5px solid var(--color-border-tertiary); }
+    .divider-or span { font-size: 11px; color: var(--color-text-tertiary); }
+
+    .email-alt {
+      display: flex; align-items: center; gap: 10px;
+      background: var(--color-background-secondary);
+      border: 0.5px solid var(--color-border-tertiary);
+      border-radius: 10px; padding: 11px 13px;
+      cursor: pointer;
+    }
+    .email-alt svg { width: 16px; height: 16px; fill: none; stroke: var(--color-text-tertiary); stroke-width: 1.4; stroke-linecap: round; flex-shrink: 0; }
+    .email-alt span { font-size: 13px; color: var(--color-text-secondary); }
+    .email-alt .badge-opt { margin-left: auto; font-size: 10px; background: var(--color-background-secondary); border: 0.5px solid var(--color-border-tertiary); color: var(--color-text-tertiary); padding: 2px 7px; border-radius: 5px; }
+
+    .spacer { flex: 1; }
+    .btn-primary {
+      width: 100%; padding: 14px;
+      background: var(--orange); border: none; border-radius: 13px;
+      font-size: 14px; font-weight: 500; color: white;
+      cursor: pointer; font-family: var(--font-sans);
+    }
+    .btn-primary:disabled { opacity: 0.4; }
+
+    /* ── SCREEN 3: OTP verification ── */
+    .screen-otp {
+      background: var(--color-background-primary);
+      min-height: 560px;
+      display: flex; flex-direction: column;
+      padding: 16px 22px 28px;
+    }
+    .otp-icon {
+      width: 56px; height: 56px; border-radius: 16px;
+      background: var(--orange-light);
+      display: flex; align-items: center; justify-content: center;
+      margin-bottom: 20px;
+    }
+    .otp-icon svg { width: 26px; height: 26px; fill: none; stroke: var(--orange); stroke-width: 1.5; stroke-linecap: round; }
+
+    .otp-boxes { display: flex; gap: 8px; margin: 24px 0 10px; }
+    .otp-box {
+      flex: 1; height: 52px;
+      background: var(--color-background-secondary);
+      border: 0.5px solid var(--color-border-tertiary);
+      border-radius: 12px;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 22px; font-weight: 600; color: var(--color-text-primary);
+    }
+    .otp-box.active { border: 1.5px solid var(--orange); background: var(--orange-light); }
+    .otp-box.filled { border-color: var(--orange); }
+
+    .otp-meta { font-size: 12px; color: var(--color-text-tertiary); text-align: center; margin-bottom: 8px; }
+    .resend-row { display: flex; align-items: center; justify-content: center; gap: 4px; font-size: 12px; color: var(--color-text-tertiary); }
+    .resend-row a { color: var(--orange); text-decoration: none; }
+
+    /* ── SCREEN 4: Profile setup ── */
+    .screen-profile {
+      background: var(--color-background-primary);
+      min-height: 560px;
+      display: flex; flex-direction: column;
+      padding: 16px 22px 28px;
+    }
+    .avatar-picker {
+      display: flex; flex-direction: column; align-items: center;
+      margin: 16px 0 24px;
+    }
+    .avatar-circle {
+      width: 72px; height: 72px; border-radius: 50%;
+      background: var(--orange-light);
+      display: flex; align-items: center; justify-content: center;
+      font-size: 24px; font-weight: 600; color: var(--orange);
+      position: relative; margin-bottom: 8px;
+    }
+    .avatar-edit {
+      position: absolute; bottom: 0; right: 0;
+      width: 22px; height: 22px; border-radius: 50%;
+      background: var(--orange); border: 2px solid var(--color-background-primary);
+      display: flex; align-items: center; justify-content: center;
+    }
+    .avatar-edit svg { width: 10px; height: 10px; fill: white; }
+    .avatar-picker p { font-size: 11px; color: var(--color-text-tertiary); }
+
+    .role-selector { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 16px; }
+    .role-card {
+      border: 1.5px solid var(--color-border-tertiary);
+      border-radius: 12px; padding: 13px 12px;
+      cursor: pointer; display: flex; flex-direction: column; gap: 6px;
+    }
+    .role-card.selected { border-color: var(--orange); background: var(--orange-light); }
+    .role-icon { width: 30px; height: 30px; border-radius: 8px; display: flex; align-items: center; justify-content: center; }
+    .role-icon svg { width: 15px; height: 15px; }
+    .role-name { font-size: 13px; font-weight: 500; color: var(--color-text-primary); }
+    .role-desc { font-size: 10px; color: var(--color-text-secondary); line-height: 1.4; }
+
+    /* ── SCREEN 5: PIN setup ── */
+    .screen-pin {
+      background: var(--color-background-primary);
+      min-height: 560px;
+      display: flex; flex-direction: column; align-items: center;
+      padding: 16px 22px 28px;
+    }
+    .pin-dots { display: flex; gap: 14px; margin: 24px 0 10px; }
+    .pin-dot {
+      width: 14px; height: 14px; border-radius: 50%;
+      border: 1.5px solid var(--color-border-secondary);
+      background: transparent;
+    }
+    .pin-dot.filled { background: var(--orange); border-color: var(--orange); }
+
+    .pin-hint { font-size: 11px; color: var(--color-text-tertiary); margin-bottom: 28px; text-align: center; }
+
+    .numpad { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; width: 100%; max-width: 240px; }
+    .num-btn {
+      height: 58px; border-radius: 14px;
+      background: var(--color-background-secondary);
+      border: 0.5px solid var(--color-border-tertiary);
+      display: flex; flex-direction: column; align-items: center; justify-content: center;
+      cursor: pointer; gap: 1px;
+    }
+    .num-btn:active { background: var(--orange-light); border-color: var(--orange); }
+    .num-big { font-size: 20px; font-weight: 500; color: var(--color-text-primary); }
+    .num-sub { font-size: 8px; color: var(--color-text-tertiary); letter-spacing: 0.08em; }
+    .num-btn.empty { background: transparent; border-color: transparent; cursor: default; }
+    .num-btn.del svg { width: 18px; height: 18px; fill: none; stroke: var(--color-text-secondary); stroke-width: 1.5; stroke-linecap: round; }
+
+    /* ── SCREEN 6: Success ── */
+    .screen-success {
+      background: var(--color-background-primary);
+      min-height: 560px;
+      display: flex; flex-direction: column; align-items: center;
+      justify-content: space-between;
+      padding: 60px 24px 32px;
+      text-align: center;
+    }
+    .success-icon-wrap { display: flex; flex-direction: column; align-items: center; gap: 20px; }
+    .success-ring {
+      width: 80px; height: 80px; border-radius: 50%;
+      background: var(--color-background-success);
+      display: flex; align-items: center; justify-content: center;
+    }
+    .success-ring svg { width: 36px; height: 36px; fill: none; stroke: var(--color-text-success); stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+    .success-title { font-size: 22px; font-weight: 600; color: var(--color-text-primary); letter-spacing: -0.02em; margin-bottom: 6px; }
+    .success-sub { font-size: 13px; color: var(--color-text-secondary); line-height: 1.6; }
+
+    .summary-card {
+      width: 100%; background: var(--color-background-secondary);
+      border: 0.5px solid var(--color-border-tertiary);
+      border-radius: 14px; padding: 14px 16px;
+      text-align: left;
+    }
+    .summary-row { display: flex; justify-content: space-between; align-items: center; padding: 6px 0; border-bottom: 0.5px solid var(--color-border-tertiary); }
+    .summary-row:last-child { border-bottom: none; }
+    .s-label { font-size: 12px; color: var(--color-text-secondary); }
+    .s-value { font-size: 12px; font-weight: 500; color: var(--color-text-primary); }
+  </style>
+</head>
+<body>
+
+<!-- ── Step 1: Welcome ── -->
+<div class="phone-wrap">
+  <div class="phone-label">1 — Accueil</div>
+  <div class="phone">
+    <div class="status-bar dark-bg">
+      <span class="s-time light">09:41</span>
+      <div class="s-icons light">
+        <svg viewBox="0 0 16 16"><path d="M1 10h2v4H1zm4-3h2v7H5zm4-3h2v10H9zm4-4h2v14h-2z"/></svg>
+        <svg viewBox="0 0 16 16"><rect x="1" y="4" width="12" height="8" rx="1.5"/><path d="M14 7v2" stroke="white" stroke-width="1.5" stroke-linecap="round" fill="none"/></svg>
+      </div>
+    </div>
+    <div class="screen-welcome">
+      <div class="welcome-logo">
+        <div class="logo-circle">
+          <svg viewBox="0 0 40 40"><path d="M20 4C11.2 4 4 11.2 4 20s7.2 16 16 16 16-7.2 16-16S28.8 4 20 4zm2 22h-4V18h4v8zm0-12h-4v-4h4v4z"/></svg>
+        </div>
+        <h1>Kauridorr</h1>
+        <p>Gestion d'épargne moderne,<br>sécurisée et accessible.</p>
+      </div>
+      <div class="welcome-bottom">
+        <button class="btn-white">Créer mon compte</button>
+        <button class="btn-ghost">J'ai déjà un compte</button>
+        <div class="welcome-footnote">Disponible hors ligne · 100% en français</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ── Step 2: Phone number ── -->
+<div class="phone-wrap">
+  <div class="phone-label">2 — Numéro de téléphone</div>
+  <div class="phone">
+    <div class="status-bar white-bg">
+      <span class="s-time dark">09:41</span>
+      <div class="s-icons dark">
+        <svg viewBox="0 0 16 16"><path d="M1 10h2v4H1zm4-3h2v7H5zm4-3h2v10H9zm4-4h2v14h-2z"/></svg>
+        <svg viewBox="0 0 16 16"><rect x="1" y="4" width="12" height="8" rx="1.5"/><path d="M14 7v2" stroke="#1a1a18" stroke-width="1.5" stroke-linecap="round" fill="none"/></svg>
+      </div>
+    </div>
+    <div class="screen-phone">
+      <div class="back-row">
+        <svg viewBox="0 0 16 16"><path d="M10 3L5 8l5 5"/></svg>
+        Retour
+      </div>
+      <div class="step-dots" style="justify-content:flex-start; padding:0; margin-bottom:28px;">
+        <div class="dot done"></div>
+        <div class="dot active"></div>
+        <div class="dot"></div>
+        <div class="dot"></div>
+        <div class="dot"></div>
+      </div>
+
+      <div class="screen-title">Votre numéro<br>de téléphone</div>
+      <div class="screen-sub">Entrez votre numéro pour recevoir un code de vérification par SMS.</div>
+
+      <div class="field-group">
+        <div class="field-label">Numéro de téléphone</div>
+        <div class="phone-input-row">
+          <div class="country-select">
+            <span class="flag">🇧🇫</span>
+            <span class="code">+226</span>
+            <svg viewBox="0 0 16 16"><path d="M4 6l4 4 4-4"/></svg>
+          </div>
+          <input class="text-input filled" type="tel" value="70 11 22 33" readonly />
+        </div>
+        <div class="input-note">
+          <svg viewBox="0 0 16 16"><path d="M8 1a7 7 0 100 14A7 7 0 008 1zm1 10H7V7h2v4zm0-6H7V3h2v2z"/></svg>
+          Un SMS de vérification vous sera envoyé
+        </div>
+      </div>
+
+      <div class="divider-or">
+        <hr />
+        <span>ou continuer avec</span>
+        <hr />
+      </div>
+
+      <div class="email-alt">
+        <svg viewBox="0 0 16 16"><rect x="1" y="3" width="14" height="10" rx="1.5"/><path d="M1 4l7 5 7-5"/></svg>
+        <span>Adresse e-mail</span>
+        <span class="badge-opt">Optionnel</span>
+      </div>
+
+      <div class="spacer"></div>
+      <button class="btn-primary">Envoyer le code SMS →</button>
+    </div>
+  </div>
+</div>
+
+<!-- ── Step 3: OTP ── -->
+<div class="phone-wrap">
+  <div class="phone-label">3 — Code OTP</div>
+  <div class="phone">
+    <div class="status-bar white-bg">
+      <span class="s-time dark">09:42</span>
+      <div class="s-icons dark">
+        <svg viewBox="0 0 16 16"><path d="M1 10h2v4H1zm4-3h2v7H5zm4-3h2v10H9zm4-4h2v14h-2z"/></svg>
+        <svg viewBox="0 0 16 16"><rect x="1" y="4" width="12" height="8" rx="1.5"/><path d="M14 7v2" stroke="#1a1a18" stroke-width="1.5" stroke-linecap="round" fill="none"/></svg>
+      </div>
+    </div>
+    <div class="screen-otp">
+      <div class="back-row" style="margin-bottom:20px;">
+        <svg viewBox="0 0 16 16"><path d="M10 3L5 8l5 5"/></svg>
+        Retour
+      </div>
+      <div class="step-dots" style="justify-content:flex-start; padding:0; margin-bottom:24px;">
+        <div class="dot done"></div>
+        <div class="dot done"></div>
+        <div class="dot active"></div>
+        <div class="dot"></div>
+        <div class="dot"></div>
+      </div>
+
+      <div class="otp-icon">
+        <svg viewBox="0 0 28 28"><rect x="3" y="12" width="22" height="14" rx="2.5"/><path d="M8 12V8a6 6 0 0112 0v4"/><circle cx="14" cy="19" r="2" fill="none" stroke-width="2"/></svg>
+      </div>
+
+      <div class="screen-title">Code de<br>vérification</div>
+      <div class="screen-sub" style="margin-bottom:0;">Code envoyé par SMS au<br><strong style="color:var(--color-text-primary);">+226 70 11 22 33</strong></div>
+
+      <div class="otp-boxes">
+        <div class="otp-box filled">4</div>
+        <div class="otp-box filled">7</div>
+        <div class="otp-box active"></div>
+        <div class="otp-box"></div>
+        <div class="otp-box"></div>
+        <div class="otp-box"></div>
+      </div>
+
+      <div class="otp-meta">Expire dans 4:52</div>
+      <div class="resend-row">Pas reçu ? <a href="#">Renvoyer le SMS</a></div>
+
+      <div class="spacer"></div>
+      <button class="btn-primary" disabled>Vérifier →</button>
+    </div>
+  </div>
+</div>
+
+<!-- ── Step 4: Profile ── -->
+<div class="phone-wrap">
+  <div class="phone-label">4 — Profil</div>
+  <div class="phone">
+    <div class="status-bar white-bg">
+      <span class="s-time dark">09:44</span>
+      <div class="s-icons dark">
+        <svg viewBox="0 0 16 16"><path d="M1 10h2v4H1zm4-3h2v7H5zm4-3h2v10H9zm4-4h2v14h-2z"/></svg>
+        <svg viewBox="0 0 16 16"><rect x="1" y="4" width="12" height="8" rx="1.5"/><path d="M14 7v2" stroke="#1a1a18" stroke-width="1.5" stroke-linecap="round" fill="none"/></svg>
+      </div>
+    </div>
+    <div class="screen-profile">
+      <div class="back-row">
+        <svg viewBox="0 0 16 16"><path d="M10 3L5 8l5 5"/></svg>
+        Retour
+      </div>
+      <div class="step-dots" style="justify-content:flex-start; padding:0; margin-bottom:20px;">
+        <div class="dot done"></div>
+        <div class="dot done"></div>
+        <div class="dot done"></div>
+        <div class="dot active"></div>
+        <div class="dot"></div>
+      </div>
+
+      <div class="screen-title">Votre profil</div>
+      <div class="screen-sub">Complétez vos informations pour finaliser la configuration.</div>
+
+      <div class="avatar-picker">
+        <div class="avatar-circle">
+          KD
+          <div class="avatar-edit">
+            <svg viewBox="0 0 12 12"><path d="M8 2l2 2-6 6H2V8l6-6z"/></svg>
+          </div>
+        </div>
+        <p>Appuyez pour ajouter une photo</p>
+      </div>
+
+      <div class="field-group">
+        <div class="field-label">Nom complet</div>
+        <input class="text-input filled" style="width:100%;" type="text" value="Konaté Djibril" readonly />
+      </div>
+
+      <div class="field-group">
+        <div class="field-label">Rôle dans l'organisation</div>
+        <div class="role-selector">
+          <div class="role-card">
+            <div class="role-icon" style="background:var(--color-background-secondary);">
+              <svg viewBox="0 0 16 16" fill="none" stroke="var(--color-text-secondary)" stroke-width="1.4" stroke-linecap="round"><path d="M8 8a3 3 0 100-6 3 3 0 000 6zm-5 5a5 5 0 0110 0H3z"/></svg>
+            </div>
+            <div class="role-name">Agent</div>
+            <div class="role-desc">Collecte et gestion de clients sur le terrain</div>
+          </div>
+          <div class="role-card selected">
+            <div class="role-icon" style="background:var(--orange-light);">
+              <svg viewBox="0 0 16 16" fill="none" stroke="var(--orange)" stroke-width="1.4" stroke-linecap="round"><path d="M8 1l1.5 3 3.5.5-2.5 2.5.5 3.5L8 9l-3 1.5.5-3.5L3 4.5l3.5-.5z"/></svg>
+            </div>
+            <div class="role-name">Administrateur</div>
+            <div class="role-desc">Accès complet et gestion des permissions</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="spacer"></div>
+      <button class="btn-primary">Continuer →</button>
+    </div>
+  </div>
+</div>
+
+<!-- ── Step 5: PIN ── -->
+<div class="phone-wrap">
+  <div class="phone-label">5 — Code PIN</div>
+  <div class="phone">
+    <div class="status-bar white-bg">
+      <span class="s-time dark">09:45</span>
+      <div class="s-icons dark">
+        <svg viewBox="0 0 16 16"><path d="M1 10h2v4H1zm4-3h2v7H5zm4-3h2v10H9zm4-4h2v14h-2z"/></svg>
+        <svg viewBox="0 0 16 16"><rect x="1" y="4" width="12" height="8" rx="1.5"/><path d="M14 7v2" stroke="#1a1a18" stroke-width="1.5" stroke-linecap="round" fill="none"/></svg>
+      </div>
+    </div>
+    <div class="screen-pin">
+      <div class="back-row" style="align-self:flex-start; margin-bottom:12px;">
+        <svg viewBox="0 0 16 16"><path d="M10 3L5 8l5 5"/></svg>
+        Retour
+      </div>
+      <div class="step-dots" style="padding:0; margin-bottom:20px;">
+        <div class="dot done"></div>
+        <div class="dot done"></div>
+        <div class="dot done"></div>
+        <div class="dot done"></div>
+        <div class="dot active"></div>
+      </div>
+
+      <div style="text-align:center;">
+        <div class="screen-title">Créez votre<br>code PIN</div>
+        <div class="screen-sub" style="margin-top:6px; margin-bottom:0;">Ce PIN sécurise l'accès à votre compte.<br>Ne le partagez avec personne.</div>
+      </div>
+
+      <div class="pin-dots">
+        <div class="pin-dot filled"></div>
+        <div class="pin-dot filled"></div>
+        <div class="pin-dot filled"></div>
+        <div class="pin-dot"></div>
+      </div>
+      <div class="pin-hint">Entrez 4 chiffres</div>
+
+      <div class="numpad">
+        <div class="num-btn"><span class="num-big">1</span></div>
+        <div class="num-btn"><span class="num-big">2</span><span class="num-sub">ABC</span></div>
+        <div class="num-btn"><span class="num-big">3</span><span class="num-sub">DEF</span></div>
+        <div class="num-btn"><span class="num-big">4</span><span class="num-sub">GHI</span></div>
+        <div class="num-btn"><span class="num-big">5</span><span class="num-sub">JKL</span></div>
+        <div class="num-btn"><span class="num-big">6</span><span class="num-sub">MNO</span></div>
+        <div class="num-btn"><span class="num-big">7</span><span class="num-sub">PQRS</span></div>
+        <div class="num-btn"><span class="num-big">8</span><span class="num-sub">TUV</span></div>
+        <div class="num-btn"><span class="num-big">9</span><span class="num-sub">WXYZ</span></div>
+        <div class="num-btn empty"></div>
+        <div class="num-btn"><span class="num-big">0</span></div>
+        <div class="num-btn del">
+          <svg viewBox="0 0 20 20"><path d="M14 4H7L2 10l5 6h7a2 2 0 002-2V6a2 2 0 00-2-2z"/><path d="M12 8l-4 4m0-4l4 4" stroke="var(--color-text-secondary)" stroke-width="1.6" stroke-linecap="round"/></svg>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ── Step 6: Success ── -->
+<div class="phone-wrap">
+  <div class="phone-label">6 — Compte créé</div>
+  <div class="phone">
+    <div class="status-bar white-bg">
+      <span class="s-time dark">09:46</span>
+      <div class="s-icons dark">
+        <svg viewBox="0 0 16 16"><path d="M1 10h2v4H1zm4-3h2v7H5zm4-3h2v10H9zm4-4h2v14h-2z"/></svg>
+        <svg viewBox="0 0 16 16"><rect x="1" y="4" width="12" height="8" rx="1.5"/><path d="M14 7v2" stroke="#1a1a18" stroke-width="1.5" stroke-linecap="round" fill="none"/></svg>
+      </div>
+    </div>
+    <div class="screen-success">
+      <div class="success-icon-wrap">
+        <div class="success-ring">
+          <svg viewBox="0 0 40 40"><polyline points="8,20 16,28 32,12"/></svg>
+        </div>
+        <div>
+          <div class="success-title">Compte configuré !</div>
+          <div class="success-sub">Bienvenue sur Kauridorr,<br>Konaté Djibril. Votre compte<br>est prêt à être utilisé.</div>
+        </div>
+      </div>
+
+      <div class="summary-card">
+        <div class="summary-row">
+          <span class="s-label">Téléphone</span>
+          <span class="s-value">+226 70 11 22 33</span>
+        </div>
+        <div class="summary-row">
+          <span class="s-label">Rôle</span>
+          <span class="s-value">Administrateur</span>
+        </div>
+        <div class="summary-row">
+          <span class="s-label">Code PIN</span>
+          <span class="s-value">●●●●</span>
+        </div>
+        <div class="summary-row">
+          <span class="s-label">Mode</span>
+          <span class="s-value">Hors ligne activé</span>
+        </div>
+      </div>
+
+      <button class="btn-primary" style="width:100%;">Accéder au tableau de bord →</button>
+    </div>
+  </div>
+</div>
+
+</body>
+</html>

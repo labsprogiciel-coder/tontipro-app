@@ -8,7 +8,7 @@ import {
   Pressable,
 } from "react-native";
 import { useRouter } from "expo-router";
-import { PlusCircle, TrendingUp, Users, RefreshCw, Wifi, WifiOff } from "lucide-react-native";
+import { PlusCircle, TrendingUp, Users, RefreshCw, Wifi, WifiOff, Wallet } from "lucide-react-native";
 
 import { colors } from "@/constants/colors";
 import { useAuthStore } from "@/stores/auth-store";
