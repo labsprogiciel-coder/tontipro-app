@@ -1,5 +1,5 @@
 -- =============================================
--- TontiPro — Schéma de base de données Supabase
+-- Yembi — Schéma de base de données Supabase
 -- Fichier : supabase/schema.sql
 -- Ce fichier peut recréer le schéma à partir de zéro
 -- =============================================

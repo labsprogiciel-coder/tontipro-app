@@ -1,4 +1,4 @@
-# 📱 TontiPro
+# 📱 Yembi
 
 <p align="center">
   <img src="assets/screenshots/1.png" width="22%">

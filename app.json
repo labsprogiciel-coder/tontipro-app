@@ -1,11 +1,11 @@
 {
   "expo": {
     "name": "Yembi",
-    "slug": "yembi",
+    "slug": "Yembi",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
-    "scheme": "yembi",
+    "scheme": "Yembi",
     "userInterfaceStyle": "automatic",
     "newArchEnabled": true,
     "splash": {
@@ -15,7 +15,7 @@
     },
     "ios": {
       "supportsTablet": true,
-      "bundleIdentifier": "app.dokal.yembi",
+      "bundleIdentifier": "app.dokal.Yembi",
       "entitlements": {
         "com": {
           "apple": {
@@ -33,7 +33,7 @@
         "foregroundImage": "./assets/images/adaptive-icon.png",
         "backgroundColor": "#ffffff"
       },
-      "package": "com.dokal.yembi"
+      "package": "com.dokal.Yembi"
     },
     "web": {
       "favicon": "./assets/images/favicon.png"
