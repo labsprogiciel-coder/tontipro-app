@@ -45,7 +45,7 @@ jobs:
         run: |
           eas build --local \
             --platform android \
-            --profile preview \
+            --profile development \
             --non-interactive \
             --output=./app-release.apk
 
