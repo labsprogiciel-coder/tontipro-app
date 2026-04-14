@@ -33,7 +33,7 @@
         "foregroundImage": "./assets/images/adaptive-icon.png",
         "backgroundColor": "#ffffff"
       },
-      "package": "com.dokal.Yembi"
+      "package": "com.tontipro.app"
     },
     "web": {
       "favicon": "./assets/images/favicon.png"
@@ -55,7 +55,7 @@
         "origin": "https://rork.app/"
       },
       "eas": {
-        "projectId": "1621fd7e-111b-4568-a0ea-0139b35bd3ae"
+        "projectId": "b5d56152-5049-4f06-8582-743fa70398f3"
       }
     },
     "owner": "progiciel"
