@@ -20,6 +20,6 @@ jobs:
           storage-type: 'github-release'
           build-types: 'dev,prod-apk'
           tests: 'typescript,eslint'
-          triggers: 'push-main,manual'
+          triggers: 'push-develop,manual'
           ios-support: 'false'
           notifications: 'true'
