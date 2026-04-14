@@ -1,0 +1,55 @@
+name: Lint, test, then run EAS Workflow to build or update
+
+on:
+  push:
+    branches: [main]
+
+jobs:
+  run-eas-workflow:
+    runs-on: ubuntu-latest
+    env:
+      EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@v1
+        with:
+          bun-version: latest
+      - name: Lint
+        run: npx expo lint
+
+      - name: Test
+        run: bun test
+
+      - name: Setup EAS
+        uses: expo/expo-github-action@v8
+        with:
+          eas-version: latest
+          token: ${{ secrets.EXPO_TOKEN }}
+
+      - name: Run EAS Workflow (wait + json → temp file)
+        run: |
+          npx eas workflow:run "$WORKFLOW_FILE" --wait --json > "$RUNNER_TEMP/result.json"
+
+      - name: Read results (build URL's + success)
+        id: parse
+        run: |
+          FILE="$RUNNER_TEMP/workflow.json"
+
+          echo "Full JSON saved to: $FILE"
+
+          # Overall success: true/false
+          SUCCESS=$(jq -r '.status == "SUCCESS"' "$FILE")
+          echo "Workflow success: $SUCCESS"
+
+          # Collect any build URLs from GET_BUILD jobs (Android/iOS)
+          BUILD_URLS=$(jq -r '.jobs[]? | select(.type=="GET_BUILD") | .turtleBuild.artifacts.buildUrl' "$FILE" || true)
+
+          # Do something with the URL's
+          if [ -n "$BUILD_URLS" ]; then
+            echo "Build URLs:"
+            echo "$BUILD_URLS"
+          else
+            echo "No build URLs found."
+          fi
