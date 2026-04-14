@@ -1,26 +1,36 @@
-name: Generate React Native CI/CD Workflow
+name: Build or update preview version
 
 on:
   push:
-    branches:
-      - develop
-    paths:
-      - 'app/**'
-      - 'package.json'
-  workflow_dispatch:
+    branches: [main]
 
 jobs:
-  setup-workflow:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v3
+  fingerprint: #calculate fingerprint
+    environment: preview
+    type: fingerprint
 
-      - name: Generate React Native CI/CD Workflow
-        uses: yourusername/react-native-expo-cicd-action@v1
-        with:
-          storage-type: 'github-release'
-          build-types: 'dev,prod-apk'
-          tests: 'typescript,eslint'
-          triggers: 'push-develop,manual'
-          ios-support: 'false'
-          notifications: 'true'
+  android_get_build: # if there's a matching build...
+    needs: [fingerprint]
+    type: get-build
+    params:
+      fingerprint_hash: ${{ needs.fingerprint.outputs.android_fingerprint_hash }}
+      platform: android
+      profile: preview
+
+  android_update: # publish an update to that build
+    needs: [android_get_build]
+    if: ${{ needs.android_get_build.outputs.build_id }}
+    type: update
+    params:
+      channel: preview
+      platform: android
+
+  android_build: # otherwise make a new build
+    needs: [android_get_build]
+    if: ${{ !needs.android_get_build.outputs.build_id }}
+    type: build
+    params:
+      platform: android
+      profile: preview
+  
+  ## repeat the get build -> update / build steps for iOS
