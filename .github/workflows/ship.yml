@@ -1,0 +1,25 @@
+name: Generate React Native CI/CD Workflow
+
+on:
+  push:
+    branches:
+      - develop
+    paths:
+      - 'app/**'
+      - 'package.json'
+
+jobs:
+  setup-workflow:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+
+      - name: Generate React Native CI/CD Workflow
+        uses: yourusername/react-native-expo-cicd-action@v1
+        with:
+          storage-type: 'github-release'
+          build-types: 'dev,prod-apk'
+          tests: 'typescript,eslint'
+          triggers: 'push-main,manual'
+          ios-support: 'false'
+          notifications: 'true'
