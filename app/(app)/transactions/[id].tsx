@@ -19,6 +19,8 @@ import {
   Share2,
 } from "lucide-react-native";
 
+import { Shadow } from "react-native-shadow-2";
+
 import { KAURIDORR_THEME as K } from "@/constants/colors";
 import { useTransactionStore } from "@/stores/transaction-store";
 import { useClientStore } from "@/stores/client-store";
@@ -226,6 +228,13 @@ export default function TransactionDetailScreen() {
         </View>
 
         {/* ── Balance bridge ── */}
+        <Shadow
+          stretch
+          distance={5}
+          startColor="rgba(0,0,0,0.09)"
+          offset={[0, 2]}
+          containerStyle={styles.balanceBridgeShadow}
+        >
         <View style={styles.balanceBridge}>
           <View style={styles.balCol}>
             <Text style={styles.balLbl}>AVANT</Text>
@@ -247,10 +256,12 @@ export default function TransactionDetailScreen() {
             <Text style={styles.balUnit}>FCFA</Text>
           </View>
         </View>
+        </Shadow>
 
         {/* ── Transaction details ── */}
         <View style={styles.section}>
           <SectionTitle label="Détails de la transaction" />
+          <Shadow stretch distance={3} startColor="rgba(0,0,0,0.07)" offset={[0, 1]}>
           <View style={styles.infoCard}>
             <InfoRow label="Référence" value={reference} valueStyle={styles.monoValue} />
             <InfoRow
@@ -279,113 +290,122 @@ export default function TransactionDetailScreen() {
               </View>
             </View>
           </View>
+          </Shadow>
         </View>
 
         {/* ── Commission ── */}
         <View style={styles.section}>
           <SectionTitle label="Commission" />
-          <View style={styles.commRow}>
-            <View style={styles.commLeft}>
-              <View style={styles.commIcon}>
-                <Text style={styles.commIconText}>%</Text>
+          <Shadow stretch distance={3} startColor="rgba(0,0,0,0.07)" offset={[0, 1]}>
+            <View style={styles.commRow}>
+              <View style={styles.commLeft}>
+                <View style={styles.commIcon}>
+                  <Text style={styles.commIconText}>%</Text>
+                </View>
+                <View>
+                  <Text style={styles.commLabel}>Commission agent</Text>
+                  <Text style={styles.commSub}>1% du montant</Text>
+                </View>
               </View>
-              <View>
-                <Text style={styles.commLabel}>Commission agent</Text>
-                <Text style={styles.commSub}>1% du montant</Text>
-              </View>
+              <Text style={styles.commVal}>{fmtAmount(commission)} FCFA</Text>
             </View>
-            <Text style={styles.commVal}>{fmtAmount(commission)} FCFA</Text>
-          </View>
+          </Shadow>
         </View>
 
         {/* ── Client ── */}
         {client && (
           <View style={styles.section}>
             <SectionTitle label="Client" />
-            <Pressable
-              style={styles.clientMini}
-              onPress={() => router.push(`/(app)/clients/${client.id}`)}
-            >
-              <View style={[styles.avatar, { backgroundColor: "#e6f1fb" }]}>
-                <Text style={[styles.avatarText, { color: "#185fa5" }]}>
-                  {initials(client.name)}
-                </Text>
-              </View>
-              <View style={styles.clientInfo}>
-                <Text style={styles.clientName}>{client.name}</Text>
-                <Text style={styles.clientPhone}>{client.phone}</Text>
-              </View>
-              <View style={styles.clientRight}>
-                <Text style={styles.clientBal}>{fmtAmount(client.balance)} F</Text>
-                <Text style={[styles.clientLink, { color: heroColor }]}>Voir profil →</Text>
-              </View>
-            </Pressable>
+            <Shadow stretch distance={3} startColor="rgba(0,0,0,0.07)" offset={[0, 1]}>
+              <Pressable
+                style={styles.clientMini}
+                onPress={() => router.push(`/(app)/clients/${client.id}`)}
+              >
+                <View style={[styles.avatar, { backgroundColor: "#e6f1fb" }]}>
+                  <Text style={[styles.avatarText, { color: "#185fa5" }]}>
+                    {initials(client.name)}
+                  </Text>
+                </View>
+                <View style={styles.clientInfo}>
+                  <Text style={styles.clientName}>{client.name}</Text>
+                  <Text style={styles.clientPhone}>{client.phone}</Text>
+                </View>
+                <View style={styles.clientRight}>
+                  <Text style={styles.clientBal}>{fmtAmount(client.balance)} F</Text>
+                  <Text style={[styles.clientLink, { color: heroColor }]}>Voir profil →</Text>
+                </View>
+              </Pressable>
+            </Shadow>
           </View>
         )}
 
         {/* ── Agent ── */}
         <View style={styles.section}>
           <SectionTitle label="Enregistré par" />
-          <View style={styles.agentMini}>
-            <View style={styles.agentAvatar}>
-              <Text style={styles.agentAvatarText}>{agentInitials}</Text>
+          <Shadow stretch distance={3} startColor="rgba(0,0,0,0.07)" offset={[0, 1]}>
+            <View style={styles.agentMini}>
+              <View style={styles.agentAvatar}>
+                <Text style={styles.agentAvatarText}>{agentInitials}</Text>
+              </View>
+              <View>
+                <Text style={styles.agentName}>{agentName}</Text>
+                <Text style={styles.agentRole}>Administrateur</Text>
+              </View>
+              <View style={styles.agentTime}>
+                <Text style={styles.agentTimeText}>
+                  {new Date(transaction.date).toLocaleTimeString("fr-FR", {
+                    hour: "2-digit",
+                    minute: "2-digit",
+                  })}
+                </Text>
+                <Text style={styles.agentDate}>{fmtDate(transaction.date)}</Text>
+              </View>
             </View>
-            <View>
-              <Text style={styles.agentName}>{agentName}</Text>
-              <Text style={styles.agentRole}>Administrateur</Text>
-            </View>
-            <View style={styles.agentTime}>
-              <Text style={styles.agentTimeText}>
-                {new Date(transaction.date).toLocaleTimeString("fr-FR", {
-                  hour: "2-digit",
-                  minute: "2-digit",
-                })}
-              </Text>
-              <Text style={styles.agentDate}>{fmtDate(transaction.date)}</Text>
-            </View>
-          </View>
+          </Shadow>
         </View>
 
         {/* ── Timeline ── */}
         <View style={styles.section}>
           <SectionTitle label="Historique de statut" />
-          <View style={styles.infoCard}>
-            <View style={{ padding: 14, paddingBottom: 2 }}>
-              {timeline.map((item, i) => (
-                <View key={i} style={styles.tlItem}>
-                  <View style={styles.tlLeft}>
-                    <View
-                      style={[
-                        styles.tlDot,
-                        {
-                          backgroundColor: item.done
-                            ? item.green
-                              ? K.textSuccess
-                              : K.orange
-                            : K.text3,
-                        },
-                      ]}
-                    />
-                    {i < timeline.length - 1 && <View style={styles.tlLine} />}
+          <Shadow stretch distance={3} startColor="rgba(0,0,0,0.07)" offset={[0, 1]}>
+            <View style={styles.infoCard}>
+              <View style={{ padding: 14, paddingBottom: 2 }}>
+                {timeline.map((item, i) => (
+                  <View key={i} style={styles.tlItem}>
+                    <View style={styles.tlLeft}>
+                      <View
+                        style={[
+                          styles.tlDot,
+                          {
+                            backgroundColor: item.done
+                              ? item.green
+                                ? K.textSuccess
+                                : K.orange
+                              : K.text3,
+                          },
+                        ]}
+                      />
+                      {i < timeline.length - 1 && <View style={styles.tlLine} />}
+                    </View>
+                    <View style={styles.tlContent}>
+                      <Text
+                        style={[
+                          styles.tlEvent,
+                          item.green && item.done ? { color: K.textSuccess } : undefined,
+                        ]}
+                      >
+                        {item.label}
+                      </Text>
+                      <Text style={styles.tlTime}>
+                        {item.time}
+                        {item.note ? ` · ${item.note}` : ""}
+                      </Text>
+                    </View>
                   </View>
-                  <View style={styles.tlContent}>
-                    <Text
-                      style={[
-                        styles.tlEvent,
-                        item.green && item.done ? { color: K.textSuccess } : undefined,
-                      ]}
-                    >
-                      {item.label}
-                    </Text>
-                    <Text style={styles.tlTime}>
-                      {item.time}
-                      {item.note ? ` · ${item.note}` : ""}
-                    </Text>
-                  </View>
-                </View>
-              ))}
+                ))}
+              </View>
             </View>
-          </View>
+          </Shadow>
         </View>
 
         {/* ── Pending sync notice ── */}
@@ -515,10 +535,12 @@ const styles = StyleSheet.create({
   },
 
   // Balance bridge
-  balanceBridge: {
+  balanceBridgeShadow: {
     marginHorizontal: 18,
     marginTop: -16,
     zIndex: 2,
+  },
+  balanceBridge: {
     backgroundColor: K.bg,
     borderWidth: 0.5,
     borderColor: K.border,

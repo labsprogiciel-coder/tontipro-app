@@ -52,7 +52,8 @@ export const ClientsScreen: React.FC = () => {
             onChangeText={setSearchQuery}
             onFilterPress={() => {}}
       />
-          </View>    <FlatList
+      </View>
+      <FlatList
         data={filteredClients}
         renderItem={renderClient}
         keyExtractor={item => item.id}

@@ -6,7 +6,8 @@
       "Bash(file assets/images/*.png)",
       "Bash(xxd)",
       "Bash(npx tsc:*)",
-      "Bash(node -e \"const p = require\\('/Users/serge/Downloads/TontiPro/node_modules/react-native-shadow-2/package.json'\\); console.log\\(p.version, p.exports || p.main\\)\")"
+      "Bash(node -e \"const p = require\\('/Users/serge/Downloads/TontiPro/node_modules/react-native-shadow-2/package.json'\\); console.log\\(p.version, p.exports || p.main\\)\")",
+      "Bash(node -e \"const m = require\\('/Users/serge/Downloads/TontiPro/node_modules/react-native-shadow-2/lib/index.js'\\); console.log\\(Object.keys\\(m\\)\\)\")"
     ]
   }
 }
