@@ -90,25 +90,11 @@ const SettingsScreen = () => {
   };
 
     const handleExport = () => {
-        Alert.alert(
-            "Exporter les données",
-            "Voulez-vous créer une sauvegarde locale de toutes vos transactions et clients ?",
-            [
-                { text: "Annuler", style: "cancel" },
-                { text: "Exporter", onPress: () => console.log("Exporting JSON...") }
-            ]
-        );
+        router.push('/(app)/data' as never);
     };
 
     const handleImport = () => {
-        Alert.alert(
-            "Attention : Importation",
-            "L'importation de données écrasera votre base de données actuelle. Cette action est irréversible.",
-            [
-                { text: "Annuler", style: "cancel" },
-                { text: "Continuer", style: "destructive", onPress: () => console.log("Opening file picker...") }
-            ]
-        );
+        router.push('/(app)/data' as never);
     };
 
     return (
