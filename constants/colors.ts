@@ -18,14 +18,45 @@ export const colors = {
 
 // Color tokens derived from your HTML :root
 export const KAURIDORR_THEME = {
+  // Backgrounds
+  bg: "#ffffff",
+  bg2: "#f5f4f0",
+  bg3: "#eeede8",
+  bgSuccess: "#eaf3de",
+  bgWarning: "#faeeda",
+  bgDanger: "#fcebeb",
+
+  // Orange (deposit)
+  orange: "#D85A30",
+  orangeDk: "#993C1D",
+  orangeLt: "#FAE8E0",
+  orangeMd: "#F0997B",
+
+  // Green (withdraw)
+  green: "#3b6d11",
+  greenDk: "#2a5c0f",
+  greenLt: "#eaf3de",
+
+  // Text
+  text1: "#1a1a18",
+  text2: "#5f5e5a",
+  text3: "#888780",
+  textSuccess: "#3b6d11",
+  textWarning: "#854f0b",
+  textDanger: "#a32d2d",
+
+  // Borders
+  border: "rgba(0,0,0,0.09)",
+  border2: "rgba(0,0,0,0.18)",
+
+  // Legacy aliases (kept for backward compat)
   primary: "#D85A30",
-  bgTertiary: "#eeede8",
   bgPrimary: "#ffffff",
+  bgTertiary: "#eeede8",
   textPrimary: "#1a1a18",
   textSecondary: "#5f5e5a",
   textTertiary: "#888780",
   danger: "#a32d2d",
-  border: "rgba(0,0,0,0.1)",
 };
 
 // Theme configuration

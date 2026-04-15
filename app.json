@@ -51,9 +51,6 @@
       "typedRoutes": true
     },
     "extra": {
-      "router": {
-        "origin": "https://rork.app/"
-      },
       "eas": {
         "projectId": "b5d56152-5049-4f06-8582-743fa70398f3"
       }

@@ -4,7 +4,9 @@
       "Bash(git add:*)",
       "Bash(git commit -m ':*)",
       "Bash(file assets/images/*.png)",
-      "Bash(xxd)"
+      "Bash(xxd)",
+      "Bash(npx tsc:*)",
+      "Bash(node -e \"const p = require\\('/Users/serge/Downloads/TontiPro/node_modules/react-native-shadow-2/package.json'\\); console.log\\(p.version, p.exports || p.main\\)\")"
     ]
   }
 }

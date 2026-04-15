@@ -1,20 +1,16 @@
-import { useMemo, useState } from "react";
-// useState kept for filter state
-import {
-  FlatList,
-  Pressable,
-  StyleSheet,
-  Text,
-  View,
-} from "react-native";
-import { SafeAreaView } from "react-native-safe-area-context";
-import { useRouter } from "expo-router";
-import { ArrowDownCircle, ArrowUpCircle, Plus } from "lucide-react-native";
+import React, { useMemo, useState } from 'react';
+import { FlatList, View, Text, StyleSheet } from 'react-native';
+import StatusBadge from '../components/ui/status-bar';
+import { SafeAreaView } from 'react-native-safe-area-context';
+import { KAURIDORR_THEME } from '@/constants/colors';
 
-import { colors } from "@/constants/colors";
-import { mergeTransactionsSorted, useTransactionStore } from "@/stores/transaction-store";
+const T = KAURIDORR_THEME;
+import { useTransactionStore, mergeTransactionsSorted } from '@/stores/transaction-store';
+import { useRouter } from 'expo-router';
+import SearchInput from '../components/quickactions/search-input';
 
-export default function TransactionsScreen() {
+export const HistoryScreen: React.FC = () => {
+  const [search, setSearch] = useState('');
   const router = useRouter();
   const [filter, setFilter] = useState("all"); // all, deposits, withdrawals
   const transactions = useTransactionStore((state) => state.transactions);
@@ -32,258 +28,51 @@ export default function TransactionsScreen() {
     return true;
   });
 
-  return (
-    <SafeAreaView edges={["bottom"]} style={styles.container}>
-      <View style={styles.header}>
-        <View style={styles.filterContainer}>
-          <Pressable
-            style={[
-              styles.filterButton,
-              filter === "all" && styles.filterButtonActive,
-            ]}
-            onPress={() => setFilter("all")}
-          >
-            <Text
-              style={[
-                styles.filterText,
-                filter === "all" && styles.filterTextActive,
-              ]}
-            >
-              Tous
-            </Text>
-          </Pressable>
-          <Pressable
-            style={[
-              styles.filterButton,
-              filter === "deposits" && styles.filterButtonActive,
-            ]}
-            onPress={() => setFilter("deposits")}
-          >
-            <Text
-              style={[
-                styles.filterText,
-                filter === "deposits" && styles.filterTextActive,
-              ]}
-            >
-              Dépôts
-            </Text>
-          </Pressable>
-          <Pressable
-            style={[
-              styles.filterButton,
-              filter === "withdrawals" && styles.filterButtonActive,
-            ]}
-            onPress={() => setFilter("withdrawals")}
-          >
-            <Text
-              style={[
-                styles.filterText,
-                filter === "withdrawals" && styles.filterTextActive,
-              ]}
-            >
-              Retraits
-            </Text>
-          </Pressable>
-        </View>
-        <Pressable
-          style={styles.addButton}
-          onPress={() => router.push("/(app)/transactions/new")}
-          accessibilityLabel="Nouvelle transaction"
-          accessibilityRole="button"
-        >
-          <Plus size={24} color="white" />
-        </Pressable>
+  const renderTransaction = ({ item }: any) => (
+    <View style={styles.row}>
+      <View style={styles.left}>
+        <Text style={styles.name}>{item.clientName ?? '—'}</Text>
+        <Text style={styles.sub}>{new Date(item.date).toLocaleDateString('fr-FR', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' })}</Text>
       </View>
+      <View style={styles.right}>
+        <Text style={[styles.amount, { color: item.type === 'deposit' ? T.orange : T.green }]}>
+          {item.type === 'deposit' ? '+' : '-'}{item.amount.toLocaleString('fr-FR')} F
+        </Text>
+        <StatusBadge status={item.status} />
+      </View>
+    </View>
+  );
 
-      <FlatList
-          data={filteredTransactions}
-          keyExtractor={(item) => item.id}
-          renderItem={({ item }) => (
-            <Pressable
-              style={styles.transactionCard}
-              onPress={() => router.push(`/(app)/transactions/${item.id}`)}
-            >
-              <View
-                style={[
-                  styles.iconContainer,
-                  {
-                    backgroundColor:
-                      item.type === "deposit"
-                        ? colors.secondaryLight
-                        : colors.error + "20",
-                  },
-                ]}
-              >
-                {item.type === "deposit" ? (
-                  <ArrowDownCircle size={24} color={colors.secondary} />
-                ) : (
-                  <ArrowUpCircle size={24} color={colors.error} />
-                )}
-              </View>
-              <View style={styles.transactionInfo}>
-                <Text style={styles.clientName}>{item.clientName}</Text>
-                <Text style={styles.transactionDate}>
-                  {new Intl.DateTimeFormat("fr-FR").format(new Date(item.date))}
-                </Text>
-              </View>
-              <View style={styles.amountContainer}>
-                <Text
-                  style={[
-                    styles.amount,
-                    {
-                      color:
-                        item.type === "deposit"
-                          ? colors.secondary
-                          : colors.error,
-                    },
-                  ]}
-                >
-                  {item.type === "deposit" ? "+" : "-"}
-                  {new Intl.NumberFormat("fr-FR").format(item.amount)} FCFA
-                </Text>
-                <View
-                  style={[
-                    styles.statusBadge,
-                    {
-                      backgroundColor:
-                        item.status === "completed"
-                          ? colors.success + "20"
-                          : colors.warning + "20",
-                    },
-                  ]}
-                >
-                  <Text
-                    style={[
-                      styles.statusText,
-                      {
-                        color:
-                          item.status === "completed"
-                            ? colors.success
-                            : colors.warning,
-                      },
-                    ]}
-                  >
-                    {item.status === "completed" ? "Synchronisé" : "En attente"}
-                  </Text>
-                </View>
-              </View>
-            </Pressable>
-          )}
-          ListEmptyComponent={
-            <View style={styles.emptyContainer}>
-              <Text style={styles.emptyText}>Aucune transaction trouvée</Text>
-            </View>
-          }
-          contentContainerStyle={styles.listContent}
-        />
+  return (
+    <SafeAreaView style={styles.container} edges={["top"]}>
+      <Text style={styles.title}>Historique</Text>
+      <View style={styles.searchInputWrapper}>
+      <SearchInput
+            value={search}
+            onChangeText={setSearch}
+            onFilterPress={() => {}}
+      />
+          </View>
+      <FlatList 
+        data={filteredTransactions} 
+        renderItem={renderTransaction}
+        keyExtractor={item => item.id}
+        contentContainerStyle={{ paddingBottom: 20 }}
+      />
     </SafeAreaView>
   );
-}
+};
+
+export default HistoryScreen;
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: colors.background,
-  },
-  header: {
-    flexDirection: "row",
-    padding: 16,
-    alignItems: "center",
-    gap: 12,
-  },
-  filterContainer: {
-    flex: 1,
-    flexDirection: "row",
-    backgroundColor: colors.card,
-    borderRadius: 8,
-    height: 44,
-    padding: 4,
-  },
-  filterButton: {
-    flex: 1,
-    justifyContent: "center",
-    alignItems: "center",
-    borderRadius: 6,
-  },
-  filterButtonActive: {
-    backgroundColor: colors.primary,
-  },
-  filterText: {
-    fontSize: 14,
-    fontWeight: "500",
-    color: colors.textSecondary,
-  },
-  filterTextActive: {
-    color: "white",
-  },
-  addButton: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
-    backgroundColor: colors.primary,
-    justifyContent: "center",
-    alignItems: "center",
-  },
-  listContent: {
-    padding: 16,
-  },
-  transactionCard: {
-    flexDirection: "row",
-    backgroundColor: colors.card,
-    borderRadius: 12,
-    padding: 16,
-    marginBottom: 12,
-    alignItems: "center",
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.05,
-    shadowRadius: 2,
-    elevation: 1,
-  },
-  iconContainer: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    justifyContent: "center",
-    alignItems: "center",
-  },
-  transactionInfo: {
-    flex: 1,
-    marginLeft: 12,
-  },
-  clientName: {
-    fontSize: 16,
-    fontWeight: "600",
-    color: colors.text,
-  },
-  transactionDate: {
-    fontSize: 14,
-    color: colors.textSecondary,
-    marginTop: 2,
-  },
-  amountContainer: {
-    alignItems: "flex-end",
-  },
-  amount: {
-    fontSize: 16,
-    fontWeight: "600",
-    marginBottom: 4,
-  },
-  statusBadge: {
-    paddingHorizontal: 8,
-    paddingVertical: 2,
-    borderRadius: 4,
-  },
-  statusText: {
-    fontSize: 12,
-    fontWeight: "500",
-  },
-  emptyContainer: {
-    padding: 24,
-    alignItems: "center",
-  },
-  emptyText: {
-    fontSize: 16,
-    color: colors.textSecondary,
-  },
+  container: { flex: 1, backgroundColor: T.bg },
+  searchInputWrapper: { paddingHorizontal: 20},
+  title: { fontSize: 22, fontWeight: '700', paddingHorizontal: 18, paddingVertical: 12, color: T.text1 },
+  row: { flexDirection: 'row', justifyContent: 'space-between', padding: 16, marginHorizontal: 18, borderBottomWidth: 0.5, borderColor: T.border },
+  left: { gap: 4 },
+  right: { alignItems: 'flex-end', gap: 6 },
+  name: { fontSize: 14, fontWeight: '600', color: T.text1 },
+  sub: { fontSize: 12, color: T.text3 },
+  amount: { fontSize: 15, fontWeight: '700' },
 });

@@ -10,27 +10,61 @@ import {
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useRouter } from "expo-router";
-import {
-  Bell,
-  ChevronRight,
-  HelpCircle,
-  Lock,
-  LogOut,
-  Moon,
-  User,
-  Wifi,
-  WifiOff,
-} from "lucide-react-native";
+
 
 import { colors } from "@/constants/colors";
 import { useAuthStore } from "@/stores/auth-store";
 
-export default function SettingsScreen() {
+
+import {
+    User,
+    ShieldCheck,
+    Bell,
+    CloudSunIcon,
+    Languages,
+    Info,
+    LogOut,
+    ChevronRight,
+    Database,
+    LucideIcon,
+    Upload,
+    DatabaseBackup,
+    AlertTriangle,
+    Download,
+    Users2
+} from 'lucide-react-native';
+
+interface SettingItemProps {
+    icon: LucideIcon;
+    label: string;
+    value?: string;
+    onPress: () => void;
+    destructive?: boolean;
+}
+
+const SettingItem = ({ icon: Icon, label, value, onPress, destructive = false }: SettingItemProps) => (
+
+    <Pressable
+        onPress={onPress}
+        style={({ pressed }) => [styles.item, pressed && styles.pressed]}
+    >
+        <View style={[styles.itemLeft, destructive && styles.destructiveBg]}>
+            <Icon size={20} color={destructive ? "#a32d2d" : "#5f5e5a"} />
+            <Text style={[styles.itemLabel, destructive && styles.destructiveText]}>{label}</Text>
+        </View>
+        <View style={styles.itemRight}>
+            {value && <Text style={styles.itemValue}>{value}</Text>}
+            <ChevronRight size={18} color="#888780" />
+        </View>
+    </Pressable>
+);
+const SettingsScreen = () => {
+    const [isBiometricActive, setIsBiometricActive] = useState(true);
+    const [isOfflineMode, setIsOfflineMode] = useState(false);
   const router = useRouter();
   const { logout, user } = useAuthStore();
   const [notificationsEnabled, setNotificationsEnabled] = useState(true);
   const [darkModeEnabled, setDarkModeEnabled] = useState(false);
-  const [offlineModeEnabled, setOfflineModeEnabled] = useState(false);
 
   const handleLogout = () => {
     Alert.alert(
@@ -55,241 +89,202 @@ export default function SettingsScreen() {
     );
   };
 
-  const handleComingSoon = (feature: string) => {
-    Alert.alert("Bientôt disponible", `La fonctionnalité "${feature}" sera disponible prochainement.`);
-  };
+    const handleExport = () => {
+        Alert.alert(
+            "Exporter les données",
+            "Voulez-vous créer une sauvegarde locale de toutes vos transactions et clients ?",
+            [
+                { text: "Annuler", style: "cancel" },
+                { text: "Exporter", onPress: () => console.log("Exporting JSON...") }
+            ]
+        );
+    };
 
-  return (
-    <SafeAreaView edges={["bottom"]} style={styles.container}>
-      <ScrollView style={styles.scrollView}>
-        <View style={styles.profileSection}>
-          <View style={styles.profileAvatar}>
-            <User size={32} color={colors.primary} />
-          </View>
-          <View style={styles.profileInfo}>
-            <Text style={styles.profileName}>{user?.name || "Nom de l'agent"}</Text>
-            <Text style={styles.profileId}>ID: {user?.id || "AG12345"}</Text>
-          </View>
-          <Pressable
-            style={styles.profileEditButton}
-            onPress={() => handleComingSoon("Modifier le profil")}
-          >
-            <Text style={styles.profileEditText}>Modifier</Text>
-          </Pressable>
-        </View>
+    const handleImport = () => {
+        Alert.alert(
+            "Attention : Importation",
+            "L'importation de données écrasera votre base de données actuelle. Cette action est irréversible.",
+            [
+                { text: "Annuler", style: "cancel" },
+                { text: "Continuer", style: "destructive", onPress: () => console.log("Opening file picker...") }
+            ]
+        );
+    };
 
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Préférences</Text>
-          <View style={styles.settingCard}>
-            <View style={styles.settingRow}>
-              <View style={styles.settingIconContainer}>
-                <Bell size={20} color={colors.primary} />
-              </View>
-              <Text style={styles.settingText}>Notifications</Text>
-              <Switch
-                value={notificationsEnabled}
-                onValueChange={setNotificationsEnabled}
-                trackColor={{ false: colors.inactive, true: colors.primaryLight }}
-                thumbColor={notificationsEnabled ? colors.primary : colors.background}
-              />
-            </View>
+    return (
+      <SafeAreaView style={styles.container} edges={["top"]}>
+            {/* Page Header */}
+            <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
 
-            <View style={styles.divider} />
+                {/* Profile Card Summary */}
+                <View style={styles.section}>
+                    <View style={styles.profileCard}>
+                        <View style={styles.avatar}>
+                            <Text style={styles.avatarText}>SW</Text>
+                        </View>
+                        <View style={styles.profileInfo}>
+                            <Text style={styles.profileName}>Serge Wilfried</Text>
+                            <Text style={styles.profileId}>Agent ID: #782901</Text>
+                        </View>
+                        <Pressable style={styles.editBtn}>
+                            <Text style={styles.editBtnText}>Modifier</Text>
+                        </Pressable>
+                    </View>
+                </View>
 
-            <View style={styles.settingRow}>
-              <View style={styles.settingIconContainer}>
-                <Moon size={20} color={colors.primary} />
-              </View>
-              <Text style={styles.settingText}>Mode sombre</Text>
-              <Switch
-                value={darkModeEnabled}
-                onValueChange={setDarkModeEnabled}
-                trackColor={{ false: colors.inactive, true: colors.primaryLight }}
-                thumbColor={darkModeEnabled ? colors.primary : colors.background}
-              />
-            </View>
+                {/* Security Section */}
+                <Text style={styles.sectionLabel}>Sécurité & Accès</Text>
+                <View style={styles.section}>
+                    <SettingItem icon={ShieldCheck} label="Modifier le PIN" onPress={() => { }} />
+                    <View style={styles.divider} />
+                    <View style={styles.item}>
+                        <View style={styles.itemLeft}>
+                            <User size={20} color="#5f5e5a" />
+                            <Text style={styles.itemLabel}>FaceID / Empreinte</Text>
+                        </View>
+                        <Switch
+                            value={isBiometricActive}
+                            onValueChange={setIsBiometricActive}
+                            trackColor={{ false: "#d0cfc8", true: "#D85A30" }}
+                        />
+                    </View>
+                    <View style={styles.divider} />
+                    <SettingItem icon={Users2} label="Membres" onPress={() => router.push("/(app)/agents" as never)} />
 
-            <View style={styles.divider} />
+                </View>
+                {/* Sync & Offline - CRITICAL for your market */}
+                <Text style={styles.sectionLabel}>Données & Synchronisation</Text>
+                <View style={styles.section}>
+                    <View style={styles.item}>
+                        <View style={styles.itemLeft}>
+                            <Database size={20} color="#5f5e5a" />
+                            <Text style={styles.itemLabel}>Mode Hors-ligne Forcé</Text>
+                        </View>
+                        <Switch
+                            value={isOfflineMode}
+                            onValueChange={setIsOfflineMode}
+                            trackColor={{ false: "#d0cfc8", true: "#D85A30" }}
+                        />
+                    </View>
+                    <View style={styles.divider} />
+                    <SettingItem icon={CloudSunIcon} label="Forcer la Synchronisation" value="Sync à 14:10" onPress={() => { }} />
+                    <View style={styles.divider} />
+                    <SettingItem icon={Info} label="Espace de stockage" value="12.4 MB" onPress={() => { }} />
+                </View>
+                <View style={styles.container}>
+                    <Text style={styles.sectionLabel}>Sauvegarde & Restauration</Text>
+                    <View style={styles.section}>
 
-            <View style={styles.settingRow}>
-              <View
-                style={[
-                  styles.settingIconContainer,
-                  offlineModeEnabled ? { backgroundColor: colors.warning + "20" } : null,
-                ]}
-              >
-                {offlineModeEnabled ? (
-                  <WifiOff size={20} color={colors.warning} />
-                ) : (
-                  <Wifi size={20} color={colors.primary} />
-                )}
-              </View>
-              <Text style={styles.settingText}>Mode hors ligne</Text>
-              <Switch
-                value={offlineModeEnabled}
-                onValueChange={setOfflineModeEnabled}
-                trackColor={{ false: colors.inactive, true: colors.warning + "80" }}
-                thumbColor={offlineModeEnabled ? colors.warning : colors.background}
-              />
-            </View>
-          </View>
-        </View>
+                        {/* Export Feature */}
+                        <SettingItem
+                            icon={Download}
+                            label="Exporter les données"
+                            value="Format .JSON"
+                            onPress={handleExport}
+                        />
 
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Sécurité</Text>
-          <View style={styles.settingCard}>
-            <Pressable
-              style={styles.settingButton}
-              onPress={() => handleComingSoon("Changer le PIN")}
-            >
-              <View style={styles.settingIconContainer}>
-                <Lock size={20} color={colors.primary} />
-              </View>
-              <Text style={styles.settingText}>Changer le PIN</Text>
-              <ChevronRight size={20} color={colors.textSecondary} />
-            </Pressable>
-          </View>
-        </View>
+                        <View style={styles.divider} />
 
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Support</Text>
-          <View style={styles.settingCard}>
-            <Pressable
-              style={styles.settingButton}
-              onPress={() => handleComingSoon("Aide & Support")}
-            >
-              <View style={styles.settingIconContainer}>
-                <HelpCircle size={20} color={colors.primary} />
-              </View>
-              <Text style={styles.settingText}>Aide & Support</Text>
-              <ChevronRight size={20} color={colors.textSecondary} />
-            </Pressable>
-          </View>
-        </View>
+                        {/* Import Feature */}
+                        <SettingItem
+                            icon={Upload}
+                            label="Importer une sauvegarde"
+                            onPress={handleImport}
+                        />
 
-        <Pressable style={styles.logoutButton} onPress={handleLogout}>
-          <LogOut size={20} color={colors.error} />
-          <Text style={styles.logoutText}>Déconnexion</Text>
-        </Pressable>
+                        <View style={styles.divider} />
 
-        <Text style={styles.versionText}>Version 1.0.0</Text>
-      </ScrollView>
-    </SafeAreaView>
-  );
-}
+                        {/* Backup Status Info */}
+                        <View style={styles.infoBox}>
+                            <DatabaseBackup size={16} color="#888780" />
+                            <Text style={styles.infoText}>
+                                Dernière sauvegarde locale : Aujourd'hui à 10:45
+                            </Text>
+                        </View>
+                    </View>
+
+                    {/* Warning for agents */}
+                    <View style={styles.warningContainer}>
+                        <AlertTriangle size={14} color="#993C1D" />
+                        <Text style={styles.warningText}>
+                            Utilisez l'importation uniquement sous la supervision d'un administrateur.
+                        </Text>
+                    </View>
+                </View>
+                {/* General Preferences */}
+                <Text style={styles.sectionLabel}>Préférences</Text>
+                <View style={styles.section}>
+                    <SettingItem icon={Languages} label="Langue" value="Français" onPress={() => { }} />
+                    <View style={styles.divider} />
+                    <SettingItem icon={Bell} label="Notifications" onPress={() => { }} />
+                </View>
+
+                {/* Sign Out */}
+                <View style={[styles.section, { marginTop: 10, marginBottom: 40 }]}>
+                    <SettingItem
+                        icon={LogOut}
+                        label="Déconnexion"
+                        onPress={() => { }}
+                        destructive={true}
+                    />
+                </View>
+
+                <Text style={styles.versionText}>Kauridorr v1.0.4 • Made with ❤️ for Burkina Faso</Text>
+            </ScrollView>
+        </SafeAreaView>
+    );
+};
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: colors.background,
-  },
-  scrollView: {
-    flex: 1,
-  },
-  profileSection: {
-    flexDirection: "row",
-    alignItems: "center",
-    padding: 20,
-    backgroundColor: colors.card,
-    marginBottom: 20,
-  },
-  profileAvatar: {
-    width: 60,
-    height: 60,
-    borderRadius: 30,
-    backgroundColor: colors.primaryLight,
-    justifyContent: "center",
-    alignItems: "center",
-  },
-  profileInfo: {
-    flex: 1,
-    marginLeft: 16,
-  },
-  profileName: {
-    fontSize: 18,
-    fontWeight: "600",
-    color: colors.text,
-  },
-  profileId: {
-    fontSize: 14,
-    color: colors.textSecondary,
-    marginTop: 2,
-  },
-  profileEditButton: {
-    paddingHorizontal: 16,
-    paddingVertical: 8,
-    borderRadius: 8,
-    backgroundColor: colors.primary + "20",
-  },
-  profileEditText: {
-    color: colors.primary,
-    fontWeight: "600",
-  },
-  section: {
-    marginBottom: 20,
-    paddingHorizontal: 20,
-  },
-  sectionTitle: {
-    fontSize: 16,
-    fontWeight: "600",
-    color: colors.text,
-    marginBottom: 12,
-  },
-  settingCard: {
-    backgroundColor: colors.card,
-    borderRadius: 12,
-    overflow: "hidden",
-  },
-  settingRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    padding: 16,
-  },
-  settingButton: {
-    flexDirection: "row",
-    alignItems: "center",
-    padding: 16,
-  },
-  settingIconContainer: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
-    backgroundColor: colors.primaryLight + "40",
-    justifyContent: "center",
-    alignItems: "center",
-    marginRight: 12,
-  },
-  settingText: {
-    flex: 1,
-    fontSize: 16,
-    color: colors.text,
-  },
-  divider: {
-    height: 1,
-    backgroundColor: colors.border,
-    marginLeft: 64,
-  },
-  logoutButton: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "center",
-    marginHorizontal: 20,
-    marginTop: 20,
-    marginBottom: 12,
-    padding: 16,
-    backgroundColor: colors.error + "10",
-    borderRadius: 12,
-  },
-  logoutText: {
-    fontSize: 16,
-    fontWeight: "600",
-    color: colors.error,
-    marginLeft: 8,
-  },
-  versionText: {
-    textAlign: "center",
-    fontSize: 12,
-    color: colors.textSecondary,
-    marginBottom: 20,
-  },
+    container: { flex: 1, backgroundColor: '#eeede8' },
+    header: { paddingHorizontal: 20, paddingVertical: 15, backgroundColor: '#ffffff', borderBottomWidth: 0.5, borderBottomColor: 'rgba(0,0,0,0.1)' },
+    headerTitle: { fontSize: 22, fontWeight: '700', color: '#1a1a18' },
+    scrollContent: { padding: 16 },
+    sectionLabel: { fontSize: 11, fontWeight: '600', color: '#888780', textTransform: 'uppercase', marginBottom: 8, marginLeft: 4 },
+    section: { backgroundColor: '#ffffff', borderRadius: 14, borderWidth: 0.5, borderColor: 'rgba(0,0,0,0.1)', overflow: 'hidden', marginBottom: 20 },
+    profileCard: { flexDirection: 'row', alignItems: 'center', padding: 16 },
+    avatar: { width: 50, height: 50, borderRadius: 25, backgroundColor: '#D85A30', justifyContent: 'center', alignItems: 'center' },
+    avatarText: { color: 'white', fontWeight: '700', fontSize: 18 },
+    profileInfo: { flex: 1, marginLeft: 12 },
+    profileName: { fontSize: 16, fontWeight: '600', color: '#1a1a18' },
+    profileId: { fontSize: 12, color: '#5f5e5a', marginTop: 2 },
+    editBtn: { backgroundColor: '#f5f4f0', paddingHorizontal: 12, paddingVertical: 6, borderRadius: 8 },
+    editBtnText: { fontSize: 12, fontWeight: '600', color: '#5f5e5a' },
+    item: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', padding: 16, height: 56 },
+    itemLeft: { flexDirection: 'row', alignItems: 'center', gap: 12 },
+    itemLabel: { fontSize: 14, color: '#1a1a18', fontWeight: '500' },
+    itemRight: { flexDirection: 'row', alignItems: 'center', gap: 8 },
+    itemValue: { fontSize: 13, color: '#888780' },
+    divider: { height: 0.5, backgroundColor: 'rgba(0,0,0,0.05)', marginLeft: 48 },
+    pressed: { backgroundColor: '#f5f4f0' },
+    destructiveText: { color: '#a32d2d' },
+    versionText: { textAlign: 'center', color: '#888780', fontSize: 11, marginBottom: 20 },
+    destructiveBg: { backgroundColor: 'rgba(163, 45, 45, 0.1)' },
+    infoBox: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        padding: 16,
+        backgroundColor: '#f9f9f7',
+        gap: 10,
+    },
+    infoText: {
+        fontSize: 12,
+        color: '#888780',
+        fontStyle: 'italic',
+    },
+    warningContainer: {
+        flexDirection: 'row',
+        paddingHorizontal: 8,
+        marginTop: -10,
+        marginBottom: 20,
+        gap: 6,
+        alignItems: 'center',
+    },
+    warningText: {
+        fontSize: 11,
+        color: '#993C1D',
+        fontWeight: '500',
+    },
 });
+
+export default SettingsScreen;

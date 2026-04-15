@@ -1,7 +1,7 @@
 
 import { StatusVariant } from '@/constants/utils';
 import React from 'react';
-import { View, Text, StyleSheet } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
 
 // 1. Add 'as const' so TS knows the exact values
 export const avatarColors = {
@@ -20,9 +20,10 @@ interface ClientCardProps {
   name: string;
   phone: string;
   amount: number | string;
-  status: keyof typeof badgeColors; // 2. Link status directly to the keys of badgeColors
+  status: keyof typeof badgeColors;
   initials: string;
-  avatarVariant: keyof typeof avatarColors; // 3. Link variant directly to keys of avatarColors
+  avatarVariant: keyof typeof avatarColors;
+  onPress?: () => void;
 }
 
 const ClientCard: React.FC<ClientCardProps> = ({
@@ -31,14 +32,14 @@ const ClientCard: React.FC<ClientCardProps> = ({
   phone,
   amount,
   status,
-  avatarVariant
+  avatarVariant,
+  onPress,
 }) => {
-  // 4. Access the specific style objects
   const avatarStyle = avatarColors[avatarVariant];
   const badgeStyle = badgeColors[status];
 
   return (
-    <View style={styles.card}>
+    <TouchableOpacity style={styles.card} onPress={onPress} activeOpacity={0.7}>
       {/* Avatar Section */}
       <View style={[styles.avatar, { backgroundColor: avatarStyle.bg }]}>
         <Text style={[styles.avatarText, { color: avatarStyle.text }]}>
@@ -61,7 +62,7 @@ const ClientCard: React.FC<ClientCardProps> = ({
           </Text>
         </View>
       </View>
-    </View>
+    </TouchableOpacity>
   );
 };
 

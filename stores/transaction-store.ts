@@ -62,12 +62,16 @@ export const useTransactionStore = create<TransactionStoreState>()(
       transactionSyncFailures: 0,
 
       loadDevMocks: async () => {
-        if (process.env.EXPO_PUBLIC_DEV_LOAD_MOCKS !== "true") return;
+        if (!__DEV__) return;
         const { mockTransactions } = await import("@/__dev__/mocks/transactions");
         set({ transactions: mockTransactions, pendingTransactions: [] });
       },
 
       loadTransactionsFromSupabase: async () => {
+        if (__DEV__) {
+          await get().loadDevMocks();
+          return;
+        }
         set({ isLoading: true, error: null });
         try {
           const {

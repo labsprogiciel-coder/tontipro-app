@@ -24,7 +24,16 @@ interface AuthState {
   verifyPin: (pin: string) => Promise<void>;
   savePin: (phone: string, pin: string) => Promise<void>;
   logout: () => Promise<void>;
+  mockLogin: () => void;
 }
+
+export const MOCK_USER: User = {
+  id: "dev-mock-user",
+  name: "Dev Agent",
+  email: "dev@kauridorr.test",
+  phone: "+22600000000",
+  role: "agent",
+};
 
 export const getUserDisplayName = (profile: any, supabaseUser: any): string => {
   if (!profile && !supabaseUser) return "Agent";
@@ -148,8 +157,16 @@ export const useAuthStore = create<AuthState>()(
       logout: async () => {
         useClientStore.getState().clearAll();
         useTransactionStore.getState().clearAll();
-        await supabase.auth.signOut();
+        if (!__DEV__) await supabase.auth.signOut();
         set({ isAuthenticated: false, isLoadingClients: false, user: null });
+      },
+
+      // ✅ Dev-only: bypass Supabase and log in instantly with mock user + data
+      mockLogin: () => {
+        if (!__DEV__) return;
+        set({ isAuthenticated: true, isLoadingClients: false, user: MOCK_USER });
+        useClientStore.getState().loadDevMocks();
+        useTransactionStore.getState().loadDevMocks();
       },
     }),
     {

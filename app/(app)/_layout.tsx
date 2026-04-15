@@ -1,124 +1,66 @@
 import { Tabs } from "expo-router";
-import { Home, Users, Wallet, BarChart3, Settings } from "lucide-react-native";
-import { colors } from "@/constants/colors";
+import type { BottomTabBarProps } from "@react-navigation/bottom-tabs";
 import { useNetworkSync } from "@/hooks/useNetworkSync";
 import { useTransactionRealtimeSubscribe } from "@/hooks/useTransactionRealtime";
 import { useAuthStore } from "@/stores/auth-store";
+import BottomNavBar, { TabKey } from "@/app/components/ui/BottomNavBar";
+
+// Routes that have a corresponding tab key
+const ROUTE_TO_TAB: Record<string, TabKey> = {
+  dashboard:    "home",
+  clients:      "clients",
+  transactions: "history",
+  settings:     "profile",
+};
+
+const TAB_TO_ROUTE: Record<TabKey, string> = {
+  home:     "dashboard",
+  clients:  "clients",
+  history:  "transactions",
+  profile:  "settings",
+};
+
+function AppTabBar({ state, navigation }: BottomTabBarProps) {
+  const activeRoute = state.routes[state.index]?.name ?? "";
+  const activeTab = ROUTE_TO_TAB[activeRoute];
+
+  // Hide nav on detail / modal screens
+  if (!activeTab) return null;
+
+  return (
+    <BottomNavBar
+      activeTab={activeTab}
+      onTabPress={(tab) => navigation.navigate(TAB_TO_ROUTE[tab])}
+      onAddPress={() => navigation.navigate("transactions/new")}
+    />
+  );
+}
 
 export default function AppLayout() {
   const userId = useAuthStore((s) => s.user?.id);
-  useNetworkSync(); // ✅ Sync automatique en arrière-plan
+  useNetworkSync();
   useTransactionRealtimeSubscribe(userId);
+
   return (
     <Tabs
+      tabBar={(props) => <AppTabBar {...props} />}
       screenOptions={{
-        tabBarActiveTintColor: colors.primary,
-        tabBarInactiveTintColor: colors.inactive,
-        tabBarStyle: {
-          borderTopWidth: 1,
-          borderTopColor: colors.border,
-          backgroundColor: colors.background,
-        },
-        tabBarLabelStyle: {
-          fontSize: 12,
-          fontWeight: "500",
-        },
-        headerShown: true,
-        headerStyle: {
-          backgroundColor: colors.background,
-        },
-        headerTitleStyle: {
-          fontWeight: "600",
-          color: colors.text,
-        },
+        headerShown: false,
       }}
     >
-      <Tabs.Screen
-        name="dashboard"
-        options={{
-          title: "Dashboard",
-          tabBarLabel: "Accueil",
-          tabBarIcon: ({ color }) => <Home size={24} color={color} />,
-        }}
-      />
-      <Tabs.Screen
-        name="clients"
-        options={{
-          title: "Clients",
-          tabBarIcon: ({ color }) => <Users size={24} color={color} />,
-          href: "/(app)/clients",
-        }}
-      />
-      <Tabs.Screen
-        name="clients/add"
-        options={{
-          href: null,
-          title: "Ajouter un client",
-          headerShown: false,
-        }}
-      />
-      <Tabs.Screen
-        name="clients/[id]"
-        options={{
-          href: null,
-          title: "Détails du client",
-          headerShown: false,
-        }}
-      />
-      <Tabs.Screen
-        name="clients/scan"
-        options={{
-          href: null,
-          title: "Scanner ID",
-          headerShown: false,
-        }}
-      />
-      <Tabs.Screen
-        name="transactions"
-        options={{
-          title: "Transactions",
-          tabBarIcon: ({ color }) => <Wallet size={24} color={color} />,
-          href: "/(app)/transactions",
-        }}
-      />
-      <Tabs.Screen
-        name="transactions/new"
-        options={{
-          href: null,
-          title: "Nouvelle transaction",
-          headerShown: false,
-        }}
-      />
-      <Tabs.Screen
-        name="transactions/withdraw"
-        options={{
-          href: null,
-          title: "Retrait",
-          headerShown: false,
-        }}
-      />
-      <Tabs.Screen
-        name="transactions/[id]"
-        options={{
-          href: null,
-          title: "Détails de la transaction",
-          headerShown: false,
-        }}
-      />
-      <Tabs.Screen
-        name="reports"
-        options={{
-          title: "Rapports",
-          tabBarIcon: ({ color }) => <BarChart3 size={24} color={color} />,
-        }}
-      />
-      <Tabs.Screen
-        name="settings"
-        options={{
-          title: "Paramètres",
-          tabBarIcon: ({ color }) => <Settings size={24} color={color} />,
-        }}
-      />
+      <Tabs.Screen name="dashboard" />
+      <Tabs.Screen name="clients" />
+      <Tabs.Screen name="clients/add" />
+      <Tabs.Screen name="clients/[id]" />
+      <Tabs.Screen name="clients/scan" />
+      <Tabs.Screen name="transactions" />
+      <Tabs.Screen name="transactions/new" />
+      <Tabs.Screen name="transactions/[id]" />
+      <Tabs.Screen name="reports" />
+      <Tabs.Screen name="settings" />
+      <Tabs.Screen name="agents" />
+      <Tabs.Screen name="agents/[id]" />
+      <Tabs.Screen name="agents/add" />
     </Tabs>
   );
 }

@@ -4,366 +4,857 @@ import {
   Alert,
   Pressable,
   ScrollView,
+  Share,
   StyleSheet,
   Text,
   View,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useLocalSearchParams, useRouter } from "expo-router";
-import { ArrowDownCircle, ArrowUpCircle, ChevronLeft, Clock, FileText, User } from "lucide-react-native";
+import {
+  ArrowDownLeft,
+  ArrowRight,
+  ArrowUpRight,
+  ChevronLeft,
+  Share2,
+} from "lucide-react-native";
 
-import { colors } from "@/constants/colors";
+import { KAURIDORR_THEME as K } from "@/constants/colors";
 import { useTransactionStore } from "@/stores/transaction-store";
 import { useClientStore } from "@/stores/client-store";
+import { useAuthStore } from "@/stores/auth-store";
 import { Transaction } from "@/types/transaction";
 import { Client } from "@/types/client";
+
+// ─── helpers ────────────────────────────────────────────────────────────────
+
+function initials(name: string): string {
+  return name
+    .split(" ")
+    .slice(0, 2)
+    .map((w) => w[0])
+    .join("")
+    .toUpperCase();
+}
+
+function fmtAmount(n: number): string {
+  return n.toLocaleString("fr-FR");
+}
+
+function fmtDate(iso: string): string {
+  return new Date(iso).toLocaleDateString("fr-FR", {
+    day: "numeric",
+    month: "short",
+    year: "numeric",
+  });
+}
+
+function fmtTime(iso: string): string {
+  return new Date(iso).toLocaleTimeString("fr-FR", {
+    hour: "2-digit",
+    minute: "2-digit",
+    second: "2-digit",
+  });
+}
+
+function fmtDateTime(iso: string): string {
+  const d = new Date(iso);
+  return (
+    d.toLocaleDateString("fr-FR", {
+      day: "numeric",
+      month: "long",
+      year: "numeric",
+    }) +
+    " · " +
+    d.toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit" })
+  );
+}
+
+// ─── sub-components ──────────────────────────────────────────────────────────
+
+function SectionTitle({ label }: { label: string }) {
+  return <Text style={styles.sectionTitle}>{label}</Text>;
+}
+
+function InfoRow({
+  label,
+  value,
+  valueStyle,
+}: {
+  label: string;
+  value: string;
+  valueStyle?: object;
+}) {
+  return (
+    <View style={styles.infoRow}>
+      <Text style={styles.infoLabel}>{label}</Text>
+      <Text style={[styles.infoValue, valueStyle]}>{value}</Text>
+    </View>
+  );
+}
+
+type StatusKey = "completed" | "pending";
+const STATUS_LABEL: Record<StatusKey, string> = {
+  completed: "Validé",
+  pending: "En attente",
+};
+const STATUS_BG: Record<StatusKey, string> = {
+  completed: K.bgSuccess,
+  pending: "#faeeda",
+};
+const STATUS_COLOR: Record<StatusKey, string> = {
+  completed: K.textSuccess,
+  pending: K.textWarning,
+};
+
+// ─── screen ──────────────────────────────────────────────────────────────────
 
 export default function TransactionDetailScreen() {
   const router = useRouter();
   const { id } = useLocalSearchParams<{ id: string }>();
-  const { getTransactionById } = useTransactionStore();
+  const { getTransactionById, syncPendingTransactions } = useTransactionStore();
   const { getClientById } = useClientStore();
+  const { user } = useAuthStore();
   const [isLoading, setIsLoading] = useState(true);
   const [transaction, setTransaction] = useState<Transaction | null>(null);
   const [client, setClient] = useState<Client | null>(null);
 
   useEffect(() => {
-    if (id) {
-      const transactionData = getTransactionById(id);
-      if (transactionData) {
-        setTransaction(transactionData);
-        const clientData = getClientById(transactionData.clientId);
-        if (clientData) {
-          setClient(clientData);
-        }
-      } else {
-        Alert.alert("Érreur", "Transaction introuvable");
-        router.back();
-      }
-      setIsLoading(false);
+    if (!id) return;
+    const tx = getTransactionById(id);
+    if (tx) {
+      setTransaction(tx);
+      const c = getClientById(tx.clientId);
+      if (c) setClient(c);
+    } else {
+      Alert.alert("Erreur", "Transaction introuvable");
+      router.back();
     }
+    setIsLoading(false);
   }, [id, getTransactionById, getClientById, router]);
 
   if (isLoading) {
     return (
-      <SafeAreaView edges={["bottom"]} style={styles.loadingContainer}>
-        <ActivityIndicator size="large" color={colors.primary} />
+      <SafeAreaView style={styles.loadingContainer}>
+        <ActivityIndicator size="large" color={K.orange} />
       </SafeAreaView>
     );
   }
 
-  if (!transaction) {
-    return (
-      <SafeAreaView edges={["bottom"]} style={styles.container}>
-        <View style={styles.header}>
-          <Pressable style={styles.backButton} onPress={() => router.back()}>
-            <ChevronLeft size={24} color={colors.text} />
-          </Pressable>
-          <Text style={styles.headerTitle}>Détails de la transaction</Text>
-          <View style={styles.placeholder} />
-        </View>
-        <View style={styles.errorContainer}>
-          <Text style={styles.errorText}>Transaction introuvable</Text>
-        </View>
-      </SafeAreaView>
-    );
+  if (!transaction) return null;
+
+  const isDeposit = transaction.type === "deposit";
+  const heroColor = isDeposit ? K.orange : K.green;
+  const typeLabel = isDeposit ? "Dépôt" : "Retrait";
+  const signPrefix = isDeposit ? "+" : "−";
+
+  // Derive balances from current client balance
+  const balanceAfter = client?.balance ?? 0;
+  const balanceBefore = isDeposit
+    ? balanceAfter - transaction.amount
+    : balanceAfter + transaction.amount;
+
+  const commission = Math.round(transaction.amount * 0.01);
+  const reference = `TXN-${new Date(transaction.date)
+    .toISOString()
+    .slice(0, 10)
+    .replace(/-/g, "")}-${transaction.id.slice(-4)}`;
+
+  const agentName = user?.name ?? "Agent";
+  const agentInitials = initials(agentName);
+
+  const timeline = [
+    { label: "Transaction initiée", time: fmtTime(transaction.date), note: `Agent ${agentInitials}`, done: true },
+    { label: "PIN confirmé", time: fmtTime(transaction.date), note: "", done: true },
+    {
+      label: isDeposit ? "Solde mis à jour" : "Solde débité",
+      time: fmtTime(transaction.date),
+      note: `${fmtAmount(balanceBefore)} → ${fmtAmount(balanceAfter)} FCFA`,
+      done: transaction.status === "completed",
+      green: true,
+    },
+  ];
+
+  async function handleShare() {
+    try {
+      await Share.share({
+        message: `Reçu ${typeLabel} — ${fmtAmount(transaction!.amount)} FCFA\nClient : ${client?.name ?? transaction!.clientName}\nRéf. : ${reference}\nDate : ${fmtDateTime(transaction!.date)}`,
+      });
+    } catch {
+      // user dismissed share sheet
+    }
   }
 
   return (
-    <SafeAreaView edges={["bottom"]} style={styles.container}>
-      <View style={styles.header}>
-        <Pressable style={styles.backButton} onPress={() => router.back()}>
-          <ChevronLeft size={24} color={colors.text} />
-        </Pressable>
-        <Text style={styles.headerTitle}>Détails de la transaction</Text>
-        <View style={styles.placeholder} />
-      </View>
-
-      <ScrollView style={styles.scrollView}>
-        <View style={styles.transactionHeader}>
-          <View
-            style={[
-              styles.transactionIcon,
-              {
-                backgroundColor:
-                  transaction.type === "deposit"
-                    ? colors.secondaryLight
-                    : colors.error + "20",
-              },
-            ]}
-          >
-            {transaction.type === "deposit" ? (
-              <ArrowDownCircle size={32} color={colors.secondary} />
-            ) : (
-              <ArrowUpCircle size={32} color={colors.error} />
-            )}
+    <SafeAreaView edges={["bottom"]} style={styles.root}>
+      <ScrollView
+        style={styles.scroll}
+        contentContainerStyle={styles.scrollContent}
+        showsVerticalScrollIndicator={false}
+      >
+        {/* ── Colored hero block ── */}
+        <View style={[styles.heroBlock, { backgroundColor: heroColor }]}>
+          {/* Back row */}
+          <View style={styles.backRow}>
+            <Pressable style={styles.backBtn} onPress={() => router.back()}>
+              <ChevronLeft size={16} color="rgba(255,255,255,0.75)" strokeWidth={2} />
+              <Text style={styles.backLabel}>Historique</Text>
+            </Pressable>
+            <Pressable style={styles.iconBtn} onPress={handleShare}>
+              <Share2 size={15} color="white" strokeWidth={1.6} />
+            </Pressable>
           </View>
-          <Text style={styles.transactionType}>
-            {transaction.type === "deposit" ? "Dépôt" : "Retrait"}
-          </Text>
-          <Text
-            style={[
-              styles.transactionAmount,
-              {
-                color:
-                  transaction.type === "deposit" ? colors.secondary : colors.error,
-              },
-            ]}
-          >
-            {transaction.type === "deposit" ? "+" : "-"}
-            {transaction.amount.toLocaleString()} FCFA
-          </Text>
+
+          {/* Hero content */}
+          <View style={styles.heroContent}>
+            <View style={styles.typeBadge}>
+              {isDeposit ? (
+                <ArrowDownLeft size={12} color="white" strokeWidth={1.8} />
+              ) : (
+                <ArrowUpRight size={12} color="white" strokeWidth={1.8} />
+              )}
+              <Text style={styles.typeBadgeText}>{typeLabel}</Text>
+            </View>
+            <View style={styles.heroAmountRow}>
+              <Text style={styles.heroAmount}>
+                {signPrefix}{fmtAmount(transaction.amount)}
+              </Text>
+              <Text style={styles.heroCurrency}>FCFA</Text>
+            </View>
+            <Text style={styles.heroDate}>{fmtDateTime(transaction.date)}</Text>
+          </View>
         </View>
 
-        <View style={styles.detailsCard}>
-          <View style={styles.detailRow}>
-            <View style={styles.detailIconContainer}>
-              <Clock size={20} color={colors.primary} />
-            </View>
-            <View style={styles.detailContent}>
-              <Text style={styles.detailLabel}>Date & Heure</Text>
-              <Text style={styles.detailValue}>
-                {new Date(transaction.date).toLocaleString()}
-              </Text>
-            </View>
+        {/* ── Balance bridge ── */}
+        <View style={styles.balanceBridge}>
+          <View style={styles.balCol}>
+            <Text style={styles.balLbl}>AVANT</Text>
+            <Text style={styles.balVal}>{fmtAmount(balanceBefore)}</Text>
+            <Text style={styles.balUnit}>FCFA</Text>
           </View>
-
-          <View style={styles.divider} />
-
-          <View style={styles.detailRow}>
-            <View style={styles.detailIconContainer}>
-              <User size={20} color={colors.primary} />
-            </View>
-            <View style={styles.detailContent}>
-              <Text style={styles.detailLabel}>Client</Text>
-              <Text style={styles.detailValue}>{client?.name}</Text>
-              <Text style={styles.detailSubvalue}>{client?.phone}</Text>
-            </View>
+          <View style={[styles.balArrow, { backgroundColor: isDeposit ? K.orangeLt : K.greenLt }]}>
+            <ArrowRight
+              size={16}
+              color={isDeposit ? K.orange : K.green}
+              strokeWidth={1.8}
+            />
           </View>
+          <View style={[styles.balCol, styles.balColRight]}>
+            <Text style={styles.balLbl}>APRÈS</Text>
+            <Text style={[styles.balVal, { color: isDeposit ? K.textSuccess : K.orange }]}>
+              {fmtAmount(balanceAfter)}
+            </Text>
+            <Text style={styles.balUnit}>FCFA</Text>
+          </View>
+        </View>
 
-          <View style={styles.divider} />
-
-          <View style={styles.detailRow}>
-            <View style={styles.detailIconContainer}>
-              <FileText size={20} color={colors.primary} />
-            </View>
-            <View style={styles.detailContent}>
-              <Text style={styles.detailLabel}>Statut</Text>
+        {/* ── Transaction details ── */}
+        <View style={styles.section}>
+          <SectionTitle label="Détails de la transaction" />
+          <View style={styles.infoCard}>
+            <InfoRow label="Référence" value={reference} valueStyle={styles.monoValue} />
+            <InfoRow
+              label="Type"
+              value={typeLabel}
+              valueStyle={{ color: isDeposit ? K.orange : K.textSuccess }}
+            />
+            <InfoRow
+              label="Montant"
+              value={`${signPrefix}${fmtAmount(transaction.amount)} FCFA`}
+              valueStyle={{ color: isDeposit ? K.textSuccess : K.orange }}
+            />
+            <InfoRow label="Date" value={fmtDate(transaction.date)} />
+            <InfoRow label="Heure" value={fmtTime(transaction.date)} />
+            <View style={[styles.infoRow, { borderBottomWidth: 0 }]}>
+              <Text style={styles.infoLabel}>Statut</Text>
               <View
                 style={[
                   styles.statusBadge,
-                  {
-                    backgroundColor:
-                      transaction.status === "completed"
-                        ? colors.success + "20"
-                        : colors.warning + "20",
-                  },
+                  { backgroundColor: STATUS_BG[transaction.status] },
                 ]}
               >
-                <Text
-                  style={[
-                    styles.statusText,
-                    {
-                      color:
-                        transaction.status === "completed"
-                          ? colors.success
-                          : colors.warning,
-                    },
-                  ]}
-                >
-                  {transaction.status === "completed" ? "Synchronisé" : "En attente"}
+                <Text style={[styles.statusText, { color: STATUS_COLOR[transaction.status] }]}>
+                  {STATUS_LABEL[transaction.status]}
                 </Text>
               </View>
             </View>
           </View>
-
-          {transaction.notes && (
-            <>
-              <View style={styles.divider} />
-              <View style={styles.notesContainer}>
-                <Text style={styles.notesLabel}>Notes</Text>
-                <Text style={styles.notesText}>{transaction.notes}</Text>
-              </View>
-            </>
-          )}
         </View>
 
-        {transaction.status === "pending" && (
-          <View style={styles.actionContainer}>
-            <Text style={styles.syncInfo}>
-              Cette transaction est en attente de synchronisation avec le serveur.
-              Elle sera automatiquement synchronisée lorsque vous aurez une connexion Internet.
-            </Text>
-            <Pressable style={styles.syncButton}>
-              <Text style={styles.syncButtonText}>Synchroniser maintenant</Text>
+        {/* ── Commission ── */}
+        <View style={styles.section}>
+          <SectionTitle label="Commission" />
+          <View style={styles.commRow}>
+            <View style={styles.commLeft}>
+              <View style={styles.commIcon}>
+                <Text style={styles.commIconText}>%</Text>
+              </View>
+              <View>
+                <Text style={styles.commLabel}>Commission agent</Text>
+                <Text style={styles.commSub}>1% du montant</Text>
+              </View>
+            </View>
+            <Text style={styles.commVal}>{fmtAmount(commission)} FCFA</Text>
+          </View>
+        </View>
+
+        {/* ── Client ── */}
+        {client && (
+          <View style={styles.section}>
+            <SectionTitle label="Client" />
+            <Pressable
+              style={styles.clientMini}
+              onPress={() => router.push(`/(app)/clients/${client.id}`)}
+            >
+              <View style={[styles.avatar, { backgroundColor: "#e6f1fb" }]}>
+                <Text style={[styles.avatarText, { color: "#185fa5" }]}>
+                  {initials(client.name)}
+                </Text>
+              </View>
+              <View style={styles.clientInfo}>
+                <Text style={styles.clientName}>{client.name}</Text>
+                <Text style={styles.clientPhone}>{client.phone}</Text>
+              </View>
+              <View style={styles.clientRight}>
+                <Text style={styles.clientBal}>{fmtAmount(client.balance)} F</Text>
+                <Text style={[styles.clientLink, { color: heroColor }]}>Voir profil →</Text>
+              </View>
             </Pressable>
           </View>
         )}
+
+        {/* ── Agent ── */}
+        <View style={styles.section}>
+          <SectionTitle label="Enregistré par" />
+          <View style={styles.agentMini}>
+            <View style={styles.agentAvatar}>
+              <Text style={styles.agentAvatarText}>{agentInitials}</Text>
+            </View>
+            <View>
+              <Text style={styles.agentName}>{agentName}</Text>
+              <Text style={styles.agentRole}>Administrateur</Text>
+            </View>
+            <View style={styles.agentTime}>
+              <Text style={styles.agentTimeText}>
+                {new Date(transaction.date).toLocaleTimeString("fr-FR", {
+                  hour: "2-digit",
+                  minute: "2-digit",
+                })}
+              </Text>
+              <Text style={styles.agentDate}>{fmtDate(transaction.date)}</Text>
+            </View>
+          </View>
+        </View>
+
+        {/* ── Timeline ── */}
+        <View style={styles.section}>
+          <SectionTitle label="Historique de statut" />
+          <View style={styles.infoCard}>
+            <View style={{ padding: 14, paddingBottom: 2 }}>
+              {timeline.map((item, i) => (
+                <View key={i} style={styles.tlItem}>
+                  <View style={styles.tlLeft}>
+                    <View
+                      style={[
+                        styles.tlDot,
+                        {
+                          backgroundColor: item.done
+                            ? item.green
+                              ? K.textSuccess
+                              : K.orange
+                            : K.text3,
+                        },
+                      ]}
+                    />
+                    {i < timeline.length - 1 && <View style={styles.tlLine} />}
+                  </View>
+                  <View style={styles.tlContent}>
+                    <Text
+                      style={[
+                        styles.tlEvent,
+                        item.green && item.done ? { color: K.textSuccess } : undefined,
+                      ]}
+                    >
+                      {item.label}
+                    </Text>
+                    <Text style={styles.tlTime}>
+                      {item.time}
+                      {item.note ? ` · ${item.note}` : ""}
+                    </Text>
+                  </View>
+                </View>
+              ))}
+            </View>
+          </View>
+        </View>
+
+        {/* ── Pending sync notice ── */}
+        {transaction.status === "pending" && (
+          <View style={styles.section}>
+            <View style={styles.pendingCard}>
+              <Text style={styles.pendingText}>
+                Transaction en attente de synchronisation. Elle sera envoyée automatiquement à la prochaine connexion.
+              </Text>
+              <Pressable
+                style={styles.syncBtn}
+                onPress={() => syncPendingTransactions()}
+              >
+                <Text style={styles.syncBtnText}>Synchroniser maintenant</Text>
+              </Pressable>
+            </View>
+          </View>
+        )}
+
+        {/* ── Action row ── */}
+        <View style={styles.actionRow}>
+          <Pressable style={styles.btnShare} onPress={handleShare}>
+            <Share2 size={14} color={K.text2} strokeWidth={1.5} />
+            <Text style={styles.btnShareText}>Partager reçu</Text>
+          </Pressable>
+          {client && (
+            <Pressable
+              style={[styles.btnClient, { backgroundColor: heroColor }]}
+              onPress={() => router.push(`/(app)/clients/${client.id}`)}
+            >
+              <Text style={styles.btnClientText}>Voir client →</Text>
+            </Pressable>
+          )}
+        </View>
+
+        <View style={{ height: 32 }} />
       </ScrollView>
     </SafeAreaView>
   );
 }
 
+// ─── styles ──────────────────────────────────────────────────────────────────
+
 const styles = StyleSheet.create({
-  container: {
+  root: {
     flex: 1,
-    backgroundColor: colors.background,
+    backgroundColor: K.bg3,
   },
   loadingContainer: {
     flex: 1,
     justifyContent: "center",
     alignItems: "center",
-    backgroundColor: colors.background,
+    backgroundColor: K.bg3,
   },
-  errorContainer: {
-    flex: 1,
-    justifyContent: "center",
-    alignItems: "center",
+  scroll: { flex: 1 },
+  scrollContent: { paddingBottom: 0 },
+
+  // Hero
+  heroBlock: {
+    paddingBottom: 36,
   },
-  errorText: {
-    fontSize: 16,
-    color: colors.textSecondary,
-  },
-  header: {
+  backRow: {
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-    borderBottomWidth: 1,
-    borderBottomColor: colors.border,
+    paddingHorizontal: 18,
+    paddingTop: 14,
+    paddingBottom: 0,
   },
-  backButton: {
-    padding: 8,
+  backBtn: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 4,
   },
-  headerTitle: {
+  backLabel: {
+    fontSize: 13,
+    color: "rgba(255,255,255,0.75)",
+  },
+  iconBtn: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    backgroundColor: "rgba(255,255,255,0.15)",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  heroContent: {
+    alignItems: "center",
+    paddingTop: 16,
+    gap: 6,
+  },
+  typeBadge: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 5,
+    backgroundColor: "rgba(255,255,255,0.18)",
+    paddingHorizontal: 12,
+    paddingVertical: 4,
+    borderRadius: 20,
+  },
+  typeBadgeText: {
+    fontSize: 11,
+    fontWeight: "500",
+    color: "white",
+  },
+  heroAmountRow: {
+    flexDirection: "row",
+    alignItems: "flex-end",
+    gap: 4,
+  },
+  heroAmount: {
+    fontSize: 46,
+    fontWeight: "700",
+    color: "white",
+    letterSpacing: -1.5,
+    lineHeight: 52,
+  },
+  heroCurrency: {
     fontSize: 18,
-    fontWeight: "600",
-    color: colors.text,
+    fontWeight: "400",
+    color: "rgba(255,255,255,0.65)",
+    marginBottom: 6,
   },
-  placeholder: {
-    width: 40,
+  heroDate: {
+    fontSize: 12,
+    color: "rgba(255,255,255,0.55)",
   },
-  scrollView: {
+
+  // Balance bridge
+  balanceBridge: {
+    marginHorizontal: 18,
+    marginTop: -16,
+    zIndex: 2,
+    backgroundColor: K.bg,
+    borderWidth: 0.5,
+    borderColor: K.border,
+    borderRadius: 16,
+    padding: 14,
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+  },
+  balCol: {
     flex: 1,
   },
-  transactionHeader: {
-    alignItems: "center",
-    padding: 24,
-    borderBottomWidth: 1,
-    borderBottomColor: colors.border,
+  balColRight: {
+    alignItems: "flex-end",
   },
-  transactionIcon: {
-    width: 64,
-    height: 64,
-    borderRadius: 32,
-    justifyContent: "center",
-    alignItems: "center",
-    marginBottom: 16,
+  balLbl: {
+    fontSize: 10,
+    color: K.text3,
+    textTransform: "uppercase",
+    letterSpacing: 0.5,
+    marginBottom: 2,
   },
-  transactionType: {
-    fontSize: 18,
+  balVal: {
+    fontSize: 15,
     fontWeight: "600",
-    color: colors.text,
+    color: K.text1,
+  },
+  balUnit: {
+    fontSize: 10,
+    color: K.text3,
+  },
+  balArrow: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+
+  // Sections
+  section: {
+    paddingHorizontal: 18,
+    paddingTop: 16,
+  },
+  sectionTitle: {
+    fontSize: 11,
+    fontWeight: "500",
+    color: K.text3,
+    textTransform: "uppercase",
+    letterSpacing: 0.6,
     marginBottom: 8,
   },
-  transactionAmount: {
-    fontSize: 32,
-    fontWeight: "bold",
-  },
-  detailsCard: {
-    margin: 16,
-    backgroundColor: colors.card,
-    borderRadius: 12,
+
+  // Info card
+  infoCard: {
+    backgroundColor: K.bg,
+    borderWidth: 0.5,
+    borderColor: K.border,
+    borderRadius: 14,
     overflow: "hidden",
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.05,
-    shadowRadius: 4,
-    elevation: 2,
   },
-  detailRow: {
+  infoRow: {
     flexDirection: "row",
-    padding: 16,
+    alignItems: "center",
+    justifyContent: "space-between",
+    paddingHorizontal: 14,
+    paddingVertical: 11,
+    borderBottomWidth: 0.5,
+    borderBottomColor: K.border,
   },
-  detailIconContainer: {
+  infoLabel: {
+    fontSize: 12,
+    color: K.text2,
+  },
+  infoValue: {
+    fontSize: 13,
+    fontWeight: "500",
+    color: K.text1,
+  },
+  monoValue: {
+    fontSize: 11,
+    color: K.text3,
+    fontVariant: ["tabular-nums"],
+  },
+  statusBadge: {
+    paddingHorizontal: 9,
+    paddingVertical: 3,
+    borderRadius: 6,
+  },
+  statusText: {
+    fontSize: 11,
+    fontWeight: "500",
+  },
+
+  // Commission
+  commRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    backgroundColor: K.bg2,
+    borderWidth: 0.5,
+    borderColor: K.border,
+    borderRadius: 12,
+    padding: 11,
+    paddingHorizontal: 14,
+  },
+  commLeft: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+  },
+  commIcon: {
+    width: 28,
+    height: 28,
+    borderRadius: 7,
+    backgroundColor: K.orangeLt,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  commIconText: {
+    fontSize: 13,
+    fontWeight: "700",
+    color: K.orange,
+  },
+  commLabel: {
+    fontSize: 13,
+    fontWeight: "500",
+    color: K.text1,
+  },
+  commSub: {
+    fontSize: 10,
+    color: K.text3,
+  },
+  commVal: {
+    fontSize: 14,
+    fontWeight: "600",
+    color: K.orange,
+  },
+
+  // Client mini
+  clientMini: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 10,
+    backgroundColor: K.bg,
+    borderWidth: 0.5,
+    borderColor: K.border,
+    borderRadius: 14,
+    padding: 12,
+    paddingHorizontal: 14,
+  },
+  avatar: {
     width: 40,
     height: 40,
     borderRadius: 20,
-    backgroundColor: colors.primaryLight + "40",
-    justifyContent: "center",
     alignItems: "center",
-    marginRight: 16,
+    justifyContent: "center",
   },
-  detailContent: {
+  avatarText: {
+    fontSize: 13,
+    fontWeight: "600",
+  },
+  clientInfo: {
     flex: 1,
   },
-  detailLabel: {
+  clientName: {
     fontSize: 14,
-    color: colors.textSecondary,
-    marginBottom: 4,
-  },
-  detailValue: {
-    fontSize: 16,
     fontWeight: "500",
-    color: colors.text,
+    color: K.text1,
   },
-  detailSubvalue: {
-    fontSize: 14,
-    color: colors.textSecondary,
+  clientPhone: {
+    fontSize: 11,
+    color: K.text3,
+    marginTop: 1,
+  },
+  clientRight: {
+    alignItems: "flex-end",
+  },
+  clientBal: {
+    fontSize: 12,
+    fontWeight: "500",
+    color: K.text1,
+  },
+  clientLink: {
+    fontSize: 11,
     marginTop: 2,
   },
-  divider: {
-    height: 1,
-    backgroundColor: colors.border,
-    marginLeft: 56,
-  },
-  statusBadge: {
-    alignSelf: "flex-start",
-    paddingHorizontal: 12,
-    paddingVertical: 4,
-    borderRadius: 4,
-    marginTop: 4,
-  },
-  statusText: {
-    fontSize: 14,
-    fontWeight: "500",
-  },
-  notesContainer: {
-    padding: 16,
-  },
-  notesLabel: {
-    fontSize: 14,
-    fontWeight: "500",
-    color: colors.text,
-    marginBottom: 8,
-  },
-  notesText: {
-    fontSize: 14,
-    color: colors.textSecondary,
-    lineHeight: 20,
-  },
-  actionContainer: {
-    margin: 16,
-    padding: 16,
-    backgroundColor: colors.card,
-    borderRadius: 12,
+
+  // Agent mini
+  agentMini: {
+    flexDirection: "row",
     alignItems: "center",
+    gap: 10,
+    backgroundColor: K.bg,
+    borderWidth: 0.5,
+    borderColor: K.border,
+    borderRadius: 14,
+    padding: 12,
+    paddingHorizontal: 14,
   },
-  syncInfo: {
-    fontSize: 14,
-    color: colors.textSecondary,
+  agentAvatar: {
+    width: 34,
+    height: 34,
+    borderRadius: 17,
+    backgroundColor: K.orangeLt,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  agentAvatarText: {
+    fontSize: 12,
+    fontWeight: "600",
+    color: K.orangeDk,
+  },
+  agentName: {
+    fontSize: 13,
+    fontWeight: "500",
+    color: K.text1,
+  },
+  agentRole: {
+    fontSize: 11,
+    color: K.text3,
+    marginTop: 1,
+  },
+  agentTime: {
+    marginLeft: "auto",
+    alignItems: "flex-end",
+  },
+  agentTimeText: {
+    fontSize: 11,
+    color: K.text3,
+  },
+  agentDate: {
+    fontSize: 10,
+    color: K.text3,
+    marginTop: 1,
+  },
+
+  // Timeline
+  tlItem: {
+    flexDirection: "row",
+    gap: 12,
+    alignItems: "flex-start",
+  },
+  tlLeft: {
+    width: 28,
+    alignItems: "center",
+    flexShrink: 0,
+  },
+  tlDot: {
+    width: 10,
+    height: 10,
+    borderRadius: 5,
+    flexShrink: 0,
+  },
+  tlLine: {
+    width: 1.5,
+    flex: 1,
+    backgroundColor: K.border2,
+    minHeight: 22,
+    marginTop: 2,
+  },
+  tlContent: {
+    paddingBottom: 16,
+    flex: 1,
+  },
+  tlEvent: {
+    fontSize: 13,
+    fontWeight: "500",
+    color: K.text1,
+  },
+  tlTime: {
+    fontSize: 11,
+    color: K.text3,
+    marginTop: 2,
+  },
+
+  // Pending
+  pendingCard: {
+    backgroundColor: "#faeeda",
+    borderRadius: 12,
+    padding: 14,
+    alignItems: "center",
+    gap: 12,
+  },
+  pendingText: {
+    fontSize: 13,
+    color: K.textWarning,
     textAlign: "center",
-    marginBottom: 16,
+    lineHeight: 18,
   },
-  syncButton: {
-    backgroundColor: colors.primary,
-    paddingVertical: 10,
+  syncBtn: {
+    backgroundColor: K.orange,
+    paddingVertical: 9,
     paddingHorizontal: 20,
     borderRadius: 8,
   },
-  syncButtonText: {
+  syncBtnText: {
     color: "white",
+    fontSize: 13,
     fontWeight: "600",
+  },
+
+  // Action row
+  actionRow: {
+    flexDirection: "row",
+    gap: 8,
+    paddingHorizontal: 18,
+    paddingTop: 16,
+  },
+  btnShare: {
+    flex: 1,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 6,
+    paddingVertical: 12,
+    borderRadius: 12,
+    borderWidth: 0.5,
+    borderColor: K.border2,
+    backgroundColor: K.bg,
+  },
+  btnShareText: {
+    fontSize: 12,
+    fontWeight: "500",
+    color: K.text1,
+  },
+  btnClient: {
+    flex: 1,
+    alignItems: "center",
+    justifyContent: "center",
+    paddingVertical: 12,
+    borderRadius: 12,
+  },
+  btnClientText: {
+    fontSize: 12,
+    fontWeight: "500",
+    color: "white",
   },
 });

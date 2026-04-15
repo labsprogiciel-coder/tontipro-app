@@ -19,6 +19,12 @@ interface ClientStoreState {
     name: string;
     phone: string;
     address?: string;
+    email?: string;
+    groupName?: string;
+    commitmentAmount?: number;
+    collectionFrequency?: import("@/types/client").CollectionFrequency;
+    collectionDays?: number[];
+    savingsGoal?: number;
     initialDeposit?: number;
     idNumber?: string;
     idType?: "cni" | "passport" | "permis" | "autre";
@@ -45,6 +51,10 @@ export const useClientStore = create<ClientStoreState>()(
 
       // ✅ Fetch all clients from Supabase for the current agent
       loadClientsFromSupabase: async () => {
+        if (__DEV__) {
+          await get().loadDevMocks();
+          return;
+        }
         set({ isLoadingClients: true, error: null });
         try {
           const {
@@ -93,9 +103,8 @@ export const useClientStore = create<ClientStoreState>()(
       },
 
       loadDevMocks: async () => {
-        if (process.env.EXPO_PUBLIC_DEV_LOAD_MOCKS !== "true") return;
+        if (!__DEV__) return;
         const { mockClients } = await import("@/__dev__/mocks/clients");
-        // Mark mocks as synced
         const mockClientsWithSync: Client[] = mockClients.map((c) => ({
           ...c,
           syncStatus: "synced" as const,
@@ -117,6 +126,12 @@ export const useClientStore = create<ClientStoreState>()(
             joinDate: new Date().toISOString(),
             status: "active",
             address: clientData.address,
+            email: clientData.email,
+            groupName: clientData.groupName,
+            commitmentAmount: clientData.commitmentAmount,
+            collectionFrequency: clientData.collectionFrequency,
+            collectionDays: clientData.collectionDays,
+            savingsGoal: clientData.savingsGoal,
             idNumber: clientData.idNumber,
             idType: clientData.idType,
             kycVerified: !!clientData.idNumber,

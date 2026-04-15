@@ -1,7 +1,5 @@
 import React from "react";
-import { View, Text, StyleSheet } from "react-native";
-
-
+import { View, Text, StyleSheet, TouchableOpacity } from "react-native";
 
 export interface TransactionProps {
   name: string;
@@ -10,13 +8,14 @@ export interface TransactionProps {
   amount: string;
   balance?: string;
   isLast?: boolean;
+  onPress?: () => void;
 }
 
-const TransactionItem: React.FC<TransactionProps> = ({ name, type, time, amount, balance, isLast }) => {
+const TransactionItem: React.FC<TransactionProps> = ({ name, type, time, amount, balance, isLast, onPress }) => {
   const isDeposit = type === 'deposit';
 
   return (
-    <View style={[styles.item, isLast && styles.itemLast]}>
+    <TouchableOpacity style={[styles.item, isLast && styles.itemLast]} onPress={onPress} activeOpacity={0.7}>
       <View style={[styles.dot, { backgroundColor: isDeposit ? '#eaf3de' : '#FAE8E0' }]} />
       <View style={styles.textContainer}>
         <Text style={styles.name}>{name}</Text>
@@ -28,7 +27,7 @@ const TransactionItem: React.FC<TransactionProps> = ({ name, type, time, amount,
         </Text>
         {balance && <Text style={styles.bal}>Solde : {balance}</Text>}
       </View>
-    </View>
+    </TouchableOpacity>
   );
 };
 

@@ -1,362 +1,380 @@
-import { useEffect, useMemo, useState } from "react";
+import React, { useEffect, useMemo, useState } from 'react';
 import {
-  ActivityIndicator,
+  View,
+  Text,
   ScrollView,
   StyleSheet,
-  Text,
-  View,
-  Pressable,
-} from "react-native";
+  StatusBar,
+  ActivityIndicator,
+} from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from "expo-router";
-import { PlusCircle, TrendingUp, Users, RefreshCw, Wifi, WifiOff, Wallet } from "lucide-react-native";
+import { TrendingUp, Users, FileText, ArrowDown, ArrowUp, PlusIcon } from "lucide-react-native";
 
-import { colors } from "@/constants/colors";
+import { KAURIDORR_THEME } from "@/constants/colors";
 import { useAuthStore } from "@/stores/auth-store";
 import { useClientStore } from "@/stores/client-store";
 import { mergeTransactionsSorted, useTransactionStore } from "@/stores/transaction-store";
 import { isConnected, subscribeToNetworkChanges } from "@/utils/network";
+import { Client } from "@/types/client";
 
-export default function DashboardScreen() {
+import SectionHeader from "../components/ui/section-header";
+import OfflineIcon from '../components/header/offline-status';
+import MetricPill from '../components/stats/cards';
+import NotificationBell from '../components/header/bell';
+import HeaderAvatar from '../components/header/avatar';
+import ActionButton from '../components/quickactions/quick-action';
+import TransactionItem from '../components/transactions/transaction-items';
+import ClientCard from '../components/clients/clients';
+import SearchInput from '../components/quickactions/search-input';
+
+const T = KAURIDORR_THEME;
+
+// ── Helpers ──────────────────────────────────────────────────────────────────
+
+function getInitials(name: string): string {
+  return name
+    .split(' ')
+    .map((w) => w[0] ?? '')
+    .join('')
+    .toUpperCase()
+    .slice(0, 2);
+}
+
+function clientStatus(client: Client): 'Actif' | 'Retard' | 'Neutre' {
+  if (client.status === 'active') return 'Actif';
+  if (client.status === 'inactive') return 'Neutre';
+  return 'Retard';
+}
+
+function clientVariant(client: Client): 'success' | 'warning' | 'info' {
+  if (client.status === 'active') return 'success';
+  if (client.status === 'inactive') return 'info';
+  return 'warning';
+}
+
+function relativeTime(isoDate: string): string {
+  const diff = Date.now() - new Date(isoDate).getTime();
+  if (diff < 60_000) return "À l'instant";
+  if (diff < 3_600_000) return `Il y a ${Math.floor(diff / 60_000)} min`;
+  if (diff < 86_400_000) return `Il y a ${Math.floor(diff / 3_600_000)} h`;
+  return `Il y a ${Math.floor(diff / 86_400_000)} j`;
+}
+
+function formatBalance(amount: number): string {
+  return amount.toLocaleString('fr-FR') + ' F';
+}
+
+function formatMetric(amount: number): string {
+  if (amount >= 1_000_000) return (amount / 1_000_000).toFixed(1).replace('.', ',') + ' M';
+  if (amount >= 1_000) return Math.round(amount / 1_000) + ' K';
+  return String(amount);
+}
+
+// ── Component ─────────────────────────────────────────────────────────────────
+
+const AgentDashboard: React.FC = () => {
   const router = useRouter();
-  const user = useAuthStore((state) => state.user);
-  const loadClientMocks = useClientStore((state) => state.loadDevMocks);
-  const loadClientsFromSupabase = useClientStore((state) => state.loadClientsFromSupabase);
-  const isLoadingClients = useClientStore((state) => state.isLoadingClients);
-  const clients = useClientStore((state) => state.clients);
-  const loadTransactionMocks = useTransactionStore((state) => state.loadDevMocks);
-  const transactions = useTransactionStore((state) => state.transactions);
-  const pendingTxList = useTransactionStore((state) => state.pendingTransactions);
-  const transactionSyncFailures = useTransactionStore(
-    (state) => state.transactionSyncFailures
-  );
 
-  const [isLoading, setIsLoading] = useState(true);
+  // Auth
+  const user = useAuthStore((s) => s.user);
+
+  // Clients
+  const clients = useClientStore((s) => s.clients);
+  const isLoadingClients = useClientStore((s) => s.isLoadingClients);
+  const loadClientsFromSupabase = useClientStore((s) => s.loadClientsFromSupabase);
+  const loadClientMocks = useClientStore((s) => s.loadDevMocks);
+
+  // Transactions
+  const transactions = useTransactionStore((s) => s.transactions);
+  const pendingTxList = useTransactionStore((s) => s.pendingTransactions);
+  const loadTransactionMocks = useTransactionStore((s) => s.loadDevMocks);
+  const loadTransactionsFromSupabase = useTransactionStore((s) => s.loadTransactionsFromSupabase);
+
+  // Local UI state
+  const [searchQuery, setSearchQuery] = useState('');
   const [online, setOnline] = useState(true);
+  const [isLoading, setIsLoading] = useState(true);
 
-  // ✅ Vérifie la connectivité au montage et écoute les changements
+  // ── Network monitoring ──────────────────────────────────────────────────────
   useEffect(() => {
     isConnected().then(setOnline);
-    const unsubscribe = subscribeToNetworkChanges(setOnline);
-    return () => unsubscribe();
+    return subscribeToNetworkChanges(setOnline);
   }, []);
 
+  // ── Data loading ────────────────────────────────────────────────────────────
   useEffect(() => {
     const init = async () => {
-      // ✅ Si en mode dev avec mocks, charger les mocks
-      if (process.env.EXPO_PUBLIC_DEV_LOAD_MOCKS === "true") {
-        useClientStore.getState().clearAll();
-        useTransactionStore.getState().clearAll();
+      if (__DEV__) {
+        // loadDevMocks is idempotent — no need to clearAll first
         await loadClientMocks();
         await loadTransactionMocks();
       } else if (user && !isLoadingClients) {
-        // ✅ Données déjà chargées à la connexion / restauration session ; rafraîchir au besoin
         try {
           await loadClientsFromSupabase();
-        } catch (error) {
-          console.error("Failed to load clients from Supabase:", error);
+          await loadTransactionsFromSupabase();
+        } catch (err) {
+          console.error('Dashboard data load failed:', err);
         }
       }
       setIsLoading(false);
     };
-
     init();
-  }, [user, loadClientMocks, loadTransactionMocks, isLoadingClients, loadClientsFromSupabase]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [user]);
 
+  // ── Derived data ────────────────────────────────────────────────────────────
   const mergedTransactions = useMemo(
     () => mergeTransactionsSorted(transactions, pendingTxList),
     [transactions, pendingTxList]
   );
 
-  const totalCollected = mergedTransactions.reduce((sum, tx) => {
-    if (tx.type === "deposit") return sum + tx.amount;
-    if (tx.type === "withdrawal") return sum - tx.amount;
-    return sum;
-  }, 0);
+  const totalSavings = useMemo(
+    () => clients.reduce((sum, c) => sum + (c.balance ?? 0), 0),
+    [clients]
+  );
 
-  const pendingTransactionsCount = pendingTxList.length;
-  const pendingClientsCount = clients.filter((c) => c.syncStatus === "pending").length;
-  const totalPending = pendingTransactionsCount + pendingClientsCount;
-  const clientCount = clients.length;
-  const MONTHLY_CLIENT_TARGET = 50;
-  const targetCompletion = clientCount === 0 ? 0 : Math.min(100, Math.round((clientCount / MONTHLY_CLIENT_TARGET) * 100));
+  const activeClientCount = useMemo(
+    () => clients.filter((c) => c.status === 'active').length,
+    [clients]
+  );
 
-  // ✅ Calcul du statut de synchronisation
-  const getSyncStatus = () => {
-    if (!online) return { color: "#9CA3AF", label: "Hors ligne", icon: "offline" };
-    const syncFailSuffix =
-      transactionSyncFailures > 0 ? ` (${transactionSyncFailures} erreur(s) sync)` : "";
-    if (totalPending > 0 || transactionSyncFailures > 0) {
-      return {
-        color: "#F59E0B",
-        label: `${totalPending} en attente${syncFailSuffix}`,
-        icon: "pending" as const,
-      };
-    }
-    return { color: "#10B981", label: "Synchronisé", icon: "synced" as const };
-  };
+  const pendingCount =
+    pendingTxList.length + clients.filter((c) => c.syncStatus === 'pending').length;
 
-  const syncStatus = getSyncStatus();
+  const isOffline = !online;
+
+  // ── Search filter ───────────────────────────────────────────────────────────
+  const filteredClients = useMemo(() => {
+    const q = searchQuery.toLowerCase().trim();
+    if (!q) return clients;
+    return clients.filter(
+      (c) =>
+        c.name.toLowerCase().includes(q) ||
+        c.phone.includes(q)
+    );
+  }, [clients, searchQuery]);
+
+  const filteredTransactions = useMemo(() => {
+    const q = searchQuery.toLowerCase().trim();
+    if (!q) return mergedTransactions;
+    return mergedTransactions.filter((t) =>
+      t.clientName?.toLowerCase().includes(q)
+    );
+  }, [mergedTransactions, searchQuery]);
 
   if (isLoading) {
     return (
       <View style={styles.loadingContainer}>
-        <ActivityIndicator size="large" color={colors.primary} />
+        <ActivityIndicator size="large" color={T.orange} />
       </View>
     );
   }
 
   return (
-    <View style={styles.container}>
-      <ScrollView style={styles.scrollView}>
+    <SafeAreaView style={styles.container} edges={["top"]}>
+      <StatusBar barStyle="light-content" backgroundColor={T.orange} />
+
+      <ScrollView stickyHeaderIndices={[0]} showsVerticalScrollIndicator={false}>
+
+        {/* ── Header ─────────────────────────────────────────────────────── */}
         <View style={styles.header}>
           <View style={styles.headerTop}>
             <View>
-              <Text style={styles.greeting}>
-                Bonjour, {user?.name || "Agent"}
-              </Text>
-              <Text style={styles.date}>
-                {new Date().toLocaleDateString("fr-FR", {
-                  weekday: "long",
-                  year: "numeric",
-                  month: "long",
-                  day: "numeric",
-                })}
-              </Text>
+              <Text style={styles.greeting}>Bonjour,</Text>
+              <Text style={styles.agentName}>{user?.name ?? 'Agent'}</Text>
             </View>
 
-            {/* ✅ Indicateur de statut de synchronisation */}
-            <View style={[styles.syncBadge, { borderColor: syncStatus.color }]}>
-              {syncStatus.icon === "offline" && (
-                <WifiOff size={12} color={syncStatus.color} />
-              )}
-              {syncStatus.icon === "pending" && (
-                <RefreshCw size={12} color={syncStatus.color} />
-              )}
-              {syncStatus.icon === "synced" && (
-                <Wifi size={12} color={syncStatus.color} />
-              )}
-              <Text style={[styles.syncLabel, { color: syncStatus.color }]}>
-                {syncStatus.label}
-              </Text>
+            <View style={styles.topUtilityRow}>
+              <OfflineIcon isOffline={isOffline} />
+              <NotificationBell hasNotifications={pendingCount > 0} />
+              <HeaderAvatar initials={getInitials(user?.name ?? 'AG')} />
             </View>
+          </View>
+
+          <View style={styles.metricRow}>
+            <MetricPill
+              label="Épargne gérée"
+              value={formatMetric(totalSavings)}
+              unit="FCFA"
+              icon={TrendingUp}
+            />
+            <MetricPill
+              label="Clients actifs"
+              value={String(activeClientCount)}
+              trend={pendingCount > 0 ? `${pendingCount} en attente` : undefined}
+              icon={Users}
+            />
           </View>
         </View>
 
-        <View style={styles.quickActions}>
-          <Pressable
-            style={styles.actionButton}
-            onPress={() => router.push("/(app)/clients/add")}
-          >
-            <View style={[styles.actionIcon, { backgroundColor: colors.primaryLight }]}>
-              <Users size={24} color={colors.primary} />
-            </View>
-            <Text style={styles.actionText}>Nouveau Client</Text>
-          </Pressable>
-
-          <Pressable
-            style={styles.actionButton}
-            onPress={() => router.push("/(app)/transactions/new")}
-          >
-            <View style={[styles.actionIcon, { backgroundColor: colors.secondaryLight }]}>
-              <PlusCircle size={24} color={colors.secondary} />
-            </View>
-            <Text style={styles.actionText}>Nouveau Dépôt</Text>
-          </Pressable>
-        </View>
-
-        <Text style={styles.sectionTitle}>Aperçu</Text>
-
-        <View style={styles.statsContainer}>
-          <View style={styles.statCard}>
-            <View style={styles.statHeader}>
-              <Text style={styles.statTitle}>Total collecté</Text>
-              <Wallet size={20} color={colors.primary} />
-            </View>
-            <Text style={styles.statValue}>
-              {totalCollected.toLocaleString()} FCFA
-            </Text>
-            <Text style={styles.statSubtext}>Ce mois-ci</Text>
+        {/* ── Body ───────────────────────────────────────────────────────── */}
+        <View style={styles.body}>
+          {/* Quick actions */}
+          <Text style={styles.sectionLabel}>Actions rapides</Text>
+          <View style={styles.actionGrid}>
+            <ActionButton
+              label="Client"
+              icon={PlusIcon}
+              bgVariant="#e6f1fb"
+              iconColor="#185fa5"
+              onClick={() => router.push('/(app)/clients/add')}
+            />
+            <ActionButton
+              label="Dépôt"
+              icon={ArrowDown}
+              bgVariant="#eaf3de"
+              iconColor="#3b6d11"
+              onClick={() => router.push('/(app)/transactions/new')}
+            />
+            <ActionButton
+              label="Retrait"
+              icon={ArrowUp}
+              bgVariant="#FAE8E0"
+              iconColor="#993C1D"
+              onClick={() => router.push({ pathname: '/(app)/transactions/new', params: { type: 'withdrawal' } })}
+            />
+            <ActionButton
+              label="Rapport"
+              icon={FileText}
+              bgVariant="#f5f4f0"
+              iconColor="#5f5e5a"
+              onClick={() => router.push('/(app)/reports')}
+            />
           </View>
 
-          <View style={styles.statCard}>
-            <View style={styles.statHeader}>
-              <Text style={styles.statTitle}>Clients actifs</Text>
-              <Users size={20} color={colors.primary} />
+          {/* Clients */}
+          <SectionHeader
+            title="Mes clients"
+            linkText="Voir tous"
+            onLinkClick={() => router.push('/(app)/clients')}
+          />
+
+          {filteredClients.length === 0 ? (
+            <View style={styles.emptyBox}>
+              <Text style={styles.emptyText}>Aucun client trouvé</Text>
             </View>
-            <Text style={styles.statValue}>{clientCount}</Text>
-            <Text style={styles.statSubtext}>Total inscrits</Text>
-          </View>
-        </View>
+          ) : (
+            filteredClients.slice(0, 3).map((client) => (
+              <ClientCard
+                key={client.id}
+                initials={getInitials(client.name)}
+                name={client.name}
+                phone={client.phone}
+                amount={formatBalance(client.balance ?? 0)}
+                status={clientStatus(client)}
+                avatarVariant={clientVariant(client)}
+                onPress={() => router.push(`/(app)/clients/${client.id}`)}
+              />
+            ))
+          )}
 
-        <View style={styles.statsContainer}>
-          <View style={styles.statCard}>
-            <View style={styles.statHeader}>
-              <Text style={styles.statTitle}>Synchro en attente</Text>
-              <RefreshCw size={20} color={colors.warning} />
+          {/* Transactions */}
+          <SectionHeader
+            title="Transactions récentes"
+            linkText="Voir tous"
+            onLinkClick={() => router.push('/(app)/transactions')}
+          />
+
+          {filteredTransactions.length === 0 ? (
+            <View style={styles.emptyBox}>
+              <Text style={styles.emptyText}>Aucune transaction</Text>
             </View>
-            <Text style={styles.statValue}>{pendingTransactionsCount}</Text>
-            <Text style={styles.statSubtext}>Transactions hors ligne</Text>
-          </View>
-
-          <View style={styles.statCard}>
-            <View style={styles.statHeader}>
-              <Text style={styles.statTitle}>Objectif</Text>
-              <TrendingUp size={20} color={colors.secondary} />
+          ) : (
+            <View style={styles.transactionContainer}>
+              {filteredTransactions.slice(0, 5).map((tx, i) => (
+                <TransactionItem
+                  key={tx.id}
+                  name={tx.clientName ?? '—'}
+                  type={tx.type === 'withdrawal' ? 'withdrawal' : 'deposit'}
+                  time={relativeTime(tx.date)}
+                  amount={tx.amount.toLocaleString('fr-FR')}
+                  isLast={i === Math.min(filteredTransactions.length, 5) - 1}
+                  onPress={() => router.push(`/(app)/transactions/${tx.id}`)}
+                />
+              ))}
             </View>
-            <Text style={styles.statValue}>{targetCompletion}%</Text>
-            <Text style={styles.statSubtext}>Objectif mensuel</Text>
-          </View>
-        </View>
-
-        <Text style={styles.sectionTitle}>Activité récente</Text>
-
-        <View style={styles.activityContainer}>
-          <Text style={styles.emptyText}>Aucune activité récente à afficher</Text>
+          )}
         </View>
       </ScrollView>
-    </View>
+    </SafeAreaView>
   );
-}
+};
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: colors.background,
-  },
   loadingContainer: {
     flex: 1,
-    justifyContent: "center",
-    alignItems: "center",
-    backgroundColor: colors.background,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: T.bg,
   },
-  scrollView: {
+  container: {
     flex: 1,
+    backgroundColor: '#d0cfc8',
   },
   header: {
-    padding: 20,
-    paddingBottom: 10,
+    backgroundColor: T.orange,
+    paddingHorizontal: 18,
+    paddingBottom: 20,
+    paddingTop: 10,
   },
   headerTop: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "flex-start",
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 14,
   },
   greeting: {
-    fontSize: 24,
-    fontWeight: "bold",
-    color: colors.text,
-  },
-  date: {
-    fontSize: 14,
-    color: colors.textSecondary,
-    marginTop: 4,
-  },
-  syncBadge: {
-    flexDirection: "row",
-    alignItems: "center",
-    borderWidth: 1,
-    borderRadius: 20,
-    paddingHorizontal: 10,
-    paddingVertical: 5,
-    gap: 4,
-    marginTop: 4,
-  },
-  syncLabel: {
-    fontSize: 11,
-    fontWeight: "600",
-  },
-  quickActions: {
-    flexDirection: "row",
-    padding: 20,
-    gap: 12,
-  },
-  actionButton: {
-    flex: 1,
-    backgroundColor: colors.card,
-    borderRadius: 12,
-    padding: 16,
-    alignItems: "center",
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.05,
-    shadowRadius: 4,
-    elevation: 2,
-  },
-  actionIcon: {
-    width: 48,
-    height: 48,
-    borderRadius: 24,
-    justifyContent: "center",
-    alignItems: "center",
-    marginBottom: 8,
-  },
-  actionText: {
-    fontSize: 14,
-    fontWeight: "500",
-    color: colors.text,
-  },
-  sectionTitle: {
-    fontSize: 18,
-    fontWeight: "600",
-    color: colors.text,
-    marginHorizontal: 20,
-    marginTop: 20,
-    marginBottom: 12,
-  },
-  statsContainer: {
-    flexDirection: "row",
-    paddingHorizontal: 20,
-    gap: 12,
-    marginBottom: 12,
-  },
-  statCard: {
-    flex: 1,
-    backgroundColor: colors.card,
-    borderRadius: 12,
-    padding: 16,
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.05,
-    shadowRadius: 4,
-    elevation: 2,
-  },
-  statHeader: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-    marginBottom: 8,
-  },
-  statTitle: {
-    fontSize: 14,
-    fontWeight: "500",
-    color: colors.textSecondary,
-  },
-  statValue: {
-    fontSize: 20,
-    fontWeight: "bold",
-    color: colors.text,
-    marginBottom: 4,
-  },
-  statSubtext: {
+    color: 'rgba(255,255,255,0.8)',
     fontSize: 12,
-    color: colors.textSecondary,
   },
-  activityContainer: {
-    backgroundColor: colors.card,
-    borderRadius: 12,
+  agentName: {
+    color: 'white',
+    fontSize: 16,
+    fontWeight: '500',
+  },
+  topUtilityRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+  },
+  metricRow: {
+    flexDirection: 'row',
+    gap: 10,
+  },
+  body: {
     padding: 16,
-    margin: 20,
-    minHeight: 100,
-    justifyContent: "center",
-    alignItems: "center",
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.05,
-    shadowRadius: 4,
-    elevation: 2,
+  },
+  sectionLabel: {
+    fontSize: 11,
+    fontWeight: '500',
+    color: T.text3,
+    textTransform: 'uppercase',
+    letterSpacing: 0.06 * 11,
+    marginBottom: 10,
+  },
+  actionGrid: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    marginBottom: 20,
+  },
+  transactionContainer: {
+    backgroundColor: T.bg,
+    borderRadius: 14,
+    borderWidth: 0.5,
+    borderColor: T.border,
+    overflow: 'hidden',
+    marginBottom: 20,
+  },
+  emptyBox: {
+    paddingVertical: 20,
+    alignItems: 'center',
+    marginBottom: 16,
   },
   emptyText: {
-    color: colors.textSecondary,
-    fontSize: 14,
+    fontSize: 13,
+    color: T.text3,
   },
 });
+
+export default AgentDashboard;

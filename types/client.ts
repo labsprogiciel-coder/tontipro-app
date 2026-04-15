@@ -1,3 +1,5 @@
+export type CollectionFrequency = "daily" | "weekly" | "biweekly" | "monthly";
+
 export interface Client {
   id: string;
   name: string;
@@ -7,6 +9,12 @@ export interface Client {
   lastDeposit?: string;
   status: "active" | "inactive";
   address?: string;
+  email?: string;
+  groupName?: string;
+  commitmentAmount?: number;
+  collectionFrequency?: CollectionFrequency;
+  collectionDays?: number[];
+  savingsGoal?: number;
   idNumber?: string;
   idType?: "cni" | "passport" | "permis" | "autre";
   kycVerified?: boolean;

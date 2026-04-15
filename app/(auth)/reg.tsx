@@ -14,6 +14,7 @@ import {
 import { SafeAreaView } from "react-native-safe-area-context";
 import { ChevronLeft, Mail, ShieldCheck, Star, User } from "lucide-react-native";
 import { useAuthStore } from "@/stores/auth-store";
+import { Numpad } from "@/app/components/ui/numpad";
 
 // ── Design tokens (from HTML :root) ────────────────────────────
 const T = {
@@ -180,14 +181,6 @@ function PhoneScreen({
         <View style={styles.dividerLine} />
         <Text style={styles.dividerText}>ou continuer avec</Text>
         <View style={styles.dividerLine} />
-      </View>
-
-      <View style={styles.emailAlt}>
-        <Mail size={16} color={T.textTertiary} />
-        <Text style={styles.emailAltText}>Adresse e-mail</Text>
-        <View style={styles.badgeOpt}>
-          <Text style={styles.badgeOptText}>Optionnel</Text>
-        </View>
       </View>
 
       <View style={styles.spacer} />
@@ -380,21 +373,6 @@ function ProfileScreen({
 }
 
 // ── SCREEN 5: PIN ───────────────────────────────────────────────
-const NUMPAD = [
-  { label: "1", sub: "" },
-  { label: "2", sub: "ABC" },
-  { label: "3", sub: "DEF" },
-  { label: "4", sub: "GHI" },
-  { label: "5", sub: "JKL" },
-  { label: "6", sub: "MNO" },
-  { label: "7", sub: "PQRS" },
-  { label: "8", sub: "TUV" },
-  { label: "9", sub: "WXYZ" },
-  { label: "", sub: "" }, // empty
-  { label: "0", sub: "" },
-  { label: "⌫", sub: "" }, // delete
-];
-
 function PinScreen({
   pin,
   setPin,
@@ -410,14 +388,6 @@ function PinScreen({
   isConfirming: boolean;
   error: string;
 }) {
-  const handleKey = (key: string) => {
-    if (key === "⌫") {
-      setPin(pin.slice(0, -1));
-    } else if (key && pin.length < 4) {
-      setPin(pin + key);
-    }
-  };
-
   return (
     <View style={[styles.screenInner, styles.screenPinInner]}>
       <View style={styles.pinTopRow}>
@@ -444,22 +414,12 @@ function PinScreen({
       <Text style={styles.pinHint}>Entrez 4 chiffres</Text>
       {error ? <Text style={[styles.errorText, { textAlign: "center" }]}>{error}</Text> : null}
 
-      <View style={styles.numpad}>
-        {NUMPAD.map(({ label, sub }, i) => {
-          if (!label) return <View key={i} style={styles.numBtnEmpty} />;
-          const isDelete = label === "⌫";
-          return (
-            <Pressable
-              key={i}
-              onPress={() => handleKey(label)}
-              style={({ pressed }) => [styles.numBtn, pressed && styles.numBtnPressed]}
-            >
-              <Text style={isDelete ? styles.numDelete : styles.numBig}>{label}</Text>
-              {sub ? <Text style={styles.numSub}>{sub}</Text> : null}
-            </Pressable>
-          );
-        })}
-      </View>
+      <Numpad
+        onPress={(digit) => { if (pin.length < 4) setPin(pin + digit); }}
+        onDelete={() => setPin(pin.slice(0, -1))}
+        showLetters
+        accentColor={T.orange}
+      />
     </View>
   );
 }
@@ -984,34 +944,6 @@ const styles = StyleSheet.create({
   },
   pinDotFilled: { backgroundColor: T.orange, borderColor: T.orange },
   pinHint: { fontSize: 11, color: T.textTertiary, marginBottom: 28, textAlign: "center" },
-  numpad: {
-    flexDirection: "row",
-    flexWrap: "wrap",
-    width: 240,
-    gap: 10,
-  },
-  numBtn: {
-    width: 70,
-    height: 58,
-    borderRadius: 14,
-    backgroundColor: T.bgSecondary,
-    borderWidth: 0.5,
-    borderColor: T.border,
-    justifyContent: "center",
-    alignItems: "center",
-    gap: 1,
-  },
-  numBtnEmpty: {
-    width: 70,
-    height: 58,
-    backgroundColor: "transparent",
-    borderColor: "transparent",
-  },
-  numBtnPressed: { backgroundColor: T.orangeLight, borderColor: T.orange },
-  numBig: { fontSize: 20, fontWeight: "500", color: T.textPrimary },
-  numSub: { fontSize: 8, color: T.textTertiary, letterSpacing: 0.8 },
-  numDelete: { fontSize: 18, color: T.textSecondary },
-
   // ── Success screen ──
   screenSuccess: {
     flex: 1,

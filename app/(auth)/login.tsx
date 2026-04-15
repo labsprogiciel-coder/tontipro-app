@@ -3,6 +3,7 @@ import { useState } from "react";
 import { Pressable, StyleSheet, Text, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useAuthStore } from "@/stores/auth-store";
+import { Numpad } from "@/app/components/ui/numpad";
 
 const T = {
   orange: "#D85A30",
@@ -17,41 +18,24 @@ const T = {
   borderStrong: "rgba(0,0,0,0.2)",
 };
 
-const NUMPAD = [
-  { label: "1", sub: "" },
-  { label: "2", sub: "ABC" },
-  { label: "3", sub: "DEF" },
-  { label: "4", sub: "GHI" },
-  { label: "5", sub: "JKL" },
-  { label: "6", sub: "MNO" },
-  { label: "7", sub: "PQRS" },
-  { label: "8", sub: "TUV" },
-  { label: "9", sub: "WXYZ" },
-  { label: "", sub: "" },
-  { label: "0", sub: "" },
-  { label: "⌫", sub: "" },
-];
 
 export default function LoginScreen() {
   const router = useRouter();
-  const { verifyPin, user, registeredPhone } = useAuthStore();
+  const { verifyPin, user, registeredPhone, mockLogin } = useAuthStore();
 
   const [pin, setPin] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState("");
 
-  const handleKey = async (key: string) => {
+  const handleDelete = () => {
+    setPin((p) => p.slice(0, -1));
+    if (error) setError("");
+  };
+
+  const handleDigit = async (digit: string) => {
     if (isLoading) return;
-
-    if (key === "⌫") {
-      setPin((p) => p.slice(0, -1));
-      if (error) setError("");
-      return;
-    }
-
-    const next = pin.length < 4 ? pin + key : pin;
+    const next = pin.length < 4 ? pin + digit : pin;
     setPin(next);
-
     if (next.length === 4) {
       setIsLoading(true);
       setError("");
@@ -60,10 +44,7 @@ export default function LoginScreen() {
         router.replace("/dashboard");
       } catch (e: any) {
         setError(e.message ?? "PIN incorrect");
-        setTimeout(() => {
-          setPin("");
-          setError("");
-        }, 800);
+        setTimeout(() => { setPin(""); setError(""); }, 800);
       } finally {
         setIsLoading(false);
       }
@@ -105,32 +86,26 @@ export default function LoginScreen() {
           </Text>
         )}
 
-        {/* Numpad */}
-        <View style={styles.numpad}>
-          {NUMPAD.map(({ label, sub }, i) => {
-            if (!label) return <View key={i} style={styles.numBtnEmpty} />;
-            return (
-              <Pressable
-                key={i}
-                onPress={() => handleKey(label)}
-                style={({ pressed }) => [
-                  styles.numBtn,
-                  pressed && styles.numBtnPressed,
-                ]}
-              >
-                <Text style={label === "⌫" ? styles.numDelete : styles.numBig}>
-                  {label}
-                </Text>
-                {sub ? <Text style={styles.numSub}>{sub}</Text> : null}
-              </Pressable>
-            );
-          })}
-        </View>
+        <Numpad
+          onPress={handleDigit}
+          onDelete={handleDelete}
+          showLetters
+          accentColor={T.orange}
+        />
 
         {/* Fallback: new account */}
         <Pressable onPress={() => router.push("/(auth)/reg")} style={styles.newAccountLink}>
           <Text style={styles.newAccountText}>Nouveau sur cet appareil ? S'inscrire</Text>
         </Pressable>
+
+        {__DEV__ && (
+          <Pressable
+            onPress={() => { mockLogin(); router.replace("/dashboard"); }}
+            style={styles.devLoginButton}
+          >
+            <Text style={styles.devLoginText}>DEV: Skip Login</Text>
+          </Pressable>
+        )}
       </View>
     </SafeAreaView>
   );
@@ -163,20 +138,11 @@ const styles = StyleSheet.create({
   pinHint: { fontSize: 12, color: T.textTertiary, marginBottom: 32, textAlign: "center" },
   errorText: { fontSize: 12, color: T.orangeDark, marginBottom: 32, textAlign: "center" },
 
-  // Numpad
-  numpad: { flexDirection: "row", flexWrap: "wrap", width: 240, gap: 10 },
-  numBtn: {
-    width: 70, height: 58, borderRadius: 14,
-    backgroundColor: T.bgSecondary, borderWidth: 0.5, borderColor: T.border,
-    justifyContent: "center", alignItems: "center", gap: 1,
-  },
-  numBtnEmpty: { width: 70, height: 58 },
-  numBtnPressed: { backgroundColor: T.orangeLight, borderColor: T.orange },
-  numBig: { fontSize: 20, fontWeight: "500", color: T.textPrimary },
-  numSub: { fontSize: 8, color: T.textTertiary, letterSpacing: 0.8 },
-  numDelete: { fontSize: 18, color: T.textSecondary },
-
   // New account
   newAccountLink: { marginTop: 36 },
   newAccountText: { fontSize: 12, color: T.textTertiary },
+
+  // Dev mode
+  devLoginButton: { marginTop: 24, paddingVertical: 8, paddingHorizontal: 16, borderRadius: 8, backgroundColor: "#f0e6ff" },
+  devLoginText: { fontSize: 12, color: "#7c3aed", fontWeight: "600" },
 });
