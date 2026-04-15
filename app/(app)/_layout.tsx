@@ -58,6 +58,7 @@ export default function AppLayout() {
       <Tabs.Screen name="transactions/[id]" />
       <Tabs.Screen name="reports" />
       <Tabs.Screen name="settings" />
+      <Tabs.Screen name="profile-edit" />
       <Tabs.Screen name="agents" />
       <Tabs.Screen name="agents/[id]" />
       <Tabs.Screen name="agents/add" />

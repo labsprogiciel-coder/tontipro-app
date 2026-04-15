@@ -188,7 +188,7 @@ const AgentDashboard: React.FC = () => {
             <View style={styles.topUtilityRow}>
               <OfflineIcon isOffline={isOffline} />
               <NotificationBell hasNotifications={pendingCount > 0} />
-              <HeaderAvatar initials={getInitials(user?.name ?? 'AG')} />
+              <HeaderAvatar initials={getInitials(user?.name ?? 'AG')} onPress={() => router.push('/(app)/settings')} />
             </View>
           </View>
 

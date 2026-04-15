@@ -23,6 +23,7 @@ interface AuthState {
   verifyOtp: (phone: string, token: string) => Promise<void>;
   verifyPin: (pin: string) => Promise<void>;
   savePin: (phone: string, pin: string) => Promise<void>;
+  updateUser: (fields: Partial<Pick<User, "name" | "email" | "phone">>) => Promise<void>;
   logout: () => Promise<void>;
   mockLogin: () => void;
 }
@@ -150,6 +151,20 @@ export const useAuthStore = create<AuthState>()(
           set({ isLoadingClients: false });
         } catch {
           set({ isLoadingClients: false });
+        }
+      },
+
+      // ✅ Update profile name / email / phone locally + Supabase
+      updateUser: async (fields) => {
+        const current = useAuthStore.getState().user;
+        if (!current) return;
+        const updated = { ...current, ...fields };
+        set({ user: updated });
+        if (!__DEV__) {
+          await supabase
+            .from("profiles")
+            .update({ name: updated.name, phone: updated.phone })
+            .eq("id", current.id);
         }
       },
 

@@ -120,13 +120,15 @@ const SettingsScreen = () => {
                 <View style={styles.section}>
                     <View style={styles.profileCard}>
                         <View style={styles.avatar}>
-                            <Text style={styles.avatarText}>SW</Text>
+                            <Text style={styles.avatarText}>
+                                {(user?.name ?? "AG").split(" ").slice(0, 2).map((w: string) => w[0]).join("").toUpperCase()}
+                            </Text>
                         </View>
                         <View style={styles.profileInfo}>
-                            <Text style={styles.profileName}>Serge Wilfried</Text>
-                            <Text style={styles.profileId}>Agent ID: #782901</Text>
+                            <Text style={styles.profileName}>{user?.name ?? "Agent"}</Text>
+                            <Text style={styles.profileId}>{user?.phone ?? user?.email ?? `ID: ${user?.id?.slice(0, 8)}`}</Text>
                         </View>
-                        <Pressable style={styles.editBtn}>
+                        <Pressable style={styles.editBtn} onPress={() => router.push("/(app)/profile-edit")}>
                             <Text style={styles.editBtnText}>Modifier</Text>
                         </Pressable>
                     </View>

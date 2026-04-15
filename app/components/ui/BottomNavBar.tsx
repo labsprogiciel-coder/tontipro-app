@@ -289,8 +289,6 @@ export default function BottomNavBar({
         ))}
       </View>
 
-      {/* Center FAB */}
-      <FAB onPress={onAddPress ?? (() => {})} />
 
       {/* Right group */}
       <View style={styles.tabGroup}>

@@ -1,9 +1,9 @@
-import { View, Text, StyleSheet } from 'react-native';
+import { View, Text, StyleSheet, Pressable } from 'react-native';
 
-const HeaderAvatar: React.FC<{ initials: string }> = ({ initials }) => (
-    <View style={styles.avatar}>
+const HeaderAvatar: React.FC<{ initials: string; onPress?: () => void }> = ({ initials, onPress }) => (
+    <Pressable onPress={onPress} style={({ pressed }) => [styles.avatar, pressed && styles.pressed]}>
         <Text style={styles.avatarText}>{initials}</Text>
-    </View>
+    </Pressable>
 );
 
 const styles = StyleSheet.create({
@@ -19,6 +19,9 @@ const styles = StyleSheet.create({
         color: '#ffffff',
         fontSize: 13,
         fontWeight: '500',
+    },
+    pressed: {
+        opacity: 0.7,
     },
 });
 
