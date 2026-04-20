@@ -11,7 +11,8 @@
       "Bash(npx expo *)",
       "Bash(eas --version)",
       "Bash(expo --version)",
-      "Bash(eas build *)"
+      "Bash(eas build *)",
+      "Bash(git remote *)"
     ]
   }
 }

@@ -9,7 +9,7 @@ node_modules/
 dist/
 web-build/
 expo-env.d.ts
-.apk
+*.apk
 # Environment variables
 .env
 .env.local
