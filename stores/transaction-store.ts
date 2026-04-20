@@ -44,6 +44,7 @@ interface TransactionStoreState {
     type: "deposit" | "withdrawal";
     notes?: string;
   }) => Promise<Transaction>;
+  importTransactions: (txList: Transaction[]) => void;
   getTransactionById: (id: string) => Transaction | undefined;
   getTransactionsByClientId: (clientId: string) => Transaction[];
   syncPendingTransactions: () => Promise<void>;
@@ -63,15 +64,25 @@ export const useTransactionStore = create<TransactionStoreState>()(
 
       loadDevMocks: async () => {
         if (!__DEV__) return;
+        if (get().transactions.length > 0) return;
         const { mockTransactions } = await import("@/__dev__/mocks/transactions");
         set({ transactions: mockTransactions, pendingTransactions: [] });
       },
 
+      importTransactions: (txList) => {
+        set((state) => {
+          const existingIds = new Set(
+            [...state.transactions, ...state.pendingTransactions].map((t) => t.id)
+          );
+          const newTxs = txList.filter((t) => !existingIds.has(t.id));
+          if (newTxs.length === 0) return state;
+          return {
+            transactions: [...newTxs, ...state.transactions].sort(sortByDateDesc),
+          };
+        });
+      },
+
       loadTransactionsFromSupabase: async () => {
-        if (__DEV__) {
-          await get().loadDevMocks();
-          return;
-        }
         set({ isLoading: true, error: null });
         try {
           const {
@@ -150,27 +161,35 @@ export const useTransactionStore = create<TransactionStoreState>()(
               data: { user },
             } = await supabase.auth.getUser();
 
-            if (!user) {
-              throw new Error("No authenticated user");
-            }
+            let synced = false;
 
-            const row = transactionToInsertRow(
-              { ...newTransaction, status: "completed" },
-              user.id
-            );
-
-            const { error: insertError } = await supabase.from("transactions").insert(row);
-
-            if (insertError) {
-              throw new Error(insertError.message);
+            if (user) {
+              const row = transactionToInsertRow(
+                { ...newTransaction, status: "completed" },
+                user.id
+              );
+              const { error: insertError } = await supabase.from("transactions").insert(row);
+              if (insertError) {
+                // Client not yet synced to Supabase (e.g. locally imported) — queue as pending
+                console.warn("Transaction sync deferred:", insertError.message);
+              } else {
+                synced = true;
+              }
             }
 
             await clientStore.updateClientBalance(transactionData.clientId, balanceChange);
 
-            set((state) => ({
-              transactions: [newTransaction, ...state.transactions],
-              isLoading: false,
-            }));
+            if (synced) {
+              set((state) => ({
+                transactions: [{ ...newTransaction, status: "completed" }, ...state.transactions],
+                isLoading: false,
+              }));
+            } else {
+              set((state) => ({
+                pendingTransactions: [newTransaction, ...state.pendingTransactions],
+                isLoading: false,
+              }));
+            }
           } else {
             await clientStore.updateClientBalance(transactionData.clientId, balanceChange);
 

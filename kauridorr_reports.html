@@ -1,0 +1,709 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>Kauridorr — Rapports</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --bg:#fff;--bg2:#f5f4f0;--bg3:#eeede8;
+  --bg-s:#eaf3de;--bg-w:#faeeda;--bg-d:#fcebeb;--bg-i:#e6f1fb;
+  --t1:#1a1a18;--t2:#5f5e5a;--t3:#888780;
+  --ts:#3b6d11;--tw:#854f0b;--td:#a32d2d;--ti:#185fa5;
+  --b:rgba(0,0,0,0.09);--b2:rgba(0,0,0,0.18);
+  --or:#D85A30;--or-dk:#993C1D;--or-lt:#FAE8E0;
+  --gr:#2a5c0f;--gr-lt:#eaf3de;--gr-mid:#3b6d11;
+  --pu:#534AB7;--pu-lt:#EEEDFE;--pu-dk:#3C3489;
+  --bl:#185fa5;--bl-lt:#e6f1fb;
+  --dark:#1a1a18;
+  --font:-apple-system,BlinkMacSystemFont,'Segoe UI',Helvetica,Arial,sans-serif;
+}
+@media(prefers-color-scheme:dark){
+  :root{
+    --bg:#1c1c1a;--bg2:#252523;--bg3:#2c2c2a;
+    --bg-s:#173404;--bg-w:#412402;--bg-d:#501313;--bg-i:#042c53;
+    --t1:#f0efe9;--t2:#b4b2a9;--t3:#888780;
+    --ts:#97c459;--tw:#ef9f27;--td:#f09595;--ti:#85b7eb;
+    --b:rgba(255,255,255,0.09);--b2:rgba(255,255,255,0.18);
+    --or-lt:#3a1a0c;--gr-lt:#173404;--bl-lt:#042c53;--pu-lt:#26215C;
+  }
+}
+body{
+  font-family:var(--font);background:#9a9992;
+  min-height:100vh;display:flex;justify-content:center;
+  align-items:flex-start;flex-wrap:wrap;gap:28px;padding:36px 20px 64px;
+}
+.col{display:flex;flex-direction:column;align-items:center;gap:10px}
+.col-label{font-size:10px;font-weight:500;letter-spacing:.07em;text-transform:uppercase;color:rgba(0,0,0,.35)}
+.phone{width:320px;background:var(--bg);border-radius:38px;border:7px solid var(--bg);box-shadow:0 0 0 1px rgba(0,0,0,.1),0 22px 52px rgba(0,0,0,.22);overflow:hidden}
+.sb{display:flex;justify-content:space-between;align-items:center;padding:11px 18px 7px;background:var(--bg)}
+.sb-t{font-size:12px;font-weight:500;color:var(--t1)}
+.sb-i{display:flex;gap:4px;align-items:center}
+.sb-i svg{width:12px;height:12px;fill:var(--t1)}
+.screen{background:var(--bg3);min-height:640px;display:flex;flex-direction:column}
+
+/* ── top bar ── */
+.topbar{background:var(--bg);padding:12px 18px 14px;border-bottom:.5px solid var(--b)}
+.topbar-row{display:flex;align-items:center;justify-content:space-between}
+.page-title{font-size:18px;font-weight:600;color:var(--t1);letter-spacing:-.02em}
+.icon-btn{width:32px;height:32px;border-radius:50%;background:var(--bg2);border:.5px solid var(--b);display:flex;align-items:center;justify-content:center;cursor:pointer}
+.icon-btn svg{width:14px;height:14px;fill:none;stroke:var(--t2);stroke-width:1.5;stroke-linecap:round}
+
+/* ── period selector ── */
+.period-bar{display:flex;gap:4px;background:var(--bg2);padding:3px;border-radius:10px;margin:12px 18px 0}
+.popt{flex:1;text-align:center;padding:6px 4px;border-radius:7px;font-size:11px;font-weight:500;cursor:pointer;color:var(--t3)}
+.popt.active{background:var(--bg);color:var(--t1);border:.5px solid var(--b)}
+
+/* ── hero kpi strip ── */
+.kpi-hero{background:var(--dark);margin:0;padding:18px 18px 22px}
+.kpi-hero.agent-hero{background:var(--or)}
+.kpi-label{font-size:10px;color:rgba(255,255,255,.5);text-transform:uppercase;letter-spacing:.05em;margin-bottom:4px}
+.kpi-big{font-size:34px;font-weight:700;color:#fff;letter-spacing:-.03em;line-height:1}
+.kpi-big .cur{font-size:14px;font-weight:400;opacity:.55;margin-left:3px}
+.kpi-sub{font-size:12px;color:rgba(255,255,255,.5);margin-top:4px}
+.kpi-trend{display:inline-flex;align-items:center;gap:4px;font-size:11px;font-weight:500;margin-top:8px;padding:3px 9px;border-radius:20px}
+.kpi-trend.up{background:rgba(59,109,17,.3);color:#97c459}
+.kpi-trend.dn{background:rgba(162,45,45,.3);color:#f09595}
+.kpi-trend svg{width:11px;height:11px;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round}
+
+.kpi-grid{display:grid;grid-template-columns:1fr 1fr 1fr;gap:1px;background:rgba(255,255,255,.08);border-radius:12px;overflow:hidden;margin-top:14px}
+.kpi-cell{background:rgba(255,255,255,.05);padding:10px;text-align:center}
+.kc-val{font-size:15px;font-weight:600;color:#fff}
+.kc-lbl{font-size:10px;color:rgba(255,255,255,.4);margin-top:1px}
+
+/* ── section ── */
+.section{padding:14px 18px 0}
+.sec-row{display:flex;align-items:center;justify-content:space-between;margin-bottom:8px}
+.sec-title{font-size:11px;font-weight:500;color:var(--t3);text-transform:uppercase;letter-spacing:.05em}
+.sec-link{font-size:11px;color:var(--or);cursor:pointer}
+
+/* ── card ── */
+.card{background:var(--bg);border:.5px solid var(--b);border-radius:14px;overflow:hidden}
+.c-row{display:flex;align-items:center;justify-content:space-between;padding:10px 14px;border-bottom:.5px solid var(--b)}
+.c-row:last-child{border-bottom:none}
+.c-label{font-size:12px;color:var(--t2)}
+.c-val{font-size:13px;font-weight:500;color:var(--t1)}
+.c-val.or{color:var(--or)}
+.c-val.gr{color:var(--gr-mid)}
+
+/* ── bar chart ── */
+.bar-chart{display:flex;align-items:flex-end;gap:5px;height:80px;padding:0 14px 10px}
+.bar-wrap{display:flex;flex-direction:column;align-items:center;gap:4px;flex:1}
+.bar{width:100%;border-radius:4px 4px 0 0}
+.bar.dep{background:var(--or)}
+.bar.ret{background:var(--b2)}
+.bar.rev{background:var(--pu)}
+.bar-lbl{font-size:9px;color:var(--t3)}
+.chart-legend{display:flex;gap:12px;padding:0 14px 10px}
+.leg-item{display:flex;align-items:center;gap:4px;font-size:10px;color:var(--t2)}
+.leg-dot{width:8px;height:8px;border-radius:2px}
+
+/* ── line sparkline ── */
+.sparkline-wrap{padding:10px 14px 12px}
+.spark-label{font-size:11px;color:var(--t3);margin-bottom:8px}
+
+/* ── top clients / agents list ── */
+.rank-item{display:flex;align-items:center;gap:10px;padding:9px 14px;border-bottom:.5px solid var(--b)}
+.rank-item:last-child{border-bottom:none}
+.rank-num{width:20px;font-size:11px;font-weight:600;color:var(--t3);text-align:center;flex-shrink:0}
+.rank-av{width:32px;height:32px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:600;flex-shrink:0}
+.rank-name{font-size:13px;font-weight:500;color:var(--t1)}
+.rank-sub{font-size:10px;color:var(--t3);margin-top:1px}
+.rank-right{margin-left:auto;text-align:right}
+.rank-val{font-size:13px;font-weight:600;color:var(--t1)}
+.rank-pct{font-size:10px;color:var(--t3);margin-top:1px}
+
+/* ── progress bar ── */
+.prog-track{height:4px;background:var(--bg2);border-radius:2px;overflow:hidden;margin-top:5px}
+.prog-fill{height:100%;border-radius:2px}
+
+/* ── quick stat row ── */
+.qstat-row{display:grid;grid-template-columns:1fr 1fr;gap:8px;padding:14px 18px 0}
+.qstat{background:var(--bg);border:.5px solid var(--b);border-radius:12px;padding:11px 13px}
+.qstat-lbl{font-size:10px;color:var(--t3);margin-bottom:4px}
+.qstat-val{font-size:17px;font-weight:600;color:var(--t1)}
+.qstat-sub{font-size:10px;color:var(--t3);margin-top:2px}
+.qstat-val.or{color:var(--or)}
+.qstat-val.gr{color:var(--gr-mid)}
+
+/* ── pill tab ── */
+.pill-tabs{display:flex;gap:6px;padding:14px 18px 0;overflow-x:auto;scrollbar-width:none}
+.pill-tabs::-webkit-scrollbar{display:none}
+.ptab{padding:5px 12px;border-radius:20px;white-space:nowrap;font-size:11px;font-weight:500;cursor:pointer;border:.5px solid var(--b2);color:var(--t2);background:var(--bg2)}
+.ptab.active-or{background:var(--or);color:#fff;border-color:var(--or)}
+.ptab.active-dk{background:var(--t1);color:var(--bg);border-color:var(--t1)}
+
+/* ── export btn ── */
+.export-btn{margin:16px 18px 0;display:flex;align-items:center;justify-content:center;gap:7px;background:var(--bg);border:.5px solid var(--b2);border-radius:12px;padding:12px;font-size:13px;font-weight:500;color:var(--t1);cursor:pointer}
+.export-btn svg{width:14px;height:14px;fill:none;stroke:var(--t2);stroke-width:1.5;stroke-linecap:round}
+
+/* ── inline donut ── */
+.donut-row{display:flex;align-items:center;gap:14px;padding:12px 14px}
+.donut-wrap{flex-shrink:0}
+.donut-legend{display:flex;flex-direction:column;gap:6px;flex:1}
+.dl-item{display:flex;align-items:center;justify-content:space-between}
+.dl-label{display:flex;align-items:center;gap:5px;font-size:12px;color:var(--t2)}
+.dl-dot{width:8px;height:8px;border-radius:50%;flex-shrink:0}
+.dl-val{font-size:12px;font-weight:500;color:var(--t1)}
+
+/* ── activity heatmap (weekly) ── */
+.heatmap{display:grid;grid-template-columns:repeat(7,1fr);gap:4px;padding:0 14px 14px}
+.hm-day{font-size:9px;color:var(--t3);text-align:center;margin-bottom:4px}
+.hm-cell{height:20px;border-radius:4px}
+
+/* ── bottom nav ── */
+.bottom-nav{background:var(--bg);border-top:.5px solid var(--b);display:flex;padding:10px 0 14px;margin-top:auto}
+.nav-tab{flex:1;display:flex;flex-direction:column;align-items:center;gap:3px;cursor:pointer}
+.nav-tab svg{width:20px;height:20px;fill:var(--t3)}
+.nav-tab.active svg{fill:var(--or)}
+.nav-tab span{font-size:10px;color:var(--t3)}
+.nav-tab.active span{color:var(--or)}
+</style>
+</head>
+<body>
+
+<!-- ══════════════════════════════════════
+     AGENT — Main report screen
+══════════════════════════════════════ -->
+<div class="col">
+  <div class="col-label">Agent — Rapport</div>
+  <div class="phone">
+    <div class="sb"><span class="sb-t">10:00</span><div class="sb-i"><svg viewBox="0 0 16 16"><path d="M1 10h2v4H1zm4-3h2v7H5zm4-3h2v10H9zm4-4h2v14h-2z"/></svg><svg viewBox="0 0 16 16"><rect x="1" y="4" width="12" height="8" rx="1.5"/><path d="M14 7v2" stroke="var(--t1)" stroke-width="1.5" stroke-linecap="round" fill="none"/></svg></div></div>
+    <div class="screen">
+
+      <div class="topbar">
+        <div class="topbar-row">
+          <div class="page-title">Mes rapports</div>
+          <div class="icon-btn"><svg viewBox="0 0 16 16"><path d="M2 13h12M8 10V2M5 7l3 4 3-4"/></svg></div>
+        </div>
+        <div class="period-bar">
+          <div class="popt">7J</div>
+          <div class="popt active">Mois</div>
+          <div class="popt">Trim.</div>
+          <div class="popt">An</div>
+        </div>
+      </div>
+
+      <!-- Hero: agent's own performance -->
+      <div class="kpi-hero agent-hero">
+        <div class="kpi-label">Collecte du mois</div>
+        <div class="kpi-big">312 000<span class="cur">FCFA</span></div>
+        <div class="kpi-sub">Avril 2025 · 24 clients actifs</div>
+        <div class="kpi-trend up">
+          <svg viewBox="0 0 12 12"><path d="M2 9l4-5 2 2 4-6"/></svg>
+          ↑ 18% vs mars
+        </div>
+        <div class="kpi-grid">
+          <div class="kpi-cell"><div class="kc-val">186</div><div class="kc-lbl">Transactions</div></div>
+          <div class="kpi-cell"><div class="kc-val">24</div><div class="kc-lbl">Clients</div></div>
+          <div class="kpi-cell"><div class="kc-val">3 120</div><div class="kc-lbl">Commission</div></div>
+        </div>
+      </div>
+
+      <!-- Quick stats -->
+      <div class="qstat-row">
+        <div class="qstat">
+          <div class="qstat-lbl">Dépôts ce mois</div>
+          <div class="qstat-val gr">+256 000</div>
+          <div class="qstat-sub">FCFA · 142 opér.</div>
+        </div>
+        <div class="qstat">
+          <div class="qstat-lbl">Retraits ce mois</div>
+          <div class="qstat-val or">−56 000</div>
+          <div class="qstat-sub">FCFA · 44 opér.</div>
+        </div>
+      </div>
+
+      <!-- Bar chart -->
+      <div class="section" style="margin-top:14px">
+        <div class="sec-row">
+          <div class="sec-title">Activité hebdomadaire</div>
+        </div>
+        <div class="card">
+          <div class="chart-legend">
+            <div class="leg-item"><div class="leg-dot" style="background:var(--or)"></div>Dépôts</div>
+            <div class="leg-item"><div class="leg-dot" style="background:var(--b2)"></div>Retraits</div>
+          </div>
+          <div class="bar-chart">
+            <div class="bar-wrap"><div class="bar dep" style="height:52px"></div><div class="bar ret" style="height:22px"></div><div class="bar-lbl">S1</div></div>
+            <div class="bar-wrap"><div class="bar dep" style="height:64px"></div><div class="bar ret" style="height:18px"></div><div class="bar-lbl">S2</div></div>
+            <div class="bar-wrap"><div class="bar dep" style="height:40px"></div><div class="bar ret" style="height:30px"></div><div class="bar-lbl">S3</div></div>
+            <div class="bar-wrap"><div class="bar dep" style="height:72px"></div><div class="bar ret" style="height:14px"></div><div class="bar-lbl">S4</div></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Top clients for this agent -->
+      <div class="section">
+        <div class="sec-row">
+          <div class="sec-title">Mes meilleurs clients</div>
+          <div class="sec-link">Voir tous →</div>
+        </div>
+        <div class="card">
+          <div class="rank-item">
+            <div class="rank-num">1</div>
+            <div class="rank-av" style="background:var(--bg-i);color:var(--ti)">MD</div>
+            <div><div class="rank-name">Moussa Diallo</div><div class="rank-sub">28 transactions</div></div>
+            <div class="rank-right"><div class="rank-val">210 000 F</div><div class="rank-pct">Objectif 90%</div></div>
+          </div>
+          <div class="rank-item">
+            <div class="rank-num">2</div>
+            <div class="rank-av" style="background:var(--bg-s);color:var(--ts)">AK</div>
+            <div><div class="rank-name">Awa Konaté</div><div class="rank-sub">24 transactions</div></div>
+            <div class="rank-right"><div class="rank-val">100 000 F</div><div class="rank-pct">Objectif 68%</div></div>
+          </div>
+          <div class="rank-item">
+            <div class="rank-num">3</div>
+            <div class="rank-av" style="background:var(--bg-w);color:var(--tw)">FS</div>
+            <div><div class="rank-name">Fatoumata S.</div><div class="rank-sub">19 transactions</div></div>
+            <div class="rank-right"><div class="rank-val">50 000 F</div><div class="rank-pct">Objectif 40%</div></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Personal perf: commission breakdown -->
+      <div class="section">
+        <div class="sec-row">
+          <div class="sec-title">Ma commission</div>
+        </div>
+        <div class="card">
+          <div class="c-row"><span class="c-label">Dépôts (×142 opér.)</span><span class="c-val gr">+2 560 F</span></div>
+          <div class="c-row"><span class="c-label">Retraits (×44 opér.)</span><span class="c-val gr">+560 F</span></div>
+          <div class="c-row"><span class="c-label" style="font-weight:500;color:var(--t1)">Total ce mois</span><span class="c-val or" style="font-size:15px">3 120 F</span></div>
+        </div>
+      </div>
+
+      <div class="export-btn">
+        <svg viewBox="0 0 16 16"><path d="M2 13h12M8 10V2M5 7l3 4 3-4"/></svg>
+        Exporter mon rapport (CSV)
+      </div>
+
+      <div style="padding-bottom:16px"></div>
+
+      <div class="bottom-nav">
+        <div class="nav-tab"><svg viewBox="0 0 16 16"><rect x="1" y="1" width="6" height="6" rx="1"/><rect x="9" y="1" width="6" height="6" rx="1"/><rect x="1" y="9" width="6" height="6" rx="1"/><rect x="9" y="9" width="6" height="6" rx="1"/></svg><span>Accueil</span></div>
+        <div class="nav-tab"><svg viewBox="0 0 16 16"><path d="M8 8a3 3 0 100-6 3 3 0 000 6zm-5 5a5 5 0 0110 0H3z"/></svg><span>Clients</span></div>
+        <div style="flex:1"></div>
+        <div class="nav-tab active"><svg viewBox="0 0 16 16"><path d="M2 12V4l4 3 2-4 2 4 4-3v8H2z"/></svg><span>Rapports</span></div>
+        <div class="nav-tab"><svg viewBox="0 0 16 16"><path d="M8 1a3.5 3.5 0 110 7A3.5 3.5 0 018 1zm0 9c-3.3 0-6 1.3-6 3v1h12v-1c0-1.7-2.7-3-6-3z"/></svg><span>Profil</span></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════
+     AGENT — Filtered: Retraits
+══════════════════════════════════════ -->
+<div class="col">
+  <div class="col-label">Agent — Rapport filtré</div>
+  <div class="phone">
+    <div class="sb"><span class="sb-t">10:04</span><div class="sb-i"><svg viewBox="0 0 16 16"><path d="M1 10h2v4H1zm4-3h2v7H5zm4-3h2v10H9zm4-4h2v14h-2z"/></svg><svg viewBox="0 0 16 16"><rect x="1" y="4" width="12" height="8" rx="1.5"/><path d="M14 7v2" stroke="var(--t1)" stroke-width="1.5" stroke-linecap="round" fill="none"/></svg></div></div>
+    <div class="screen">
+
+      <div class="topbar">
+        <div class="topbar-row">
+          <div class="page-title">Mes rapports</div>
+          <div class="icon-btn" style="background:var(--or-lt);border-color:rgba(216,90,48,.25)"><svg viewBox="0 0 16 16"><path d="M2 4h12M4 8h8M6 12h4" stroke="var(--or)" stroke-width="1.4" fill="none"/></svg></div>
+        </div>
+        <div class="period-bar">
+          <div class="popt">7J</div>
+          <div class="popt active">Mois</div>
+          <div class="popt">Trim.</div>
+          <div class="popt">An</div>
+        </div>
+      </div>
+
+      <div class="pill-tabs">
+        <div class="ptab">Tout</div>
+        <div class="ptab active-or">Dépôts</div>
+        <div class="ptab">Retraits</div>
+        <div class="ptab">Commission</div>
+        <div class="ptab">Clients</div>
+      </div>
+
+      <!-- Focused: deposits only -->
+      <div style="background:var(--or);padding:16px 18px 20px">
+        <div style="font-size:10px;color:rgba(255,255,255,.55);text-transform:uppercase;letter-spacing:.05em;margin-bottom:3px">Total dépôts — Avril 2025</div>
+        <div style="font-size:32px;font-weight:700;color:#fff;letter-spacing:-.03em">256 000 <span style="font-size:13px;font-weight:400;opacity:.55">FCFA</span></div>
+        <div style="font-size:11px;color:rgba(255,255,255,.5);margin-top:3px">142 opérations · moy. 1 803 F / opér.</div>
+        <div style="display:flex;gap:8px;margin-top:12px">
+          <div style="flex:1;background:rgba(255,255,255,.15);border-radius:10px;padding:9px;text-align:center">
+            <div style="font-size:14px;font-weight:600;color:#fff">28</div>
+            <div style="font-size:9px;color:rgba(255,255,255,.5);margin-top:1px">Clients déposants</div>
+          </div>
+          <div style="flex:1;background:rgba(255,255,255,.15);border-radius:10px;padding:9px;text-align:center">
+            <div style="font-size:14px;font-weight:600;color:#fff">5.1</div>
+            <div style="font-size:9px;color:rgba(255,255,255,.5);margin-top:1px">Dépôts / client</div>
+          </div>
+          <div style="flex:1;background:rgba(255,255,255,.15);border-radius:10px;padding:9px;text-align:center">
+            <div style="font-size:14px;font-weight:600;color:#fff">+18%</div>
+            <div style="font-size:9px;color:rgba(255,255,255,.5);margin-top:1px">vs mars</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Daily breakdown -->
+      <div class="section" style="margin-top:14px">
+        <div class="sec-row"><div class="sec-title">Par jour de la semaine</div></div>
+        <div class="card">
+          <div class="bar-chart" style="height:70px;padding:8px 14px 6px">
+            <div class="bar-wrap"><div class="bar dep" style="height:55px"></div><div class="bar-lbl">Lun</div></div>
+            <div class="bar-wrap"><div class="bar dep" style="height:48px"></div><div class="bar-lbl">Mar</div></div>
+            <div class="bar-wrap"><div class="bar dep" style="height:62px"></div><div class="bar-lbl">Mer</div></div>
+            <div class="bar-wrap"><div class="bar dep" style="height:44px"></div><div class="bar-lbl">Jeu</div></div>
+            <div class="bar-wrap"><div class="bar dep" style="height:58px"></div><div class="bar-lbl">Ven</div></div>
+            <div class="bar-wrap"><div class="bar dep" style="height:36px"></div><div class="bar-lbl">Sam</div></div>
+            <div class="bar-wrap"><div class="bar dep" style="height:4px;opacity:.3"></div><div class="bar-lbl">Dim</div></div>
+          </div>
+          <div style="padding:0 14px 10px;font-size:11px;color:var(--t3)">Pic d'activité : mercredi</div>
+        </div>
+      </div>
+
+      <!-- Deposits per client -->
+      <div class="section">
+        <div class="sec-row"><div class="sec-title">Répartition par client</div><div class="sec-link">Voir tous →</div></div>
+        <div class="card">
+          <div class="rank-item">
+            <div class="rank-num">1</div>
+            <div class="rank-av" style="background:var(--bg-i);color:var(--ti)">MD</div>
+            <div style="flex:1">
+              <div class="rank-name">Moussa Diallo</div>
+              <div class="prog-track"><div class="prog-fill" style="width:82%;background:var(--or)"></div></div>
+            </div>
+            <div class="rank-right"><div class="rank-val" style="font-size:12px">+84 000 F</div><div class="rank-pct">33%</div></div>
+          </div>
+          <div class="rank-item">
+            <div class="rank-num">2</div>
+            <div class="rank-av" style="background:var(--bg-s);color:var(--ts)">AK</div>
+            <div style="flex:1">
+              <div class="rank-name">Awa Konaté</div>
+              <div class="prog-track"><div class="prog-fill" style="width:55%;background:var(--or)"></div></div>
+            </div>
+            <div class="rank-right"><div class="rank-val" style="font-size:12px">+55 000 F</div><div class="rank-pct">21%</div></div>
+          </div>
+          <div class="rank-item">
+            <div class="rank-num">3</div>
+            <div class="rank-av" style="background:var(--bg-w);color:var(--tw)">IT</div>
+            <div style="flex:1">
+              <div class="rank-name">Ibrahim Traoré</div>
+              <div class="prog-track"><div class="prog-fill" style="width:38%;background:var(--or)"></div></div>
+            </div>
+            <div class="rank-right"><div class="rank-val" style="font-size:12px">+38 000 F</div><div class="rank-pct">15%</div></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="export-btn"><svg viewBox="0 0 16 16"><path d="M2 13h12M8 10V2M5 7l3 4 3-4"/></svg>Exporter</div>
+
+      <div style="padding-bottom:16px"></div>
+
+      <div class="bottom-nav">
+        <div class="nav-tab"><svg viewBox="0 0 16 16"><rect x="1" y="1" width="6" height="6" rx="1"/><rect x="9" y="1" width="6" height="6" rx="1"/><rect x="1" y="9" width="6" height="6" rx="1"/><rect x="9" y="9" width="6" height="6" rx="1"/></svg><span>Accueil</span></div>
+        <div class="nav-tab"><svg viewBox="0 0 16 16"><path d="M8 8a3 3 0 100-6 3 3 0 000 6zm-5 5a5 5 0 0110 0H3z"/></svg><span>Clients</span></div>
+        <div style="flex:1"></div>
+        <div class="nav-tab active"><svg viewBox="0 0 16 16"><path d="M2 12V4l4 3 2-4 2 4 4-3v8H2z"/></svg><span>Rapports</span></div>
+        <div class="nav-tab"><svg viewBox="0 0 16 16"><path d="M8 1a3.5 3.5 0 110 7A3.5 3.5 0 018 1zm0 9c-3.3 0-6 1.3-6 3v1h12v-1c0-1.7-2.7-3-6-3z"/></svg><span>Profil</span></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════
+     ADMIN — Main report screen
+══════════════════════════════════════ -->
+<div class="col">
+  <div class="col-label">Admin — Rapport global</div>
+  <div class="phone">
+    <div class="sb"><span class="sb-t">10:00</span><div class="sb-i"><svg viewBox="0 0 16 16"><path d="M1 10h2v4H1zm4-3h2v7H5zm4-3h2v10H9zm4-4h2v14h-2z"/></svg><svg viewBox="0 0 16 16"><rect x="1" y="4" width="12" height="8" rx="1.5"/><path d="M14 7v2" stroke="var(--t1)" stroke-width="1.5" stroke-linecap="round" fill="none"/></svg></div></div>
+    <div class="screen">
+
+      <div class="topbar">
+        <div class="topbar-row">
+          <div class="page-title">Rapports</div>
+          <div style="display:flex;gap:6px">
+            <div class="icon-btn"><svg viewBox="0 0 16 16"><path d="M2 4h12M4 8h8M6 12h4" stroke="var(--t2)" stroke-width="1.4" fill="none"/></svg></div>
+            <div class="icon-btn"><svg viewBox="0 0 16 16"><path d="M2 13h12M8 10V2M5 7l3 4 3-4"/></svg></div>
+          </div>
+        </div>
+        <div class="period-bar">
+          <div class="popt">7J</div>
+          <div class="popt active">Mois</div>
+          <div class="popt">Trim.</div>
+          <div class="popt">An</div>
+        </div>
+      </div>
+
+      <!-- Admin hero: organisation-wide totals -->
+      <div class="kpi-hero">
+        <div class="kpi-label">Épargne totale gérée</div>
+        <div class="kpi-big">4 820 000<span class="cur">FCFA</span></div>
+        <div class="kpi-sub">Avril 2025 · 142 clients · 6 agents</div>
+        <div class="kpi-trend up"><svg viewBox="0 0 12 12"><path d="M2 9l4-5 2 2 4-6"/></svg>↑ 12% vs mars</div>
+        <div class="kpi-grid">
+          <div class="kpi-cell"><div class="kc-val">318</div><div class="kc-lbl">Transactions</div></div>
+          <div class="kpi-cell"><div class="kc-val">1,2M</div><div class="kc-lbl">Collectés</div></div>
+          <div class="kpi-cell"><div class="kc-val">12 400</div><div class="kc-lbl">Commissions</div></div>
+        </div>
+      </div>
+
+      <!-- global quick stats -->
+      <div class="qstat-row">
+        <div class="qstat">
+          <div class="qstat-lbl">Dépôts totaux</div>
+          <div class="qstat-val gr">+980 000</div>
+          <div class="qstat-sub">FCFA · 240 opér.</div>
+        </div>
+        <div class="qstat">
+          <div class="qstat-lbl">Retraits totaux</div>
+          <div class="qstat-val or">−220 000</div>
+          <div class="qstat-sub">FCFA · 78 opér.</div>
+        </div>
+      </div>
+
+      <!-- pill tabs to switch view -->
+      <div class="pill-tabs" style="margin-top:4px">
+        <div class="ptab active-dk">Vue globale</div>
+        <div class="ptab">Par agent</div>
+        <div class="ptab">Par groupe</div>
+        <div class="ptab">Commissions</div>
+      </div>
+
+      <!-- Revenue vs collecte bar chart -->
+      <div class="section" style="margin-top:12px">
+        <div class="sec-row"><div class="sec-title">Collecte mensuelle</div><div class="sec-link">Détail →</div></div>
+        <div class="card">
+          <div class="chart-legend" style="padding-top:10px">
+            <div class="leg-item"><div class="leg-dot" style="background:var(--or)"></div>Dépôts</div>
+            <div class="leg-item"><div class="leg-dot" style="background:var(--b2)"></div>Retraits</div>
+            <div class="leg-item"><div class="leg-dot" style="background:var(--pu)"></div>Commissions</div>
+          </div>
+          <div class="bar-chart">
+            <div class="bar-wrap"><div class="bar dep" style="height:48px"></div><div class="bar ret" style="height:18px"></div><div class="bar rev" style="height:5px;margin-top:2px"></div><div class="bar-lbl">Jan</div></div>
+            <div class="bar-wrap"><div class="bar dep" style="height:56px"></div><div class="bar ret" style="height:22px"></div><div class="bar rev" style="height:6px;margin-top:2px"></div><div class="bar-lbl">Fév</div></div>
+            <div class="bar-wrap"><div class="bar dep" style="height:42px"></div><div class="bar ret" style="height:20px"></div><div class="bar rev" style="height:5px;margin-top:2px"></div><div class="bar-lbl">Mar</div></div>
+            <div class="bar-wrap"><div class="bar dep" style="height:72px"></div><div class="bar ret" style="height:30px"></div><div class="bar rev" style="height:8px;margin-top:2px"></div><div class="bar-lbl">Avr</div></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Top agents leaderboard -->
+      <div class="section">
+        <div class="sec-row"><div class="sec-title">Performance agents</div><div class="sec-link">Voir tous →</div></div>
+        <div class="card">
+          <div class="rank-item">
+            <div class="rank-num" style="color:#D85A30;font-size:12px">1</div>
+            <div class="rank-av" style="background:var(--or-lt);color:var(--or-dk)">KD</div>
+            <div>
+              <div class="rank-name">Konaté Djibril</div>
+              <div class="rank-sub">38 clients · 186 opér.</div>
+            </div>
+            <div class="rank-right">
+              <div class="rank-val">312 000 F</div>
+              <div style="display:inline-flex;align-items:center;gap:3px;font-size:10px;color:var(--ts)">↑ 18%</div>
+            </div>
+          </div>
+          <div class="rank-item">
+            <div class="rank-num">2</div>
+            <div class="rank-av" style="background:var(--bg-i);color:var(--ti)">AS</div>
+            <div>
+              <div class="rank-name">Agathe Sawadogo</div>
+              <div class="rank-sub">24 clients · 140 opér.</div>
+            </div>
+            <div class="rank-right">
+              <div class="rank-val">248 000 F</div>
+              <div style="font-size:10px;color:var(--ts)">↑ 9%</div>
+            </div>
+          </div>
+          <div class="rank-item">
+            <div class="rank-num">3</div>
+            <div class="rank-av" style="background:var(--bg-s);color:var(--ts)">RO</div>
+            <div>
+              <div class="rank-name">Rasmané O.</div>
+              <div class="rank-sub">19 clients · 98 opér.</div>
+            </div>
+            <div class="rank-right">
+              <div class="rank-val">186 000 F</div>
+              <div style="font-size:10px;color:var(--td)">↓ 3%</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Commission summary -->
+      <div class="section">
+        <div class="sec-row"><div class="sec-title">Commissions du mois</div></div>
+        <div class="card">
+          <div class="c-row"><span class="c-label">Dépôts (1% × 240)</span><span class="c-val gr">9 800 F</span></div>
+          <div class="c-row"><span class="c-label">Retraits (1% × 78)</span><span class="c-val gr">2 600 F</span></div>
+          <div class="c-row"><span class="c-label" style="font-weight:500;color:var(--t1)">Total organisation</span><span class="c-val or" style="font-size:15px">12 400 F</span></div>
+        </div>
+      </div>
+
+      <div class="export-btn"><svg viewBox="0 0 16 16"><path d="M2 13h12M8 10V2M5 7l3 4 3-4"/></svg>Exporter rapport complet</div>
+
+      <div style="padding-bottom:16px"></div>
+
+      <div class="bottom-nav">
+        <div class="nav-tab"><svg viewBox="0 0 16 16"><rect x="1" y="1" width="6" height="6" rx="1"/><rect x="9" y="1" width="6" height="6" rx="1"/><rect x="1" y="9" width="6" height="6" rx="1"/><rect x="9" y="9" width="6" height="6" rx="1"/></svg><span>Accueil</span></div>
+        <div class="nav-tab"><svg viewBox="0 0 16 16"><path d="M8 8a3 3 0 100-6 3 3 0 000 6zm-5 5a5 5 0 0110 0H3z"/></svg><span>Clients</span></div>
+        <div style="flex:1"></div>
+        <div class="nav-tab active"><svg viewBox="0 0 16 16"><path d="M2 12V4l4 3 2-4 2 4 4-3v8H2z"/></svg><span>Rapports</span></div>
+        <div class="nav-tab"><svg viewBox="0 0 16 16"><path d="M8 1a3.5 3.5 0 110 7A3.5 3.5 0 018 1zm0 9c-3.3 0-6 1.3-6 3v1h12v-1c0-1.7-2.7-3-6-3z"/></svg><span>Profil</span></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════
+     ADMIN — Par agent (drill-down)
+══════════════════════════════════════ -->
+<div class="col">
+  <div class="col-label">Admin — Rapport par agent</div>
+  <div class="phone">
+    <div class="sb"><span class="sb-t">10:06</span><div class="sb-i"><svg viewBox="0 0 16 16"><path d="M1 10h2v4H1zm4-3h2v7H5zm4-3h2v10H9zm4-4h2v14h-2z"/></svg><svg viewBox="0 0 16 16"><rect x="1" y="4" width="12" height="8" rx="1.5"/><path d="M14 7v2" stroke="var(--t1)" stroke-width="1.5" stroke-linecap="round" fill="none"/></svg></div></div>
+    <div class="screen">
+
+      <div class="topbar">
+        <div class="topbar-row">
+          <div class="page-title">Rapports</div>
+          <div style="display:flex;gap:6px">
+            <div class="icon-btn"><svg viewBox="0 0 16 16"><path d="M2 4h12M4 8h8M6 12h4" stroke="var(--t2)" stroke-width="1.4" fill="none"/></svg></div>
+            <div class="icon-btn"><svg viewBox="0 0 16 16"><path d="M2 13h12M8 10V2M5 7l3 4 3-4"/></svg></div>
+          </div>
+        </div>
+        <div class="period-bar">
+          <div class="popt">7J</div>
+          <div class="popt active">Mois</div>
+          <div class="popt">Trim.</div>
+          <div class="popt">An</div>
+        </div>
+      </div>
+
+      <div class="pill-tabs" style="margin-top:0;padding-top:12px">
+        <div class="ptab">Vue globale</div>
+        <div class="ptab active-dk">Par agent</div>
+        <div class="ptab">Par groupe</div>
+        <div class="ptab">Commissions</div>
+      </div>
+
+      <!-- Agent comparison bars -->
+      <div class="section" style="margin-top:12px">
+        <div class="sec-row"><div class="sec-title">Collecte par agent — Avr.</div></div>
+        <div class="card">
+          <div style="padding:12px 14px;display:flex;flex-direction:column;gap:10px">
+            <!-- Agent 1 -->
+            <div>
+              <div style="display:flex;justify-content:space-between;margin-bottom:4px">
+                <div style="display:flex;align-items:center;gap:6px">
+                  <div style="width:22px;height:22px;border-radius:50%;background:var(--or-lt);color:var(--or-dk);display:flex;align-items:center;justify-content:center;font-size:9px;font-weight:600">KD</div>
+                  <span style="font-size:12px;font-weight:500;color:var(--t1)">Konaté D.</span>
+                </div>
+                <span style="font-size:12px;font-weight:600;color:var(--t1)">312 000 F</span>
+              </div>
+              <div class="prog-track" style="height:7px"><div class="prog-fill" style="width:100%;background:var(--or)"></div></div>
+            </div>
+            <!-- Agent 2 -->
+            <div>
+              <div style="display:flex;justify-content:space-between;margin-bottom:4px">
+                <div style="display:flex;align-items:center;gap:6px">
+                  <div style="width:22px;height:22px;border-radius:50%;background:var(--bg-i);color:var(--ti);display:flex;align-items:center;justify-content:center;font-size:9px;font-weight:600">AS</div>
+                  <span style="font-size:12px;font-weight:500;color:var(--t1)">Sawadogo A.</span>
+                </div>
+                <span style="font-size:12px;font-weight:600;color:var(--t1)">248 000 F</span>
+              </div>
+              <div class="prog-track" style="height:7px"><div class="prog-fill" style="width:80%;background:var(--bl)"></div></div>
+            </div>
+            <!-- Agent 3 -->
+            <div>
+              <div style="display:flex;justify-content:space-between;margin-bottom:4px">
+                <div style="display:flex;align-items:center;gap:6px">
+                  <div style="width:22px;height:22px;border-radius:50%;background:var(--bg-s);color:var(--ts);display:flex;align-items:center;justify-content:center;font-size:9px;font-weight:600">RO</div>
+                  <span style="font-size:12px;font-weight:500;color:var(--t1)">Ouédraogo R.</span>
+                </div>
+                <span style="font-size:12px;font-weight:600;color:var(--t1)">186 000 F</span>
+              </div>
+              <div class="prog-track" style="height:7px"><div class="prog-fill" style="width:60%;background:var(--gr-mid)"></div></div>
+            </div>
+            <!-- Agent 4 -->
+            <div>
+              <div style="display:flex;justify-content:space-between;margin-bottom:4px">
+                <div style="display:flex;align-items:center;gap:6px">
+                  <div style="width:22px;height:22px;border-radius:50%;background:var(--bg-w);color:var(--tw);display:flex;align-items:center;justify-content:center;font-size:9px;font-weight:600">FT</div>
+                  <span style="font-size:12px;font-weight:500;color:var(--t1)">Traoré F.</span>
+                </div>
+                <span style="font-size:12px;font-weight:600;color:var(--t1)">142 000 F</span>
+              </div>
+              <div class="prog-track" style="height:7px"><div class="prog-fill" style="width:46%;background:var(--or)"></div></div>
+            </div>
+            <!-- Agent 5 blocked -->
+            <div style="opacity:.45">
+              <div style="display:flex;justify-content:space-between;margin-bottom:4px">
+                <div style="display:flex;align-items:center;gap:6px">
+                  <div style="width:22px;height:22px;border-radius:50%;background:var(--bg-d);color:var(--td);display:flex;align-items:center;justify-content:center;font-size:9px;font-weight:600">MZ</div>
+                  <span style="font-size:12px;font-weight:500;color:var(--t1)">Zongo M.</span>
+                  <span style="font-size:9px;background:var(--bg-d);color:var(--td);padding:1px 5px;border-radius:4px">Bloqué</span>
+                </div>
+                <span style="font-size:12px;font-weight:600;color:var(--t3)">0 F</span>
+              </div>
+              <div class="prog-track" style="height:7px"><div class="prog-fill" style="width:0%;background:var(--t3)"></div></div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Agent detail table -->
+      <div class="section">
+        <div class="sec-row"><div class="sec-title">Détail par agent</div></div>
+        <div class="card">
+          <!-- header -->
+          <div style="display:grid;grid-template-columns:1fr auto auto auto;gap:4px;padding:7px 14px;background:var(--bg2);border-bottom:.5px solid var(--b)">
+            <span style="font-size:10px;color:var(--t3)">Agent</span>
+            <span style="font-size:10px;color:var(--t3);text-align:right;min-width:44px">Clients</span>
+            <span style="font-size:10px;color:var(--t3);text-align:right;min-width:50px">Opér.</span>
+            <span style="font-size:10px;color:var(--t3);text-align:right;min-width:58px">Comm.</span>
+          </div>
+          <div style="display:grid;grid-template-columns:1fr auto auto auto;gap:4px;padding:8px 14px;border-bottom:.5px solid var(--b)">
+            <span style="font-size:12px;font-weight:500;color:var(--t1)">Konaté D.</span>
+            <span style="font-size:12px;color:var(--t2);text-align:right;min-width:44px">38</span>
+            <span style="font-size:12px;color:var(--t2);text-align:right;min-width:50px">186</span>
+            <span style="font-size:12px;font-weight:500;color:var(--ts);text-align:right;min-width:58px">3 120 F</span>
+          </div>
+          <div style="display:grid;grid-template-columns:1fr auto auto auto;gap:4px;padding:8px 14px;border-bottom:.5px solid var(--b)">
+            <span style="font-size:12px;font-weight:500;color:var(--t1)">Sawadogo A.</span>
+            <span style="font-size:12px;color:var(--t2);text-align:right;min-width:44px">24</span>
+            <span style="font-size:12px;color:var(--t2);text-align:right;min-width:50px">140</span>
+            <span style="font-size:12px;font-weight:500;color:var(--ts);text-align:right;min-width:58px">2 480 F</span>
+          </div>
+          <div style="display:grid;grid-template-columns:1fr auto auto auto;gap:4px;padding:8px 14px;border-bottom:.5px solid var(--b)">
+            <span style="font-size:12px;font-weight:500;color:var(--t1)">Ouédraogo R.</span>
+            <span style="font-size:12px;color:var(--t2);text-align:right;min-width:44px">19</span>
+            <span style="font-size:12px;color:var(--t2);text-align:right;min-width:50px">98</span>
+            <span style="font-size:12px;font-weight:500;color:var(--ts);text-align:right;min-width:58px">1 860 F</span>
+          </div>
+          <div style="display:grid;grid-template-columns:1fr auto auto auto;gap:4px;padding:8px 14px">
+            <span style="font-size:12px;font-weight:500;color:var(--t1)">Traoré F.</span>
+            <span style="font-size:12px;color:var(--t2);text-align:right;min-width:44px">17</span>
+            <span style="font-size:12px;color:var(--t2);text-align:right;min-width:50px">74</span>
+            <span style="font-size:12px;font-weight:500;color:var(--ts);text-align:right;min-width:58px">1 420 F</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="export-btn"><svg viewBox="0 0 16 16"><path d="M2 13h12M8 10V2M5 7l3 4 3-4"/></svg>Exporter par agent (CSV)</div>
+
+      <div style="padding-bottom:16px"></div>
+
+      <div class="bottom-nav">
+        <div class="nav-tab"><svg viewBox="0 0 16 16"><rect x="1" y="1" width="6" height="6" rx="1"/><rect x="9" y="1" width="6" height="6" rx="1"/><rect x="1" y="9" width="6" height="6" rx="1"/><rect x="9" y="9" width="6" height="6" rx="1"/></svg><span>Accueil</span></div>
+        <div class="nav-tab"><svg viewBox="0 0 16 16"><path d="M8 8a3 3 0 100-6 3 3 0 000 6zm-5 5a5 5 0 0110 0H3z"/></svg><span>Clients</span></div>
+        <div style="flex:1"></div>
+        <div class="nav-tab active"><svg viewBox="0 0 16 16"><path d="M2 12V4l4 3 2-4 2 4 4-3v8H2z"/></svg><span>Rapports</span></div>
+        <div class="nav-tab"><svg viewBox="0 0 16 16"><path d="M8 1a3.5 3.5 0 110 7A3.5 3.5 0 018 1zm0 9c-3.3 0-6 1.3-6 3v1h12v-1c0-1.7-2.7-3-6-3z"/></svg><span>Profil</span></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+</body>
+</html>

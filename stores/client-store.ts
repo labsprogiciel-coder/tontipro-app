@@ -16,8 +16,10 @@ interface ClientStoreState {
   loadClientsFromSupabase: () => Promise<void>;
   
   addClient: (clientData: {
+    id?: string;
     name: string;
     phone: string;
+    accountNumber?: string;
     address?: string;
     email?: string;
     groupName?: string;
@@ -33,7 +35,8 @@ interface ClientStoreState {
   updateClient: (id: string, clientData: Partial<Client>) => Promise<Client>;
   getClientById: (id: string) => Client | undefined;
   updateClientBalance: (id: string, amount: number) => Promise<void>;
-  
+  reconcileBalances: (txList: import("@/types/transaction").Transaction[]) => void;
+
   // ✅ Sync clients marked as 'pending' to Supabase when back online
   syncPendingClients: () => Promise<void>;
   
@@ -51,10 +54,6 @@ export const useClientStore = create<ClientStoreState>()(
 
       // ✅ Fetch all clients from Supabase for the current agent
       loadClientsFromSupabase: async () => {
-        if (__DEV__) {
-          await get().loadDevMocks();
-          return;
-        }
         set({ isLoadingClients: true, error: null });
         try {
           const {
@@ -104,6 +103,7 @@ export const useClientStore = create<ClientStoreState>()(
 
       loadDevMocks: async () => {
         if (!__DEV__) return;
+        if (get().clients.length > 0) return;
         const { mockClients } = await import("@/__dev__/mocks/clients");
         const mockClientsWithSync: Client[] = mockClients.map((c) => ({
           ...c,
@@ -119,9 +119,10 @@ export const useClientStore = create<ClientStoreState>()(
           const online = await isConnected();
 
           const newClient: Client = {
-            id: generateId("CL"),
+            id: clientData.id ?? generateId("CL"),
             name: clientData.name,
             phone: clientData.phone,
+            accountNumber: clientData.accountNumber,
             balance: clientData.initialDeposit || 0,
             joinDate: new Date().toISOString(),
             status: "active",
@@ -415,6 +416,17 @@ export const useClientStore = create<ClientStoreState>()(
             error: error instanceof Error ? error.message : "Sync failed",
           });
         }
+      },
+
+      reconcileBalances: (txList) => {
+        set((state) => ({
+          clients: state.clients.map((client) => {
+            const balance = txList
+              .filter((t) => t.clientId === client.id)
+              .reduce((sum, t) => sum + (t.type === "deposit" ? t.amount : -t.amount), 0);
+            return { ...client, balance: Math.max(0, balance) };
+          }),
+        }));
       },
 
       clearAll: () => {

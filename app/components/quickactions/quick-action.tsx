@@ -5,9 +5,11 @@ import { LucideIcon } from 'lucide-react-native';
 interface ActionButtonProps {
   label: string;
   icon: LucideIcon;
-  bgVariant: string;    // Background of the ICON square (e.g., #eaf3de)
-  iconColor: string;    // Color of the ICON itself (e.g., #3b6d11)
-  buttonBg?: string;    // Optional: Background of the whole button
+  bgVariant: string;
+  iconColor: string;
+  buttonBg?: string;
+  style?: ViewStyle;
+  disabled?: boolean;
   onClick: () => void;
 }
 
@@ -17,15 +19,18 @@ const ActionButton: React.FC<ActionButtonProps> = ({
   bgVariant,
   iconColor,
   buttonBg,
+  style,
+  disabled,
   onClick
 }) => (
   <Pressable
-    onPress={onClick}
-    // Correctly merging dynamic background with base styles
+    onPress={disabled ? undefined : onClick}
     style={({ pressed }) => [
       styles.btn,
       buttonBg ? { backgroundColor: buttonBg } : null,
-      pressed && styles.pressed
+      style,
+      pressed && !disabled && styles.pressed,
+      disabled && styles.disabledBtn,
     ]}
   >
     <View style={[styles.iconContainer, { backgroundColor: bgVariant }]}>
@@ -72,7 +77,10 @@ const styles = StyleSheet.create({
   },
   pressed: {
     opacity: 0.8,
-    backgroundColor: '#f5f4f0', // --color-background-secondary
+    backgroundColor: '#f5f4f0',
+  },
+  disabledBtn: {
+    opacity: 0.4,
   },
 });
 

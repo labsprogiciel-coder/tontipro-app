@@ -212,7 +212,7 @@ const SettingsScreen = () => {
                     <SettingItem
                         icon={LogOut}
                         label="Déconnexion"
-                        onPress={() => { }}
+                        onPress={handleLogout}
                         destructive={true}
                     />
                 </View>

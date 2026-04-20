@@ -10,11 +10,14 @@ import {
   KeyboardAvoidingView,
   Platform,
   Alert,
+  ActivityIndicator,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useRouter } from "expo-router";
 import { ChevronLeft, ChevronRight, Check, RefreshCw, MessageSquare } from "lucide-react-native";
 import { KAURIDORR_THEME as T } from "@/constants/colors";
+import { useAgentStore } from "@/stores/agent-store";
+import { usePermissions } from "@/hooks/usePermissions";
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -363,10 +366,12 @@ function StepPin({
 function StepReview({
   form,
   onConfirm,
+  isSubmitting,
   onBack,
 }: {
   form: FormState;
   onConfirm: () => void;
+  isSubmitting?: boolean;
   onBack: () => void;
 }) {
   const av = initials(form.name) || "??";
@@ -434,9 +439,14 @@ function StepReview({
           <RevRow label="Expiration PIN" value="1ère connexion" />
         </View>
 
-        <Pressable style={[s.btnMain, { marginTop: 20 }]} onPress={onConfirm}>
-          <Check size={15} color="white" />
-          <Text style={s.btnMainTxt}>Créer l'agent</Text>
+        <Pressable
+          style={[s.btnMain, { marginTop: 20 }, isSubmitting && s.btnMainDisabled]}
+          onPress={isSubmitting ? undefined : onConfirm}
+        >
+          {isSubmitting
+            ? <ActivityIndicator size="small" color="white" />
+            : <><Check size={15} color="white" /><Text style={s.btnMainTxt}>Créer l'agent</Text></>
+          }
         </Pressable>
 
         <View style={{ height: 40 }} />
@@ -546,6 +556,7 @@ function IdRow({ label, value, valueStyle }: { label: string; value: string; val
 
 const DEFAULT_PERMISSIONS = [
   { label: "Ajouter un client",     sub: "Créer de nouveaux membres",       enabled: true  },
+  { label: "Modifier un client",    sub: "Éditer infos et solde",            enabled: true  },
   { label: "Effectuer un dépôt",    sub: "Enregistrer les versements",       enabled: true  },
   { label: "Effectuer un retrait",  sub: "Autoriser les décaissements",      enabled: true  },
   { label: "Exporter les rapports", sub: "Télécharger CSV / données",        enabled: false },
@@ -553,9 +564,25 @@ const DEFAULT_PERMISSIONS = [
 ];
 
 export default function AddAgentScreen() {
-  const router = useRouter();
+  const router    = useRouter();
+  const addAgent  = useAgentStore((s) => s.addAgent);
+  const perms     = usePermissions();
 
-  const [step, setStep] = useState<Step>(1);
+  if (!perms.manageAgents) {
+    return (
+      <SafeAreaView style={{ flex: 1, justifyContent: "center", alignItems: "center", backgroundColor: T.bg }}>
+        <Text style={{ fontSize: 32, marginBottom: 12 }}>🔒</Text>
+        <Text style={{ fontSize: 15, fontWeight: "600", color: T.text1, marginBottom: 6 }}>Accès refusé</Text>
+        <Text style={{ fontSize: 13, color: T.text3, textAlign: "center", paddingHorizontal: 32 }}>
+          Vous n'avez pas la permission de gérer les agents.
+        </Text>
+      </SafeAreaView>
+    );
+  }
+
+  const [step, setStep]               = useState<Step>(1);
+  const [isSubmitting, setSubmitting] = useState(false);
+  const [createdId, setCreatedId]     = useState<string | null>(null);
   const [form, setForm] = useState<FormState>({
     name: "",
     phone: "",
@@ -584,7 +611,36 @@ export default function AddAgentScreen() {
   const handleToggleSms = () =>
     setForm((f) => ({ ...f, pinSentBySms: !f.pinSentBySms }));
 
-  const next = () => setStep((s) => (s === 4 ? "success" : ((s as number) + 1) as Step));
+  const next = () => setStep((s) => ((s as number) + 1) as Step);
+
+  const handleConfirm = async () => {
+    if (isSubmitting) return;
+    setSubmitting(true);
+    try {
+      const agent = await addAgent({
+        name: form.name,
+        phone: form.phone,
+        zone: form.zone || undefined,
+        email: form.email || undefined,
+        role: form.role,
+        pin: form.pin || undefined,
+        permissions: {
+          addClient:     form.permissions[0].enabled,
+          editClient:    form.permissions[1].enabled,
+          deposit:       form.permissions[2].enabled,
+          withdrawal:    form.permissions[3].enabled,
+          exportReports: form.permissions[4].enabled,
+          manageAgents:  form.permissions[5].enabled,
+        },
+      });
+      setCreatedId(agent.id);
+      setStep("success");
+    } catch {
+      Alert.alert("Erreur", "Impossible de créer l'agent. Réessayez.");
+    } finally {
+      setSubmitting(false);
+    }
+  };
   const back = () => {
     if (step === 1 || step === "success") {
       router.back();
@@ -640,14 +696,16 @@ export default function AddAgentScreen() {
       {step === 4 && (
         <StepReview
           form={form}
-          onConfirm={next}
+          onConfirm={handleConfirm}
+          isSubmitting={isSubmitting}
           onBack={back}
         />
       )}
       {isSuccess && (
         <SuccessScreen
           form={form}
-          onViewProfile={() => router.back()}
+          // @ts-ignore
+          onViewProfile={() => createdId && router.push({ pathname: "/(app)/agents/[id]", params: { id: createdId } })}
           onAddAnother={reset}
           onBackToList={() => router.back()}
         />

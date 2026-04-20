@@ -1,5 +1,5 @@
 import { useRouter } from "expo-router";
-import { useState, useRef, useEffect, useCallback } from "react";
+import { useState, useRef, useEffect } from "react";
 import {
   KeyboardAvoidingView,
   Platform,
@@ -12,7 +12,7 @@ import {
   Animated,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { ChevronLeft, Mail, ShieldCheck, Star, User } from "lucide-react-native";
+import { ChevronLeft, ShieldCheck, Star, User } from "lucide-react-native";
 import { useAuthStore } from "@/stores/auth-store";
 import { Numpad } from "@/app/components/ui/numpad";
 
@@ -33,7 +33,7 @@ const T = {
   borderStrong: "rgba(0,0,0,0.2)",
 };
 
-type Step = 1 | 2 | 3 | 4 | 5 | 6;
+type Step = 1 | 2 | 3 | 4 | 5;
 type Role = "agent" | "admin";
 
 // ── Step dot indicator ──────────────────────────────────────────
@@ -177,11 +177,6 @@ function PhoneScreen({
         {error ? <Text style={styles.errorText}>{error}</Text> : null}
       </View>
 
-      <View style={styles.dividerOr}>
-        <View style={styles.dividerLine} />
-        <Text style={styles.dividerText}>ou continuer avec</Text>
-        <View style={styles.dividerLine} />
-      </View>
 
       <View style={styles.spacer} />
       <PrimaryButton
@@ -193,100 +188,7 @@ function PhoneScreen({
   );
 }
 
-// ── SCREEN 3: OTP ───────────────────────────────────────────────
-function OtpScreen({
-  phone,
-  otp,
-  setOtp,
-  onVerify,
-  onResend,
-  onBack,
-  error,
-  isLoading,
-}: {
-  phone: string;
-  otp: string;
-  setOtp: (v: string) => void;
-  onVerify: () => void;
-  onResend: () => void;
-  onBack: () => void;
-  error: string;
-  isLoading: boolean;
-}) {
-  const inputRef = useRef<TextInput>(null);
-  const [secondsLeft, setSecondsLeft] = useState(300); // 5 min
-
-  useEffect(() => {
-    const id = setInterval(() => setSecondsLeft((s) => Math.max(0, s - 1)), 1000);
-    return () => clearInterval(id);
-  }, []);
-
-  const mm = String(Math.floor(secondsLeft / 60)).padStart(2, "0");
-  const ss = String(secondsLeft % 60).padStart(2, "0");
-
-  return (
-    <View style={styles.screenInner}>
-      <BackRow onPress={onBack} />
-      <StepDots current={2} />
-
-      <View style={styles.otpIconWrap}>
-        <ShieldCheck size={26} color={T.orange} />
-      </View>
-
-      <Text style={styles.screenTitle}>Code de{"\n"}vérification</Text>
-      <Text style={styles.screenSub}>
-        Code envoyé par SMS au{"\n"}
-        <Text style={{ color: T.textPrimary, fontWeight: "600" }}>+226 {phone}</Text>
-      </Text>
-
-      {/* Hidden input to capture keystrokes */}
-      <TextInput
-        ref={inputRef}
-        style={styles.hiddenInput}
-        value={otp}
-        onChangeText={(t) => setOtp(t.replace(/\D/g, "").slice(0, 6))}
-        keyboardType="number-pad"
-        maxLength={6}
-        autoFocus
-        caretHidden
-      />
-
-      {/* Visual OTP boxes */}
-      <Pressable style={styles.otpBoxes} onPress={() => inputRef.current?.focus()}>
-        {Array.from({ length: 6 }).map((_, i) => (
-          <View
-            key={i}
-            style={[
-              styles.otpBox,
-              otp[i] != null && styles.otpBoxFilled,
-              otp.length === i && styles.otpBoxActive,
-            ]}
-          >
-            <Text style={styles.otpBoxText}>{otp[i] ?? ""}</Text>
-          </View>
-        ))}
-      </Pressable>
-
-      {error ? <Text style={[styles.errorText, { textAlign: "center" }]}>{error}</Text> : null}
-      <Text style={styles.otpMeta}>Expire dans {mm}:{ss}</Text>
-      <View style={styles.resendRow}>
-        <Text style={styles.resendText}>Pas reçu ? </Text>
-        <Pressable onPress={onResend}>
-          <Text style={styles.resendLink}>Renvoyer le SMS</Text>
-        </Pressable>
-      </View>
-
-      <View style={styles.spacer} />
-      <PrimaryButton
-        label={isLoading ? "Vérification..." : "Vérifier →"}
-        onPress={onVerify}
-        disabled={otp.length < 6 || isLoading}
-      />
-    </View>
-  );
-}
-
-// ── SCREEN 4: Profile ───────────────────────────────────────────
+// ── SCREEN 3: Profile ───────────────────────────────────────────
 function ProfileScreen({
   name,
   setName,
@@ -482,21 +384,19 @@ function SuccessScreen({
 }
 
 // ── Root component ──────────────────────────────────────────────
+// Steps: 1=Welcome  2=Phone  3=Profile  4=PIN  5=Success
 export default function OnboardingScreen() {
   const router = useRouter();
-  const { sendOtp, verifyOtp, savePin } = useAuthStore();
+  const { registerOffline } = useAuthStore();
 
   const [step, setStep] = useState<Step>(1);
   const [phone, setPhone] = useState("");
-  const [otp, setOtp] = useState("");
   const [name, setName] = useState("");
   const [role, setRole] = useState<Role>("agent");
   const [pin, setPin] = useState("");
   const [pinConfirm, setPinConfirm] = useState("");
   const [isPinConfirming, setIsPinConfirming] = useState(false);
-  const [isLoading, setIsLoading] = useState(false);
   const [phoneError, setPhoneError] = useState("");
-  const [otpError, setOtpError] = useState("");
   const [pinError, setPinError] = useState("");
 
   const normalizePhone = (p: string) =>
@@ -510,52 +410,16 @@ export default function OnboardingScreen() {
     .map((w) => w[0].toUpperCase())
     .join("");
 
-  // Step 2: send OTP
-  const handleSendOtp = async () => {
-    setPhoneError("");
+  const handlePhoneNext = () => {
     if (!phone || !/^[0-9]{8}$/.test(phone)) {
       setPhoneError("Numéro invalide. Ex: 70112233");
       return;
     }
-    setIsLoading(true);
-    try {
-      await sendOtp(normalizePhone(phone));
-      setStep(3);
-    } catch (e: any) {
-      setPhoneError(e.message ?? "Erreur lors de l'envoi du code");
-    } finally {
-      setIsLoading(false);
-    }
+    setPhoneError("");
+    setStep(3);
   };
 
-  // Step 3: verify OTP
-  const handleVerifyOtp = async () => {
-    setOtpError("");
-    setIsLoading(true);
-    try {
-      await verifyOtp(normalizePhone(phone), otp);
-      setStep(4);
-    } catch (e: any) {
-      setOtpError(e.message ?? "Code incorrect ou expiré");
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  const handleResendOtp = async () => {
-    setOtpError("");
-    setOtp("");
-    setIsLoading(true);
-    try {
-      await sendOtp(normalizePhone(phone));
-    } catch (e: any) {
-      setOtpError(e.message ?? "Erreur lors du renvoi");
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  // Step 5: PIN entry → confirm → done
+  // Step 4: PIN entry → confirm → register
   const handlePinKey = async (value: string) => {
     if (isPinConfirming) {
       setPinConfirm(value);
@@ -569,8 +433,8 @@ export default function OnboardingScreen() {
             setPinError("");
           }, 1200);
         } else {
-          await savePin(normalizePhone(phone), value);
-          setStep(6);
+          await registerOffline(normalizePhone(phone), name, "agent", value);
+          setStep(5);
         }
       }
     } else {
@@ -596,39 +460,26 @@ export default function OnboardingScreen() {
           <PhoneScreen
             phone={phone}
             setPhone={setPhone}
-            onNext={handleSendOtp}
+            onNext={handlePhoneNext}
             onBack={() => setStep(1)}
             error={phoneError}
-            isLoading={isLoading}
+            isLoading={false}
           />
         )}
 
         {step === 3 && (
-          <OtpScreen
-            phone={phone}
-            otp={otp}
-            setOtp={setOtp}
-            onVerify={handleVerifyOtp}
-            onResend={handleResendOtp}
-            onBack={() => { setStep(2); setOtp(""); setOtpError(""); }}
-            error={otpError}
-            isLoading={isLoading}
-          />
-        )}
-
-        {step === 4 && (
           <ProfileScreen
             name={name}
             setName={setName}
             role={role}
             setRole={setRole}
-            onNext={() => setStep(5)}
-            onBack={() => setStep(3)}
+            onNext={() => setStep(4)}
+            onBack={() => setStep(2)}
             initials={initials}
           />
         )}
 
-        {step === 5 && (
+        {step === 4 && (
           <PinScreen
             pin={isPinConfirming ? pinConfirm : pin}
             setPin={handlePinKey}
@@ -639,7 +490,7 @@ export default function OnboardingScreen() {
                 setPinConfirm("");
               } else {
                 setPin("");
-                setStep(4);
+                setStep(3);
               }
             }}
             isConfirming={isPinConfirming}
@@ -647,7 +498,7 @@ export default function OnboardingScreen() {
           />
         )}
 
-        {step === 6 && (
+        {step === 5 && (
           <SuccessScreen
             name={name}
             phone={phone}

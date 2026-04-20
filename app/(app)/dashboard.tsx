@@ -9,7 +9,7 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from "expo-router";
-import { TrendingUp, Users, FileText, ArrowDown, ArrowUp, PlusIcon } from "lucide-react-native";
+import { TrendingUp, Users, FileText, ArrowDown, ArrowUp, PlusIcon, DownloadCloudIcon, BadgeDollarSign, ScanEye, LucideBedDouble, Camera, ImportIcon, DollarSignIcon } from "lucide-react-native";
 
 import { KAURIDORR_THEME } from "@/constants/colors";
 import { useAuthStore } from "@/stores/auth-store";
@@ -27,6 +27,7 @@ import ActionButton from '../components/quickactions/quick-action';
 import TransactionItem from '../components/transactions/transaction-items';
 import ClientCard from '../components/clients/clients';
 import SearchInput from '../components/quickactions/search-input';
+import { usePermissions } from '@/hooks/usePermissions';
 
 const T = KAURIDORR_THEME;
 
@@ -67,7 +68,7 @@ function formatBalance(amount: number): string {
 
 function formatMetric(amount: number): string {
   if (amount >= 1_000_000) return (amount / 1_000_000).toFixed(1).replace('.', ',') + ' M';
-  if (amount >= 1_000) return Math.round(amount / 1_000) + ' K';
+  if (amount >= 1_000) return new Intl.NumberFormat().format(amount);
   return String(amount);
 }
 
@@ -83,15 +84,15 @@ const AgentDashboard: React.FC = () => {
   const clients = useClientStore((s) => s.clients);
   const isLoadingClients = useClientStore((s) => s.isLoadingClients);
   const loadClientsFromSupabase = useClientStore((s) => s.loadClientsFromSupabase);
-  const loadClientMocks = useClientStore((s) => s.loadDevMocks);
 
   // Transactions
   const transactions = useTransactionStore((s) => s.transactions);
   const pendingTxList = useTransactionStore((s) => s.pendingTransactions);
-  const loadTransactionMocks = useTransactionStore((s) => s.loadDevMocks);
   const loadTransactionsFromSupabase = useTransactionStore((s) => s.loadTransactionsFromSupabase);
 
   // Local UI state
+  const perms = usePermissions();
+
   const [searchQuery, setSearchQuery] = useState('');
   const [online, setOnline] = useState(true);
   const [isLoading, setIsLoading] = useState(true);
@@ -105,11 +106,7 @@ const AgentDashboard: React.FC = () => {
   // ── Data loading ────────────────────────────────────────────────────────────
   useEffect(() => {
     const init = async () => {
-      if (__DEV__) {
-        // loadDevMocks is idempotent — no need to clearAll first
-        await loadClientMocks();
-        await loadTransactionMocks();
-      } else if (user && !isLoadingClients) {
+      if (user && !isLoadingClients) {
         try {
           await loadClientsFromSupabase();
           await loadTransactionsFromSupabase();
@@ -218,28 +215,34 @@ const AgentDashboard: React.FC = () => {
               icon={PlusIcon}
               bgVariant="#e6f1fb"
               iconColor="#185fa5"
+              style={styles.actionBtn}
+              disabled={!perms.addClient}
               onClick={() => router.push('/(app)/clients/add')}
             />
             <ActionButton
-              label="Dépôt"
-              icon={ArrowDown}
+              label="Rechercher"
+              icon={Camera}
               bgVariant="#eaf3de"
               iconColor="#3b6d11"
-              onClick={() => router.push('/(app)/transactions/new')}
+              style={styles.actionBtn}
+              onClick={() => router.push('/(app)/clients')}
             />
             <ActionButton
-              label="Retrait"
-              icon={ArrowUp}
+              label="Paiement"
+              icon={DollarSignIcon}
               bgVariant="#FAE8E0"
               iconColor="#993C1D"
+              style={styles.actionBtn}
+              disabled={!perms.withdrawal}
               onClick={() => router.push({ pathname: '/(app)/transactions/new', params: { type: 'withdrawal' } })}
             />
             <ActionButton
-              label="Rapport"
-              icon={FileText}
-              bgVariant="#f5f4f0"
-              iconColor="#5f5e5a"
-              onClick={() => router.push('/(app)/reports')}
+              label="Importer"
+              icon={DownloadCloudIcon}
+              bgVariant="#EEEDFE"
+              iconColor="#534AB7"
+              style={styles.actionBtn}
+              onClick={() => router.push('/(app)/data')}
             />
           </View>
 
@@ -282,17 +285,24 @@ const AgentDashboard: React.FC = () => {
             </View>
           ) : (
             <View style={styles.transactionContainer}>
-              {filteredTransactions.slice(0, 5).map((tx, i) => (
-                <TransactionItem
-                  key={tx.id}
-                  name={tx.clientName ?? '—'}
-                  type={tx.type === 'withdrawal' ? 'withdrawal' : 'deposit'}
-                  time={relativeTime(tx.date)}
-                  amount={tx.amount.toLocaleString('fr-FR')}
-                  isLast={i === Math.min(filteredTransactions.length, 5) - 1}
-                  onPress={() => router.push(`/(app)/transactions/${tx.id}`)}
-                />
-              ))}
+              {filteredTransactions.slice(0, 5).map((tx, i) => {
+                const commitment = clients.find((c) => c.id === tx.clientId)?.commitmentAmount;
+                const multiplier = commitment && commitment > 0
+                  ? (() => { const m = Math.round(tx.amount / commitment); return m >= 1 ? m : undefined; })()
+                  : undefined;
+                return (
+                  <TransactionItem
+                    key={tx.id}
+                    name={tx.clientName ?? '—'}
+                    type={tx.type === 'withdrawal' ? 'withdrawal' : 'deposit'}
+                    time={relativeTime(tx.date)}
+                    amount={tx.amount.toLocaleString('fr-FR')}
+                    multiplier={multiplier}
+                    isLast={i === Math.min(filteredTransactions.length, 5) - 1}
+                    onPress={() => router.push(`/(app)/transactions/${tx.id}`)}
+                  />
+                );
+              })}
             </View>
           )}
         </View>
@@ -355,8 +365,12 @@ const styles = StyleSheet.create({
   },
   actionGrid: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
+    flexWrap: 'wrap',
+    gap: 10,
     marginBottom: 20,
+  },
+  actionBtn: {
+    width: '48%',
   },
   transactionContainer: {
     backgroundColor: T.bg,

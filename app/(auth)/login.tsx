@@ -21,7 +21,7 @@ const T = {
 
 export default function LoginScreen() {
   const router = useRouter();
-  const { verifyPin, user, registeredPhone, mockLogin } = useAuthStore();
+  const { verifyPin, user, registeredPhone } = useAuthStore();
 
   const [pin, setPin] = useState("");
   const [isLoading, setIsLoading] = useState(false);
@@ -89,7 +89,6 @@ export default function LoginScreen() {
         <Numpad
           onPress={handleDigit}
           onDelete={handleDelete}
-          showLetters
           accentColor={T.orange}
         />
 
@@ -98,14 +97,6 @@ export default function LoginScreen() {
           <Text style={styles.newAccountText}>Nouveau sur cet appareil ? S'inscrire</Text>
         </Pressable>
 
-        {__DEV__ && (
-          <Pressable
-            onPress={() => { mockLogin(); router.replace("/dashboard"); }}
-            style={styles.devLoginButton}
-          >
-            <Text style={styles.devLoginText}>DEV: Skip Login</Text>
-          </Pressable>
-        )}
       </View>
     </SafeAreaView>
   );

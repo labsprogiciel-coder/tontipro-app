@@ -17,13 +17,16 @@ import { ChevronLeft, ChevronRight, Check, ArrowDown } from "lucide-react-native
 import { KAURIDORR_THEME } from "@/constants/colors";
 import { useClientStore } from "@/stores/client-store";
 import { useAuthStore } from "@/stores/auth-store";
+import { useConfigStore } from "@/stores/config-store";
 import { Client, CollectionFrequency } from "@/types/client";
+import { Numpad } from "@/app/components/ui/numpad";
+import { usePermissions } from "@/hooks/usePermissions";
 
 const T = KAURIDORR_THEME;
 
 // ── Constants ─────────────────────────────────────────────────────────────────
 
-const AMOUNT_PRESETS = [200, 300, 500, 1000, 2000];
+const UNIT_QUICK_PICKS = [1, 2, 3, 4, 5, 10, 20];
 
 const FREQUENCIES: { value: CollectionFrequency; label: string; desc: string }[] = [
   { value: "daily",    label: "Quotidienne",   desc: "Collecte chaque jour ouvrable (lun – sam)" },
@@ -82,6 +85,52 @@ function formatDate(iso: string): string {
 
 type Step = 1 | 2 | 3 | 4 | "success";
 
+// ── Shared sub-components (defined outside to keep stable references) ─────────
+
+function StepProgressBar({ activeStep, isSuccess }: { activeStep: number; isSuccess: boolean }) {
+  return (
+    <View style={styles.progressTrack}>
+      {[1, 2, 3, 4].map((s) => (
+        <View
+          key={s}
+          style={[
+            styles.progressSeg,
+            s < activeStep   && styles.progressDone,
+            s === activeStep && !isSuccess && styles.progressActive,
+            isSuccess        && styles.progressDone,
+          ]}
+        />
+      ))}
+    </View>
+  );
+}
+
+function StepNavRow({ onBack, stepLabel, backLabel }: { onBack: () => void; stepLabel: string; backLabel: string }) {
+  return (
+    <View style={styles.navRow}>
+      <Pressable style={styles.backBtn} onPress={onBack}>
+        <ChevronLeft size={16} color={T.text3} strokeWidth={1.8} />
+        <Text style={styles.backLabel}>{backLabel}</Text>
+      </Pressable>
+      <View style={styles.stepBadge}>
+        <Text style={styles.stepBadgeText}>{stepLabel}</Text>
+      </View>
+    </View>
+  );
+}
+
+function Field({ label, required, children }: { label: string; required?: boolean; children: React.ReactNode }) {
+  return (
+    <View style={styles.field}>
+      <Text style={styles.fieldLabel}>
+        {label}
+        {required && <Text style={{ color: T.orange }}> *</Text>}
+      </Text>
+      {children}
+    </View>
+  );
+}
+
 // ── Component ─────────────────────────────────────────────────────────────────
 
 export default function AddClientScreen() {
@@ -91,8 +140,26 @@ export default function AddClientScreen() {
   const updateClient = useClientStore((s) => s.updateClient);
   const getClientById = useClientStore((s) => s.getClientById);
   const user         = useAuthStore((s) => s.user);
+  const baseUnit     = useConfigStore((s) => s.baseUnit);
+  const maxMultiplier = useConfigStore((s) => s.maxMultiplier);
+  const perms        = usePermissions();
 
   const isEdit = !!clientId;
+
+  const actionAllowed = isEdit ? perms.editClient : perms.addClient;
+  if (!actionAllowed) {
+    return (
+      <SafeAreaView style={{ flex: 1, justifyContent: "center", alignItems: "center", backgroundColor: T.bg }}>
+        <Text style={{ fontSize: 32, marginBottom: 12 }}>🔒</Text>
+        <Text style={{ fontSize: 15, fontWeight: "600", color: T.text1, marginBottom: 6 }}>Accès refusé</Text>
+        <Text style={{ fontSize: 13, color: T.text3, textAlign: "center", paddingHorizontal: 32 }}>
+          {isEdit
+            ? "Vous n'avez pas la permission de modifier les clients."
+            : "Vous n'avez pas la permission d'ajouter des clients."}
+        </Text>
+      </SafeAreaView>
+    );
+  }
 
   // Step tracking
   const [step, setStep] = useState<Step>(1);
@@ -104,10 +171,10 @@ export default function AddClientScreen() {
   const [email,     setEmail]     = useState("");
   const [groupName, setGroupName] = useState("");
 
-  // Step 2 – Commitment amount
-  const [commitmentAmount, setCommitmentAmount] = useState<number>(500);
-  const [customAmount,     setCustomAmount]     = useState("");
-  const [showCustomInput,  setShowCustomInput]  = useState(false);
+  // Step 2 – Daily commitment amount (entered via numpad, must be >= baseUnit)
+  const [amountText, setAmountText] = useState("0");
+
+  const commitmentAmount = parseInt(amountText, 10) || 0;
 
   // Step 3 – Frequency & goal
   const [frequency,   setFrequency]   = useState<CollectionFrequency>("daily");
@@ -129,7 +196,7 @@ export default function AddClientScreen() {
     setLocality(existing.address ?? "");
     setEmail(existing.email ?? "");
     setGroupName(existing.groupName ?? "");
-    if (existing.commitmentAmount) setCommitmentAmount(existing.commitmentAmount);
+    if (existing.commitmentAmount) setAmountText(String(existing.commitmentAmount));
     if (existing.collectionFrequency) setFrequency(existing.collectionFrequency);
     if (existing.collectionDays?.length) setActiveDays(existing.collectionDays);
     if (existing.savingsGoal) { setHasGoal(true); setSavingsGoal(String(existing.savingsGoal)); }
@@ -146,20 +213,6 @@ export default function AddClientScreen() {
     setActiveDays((prev) =>
       prev.includes(idx) ? prev.filter((d) => d !== idx) : [...prev, idx]
     );
-  }
-
-  function selectPreset(amount: number) {
-    setCommitmentAmount(amount);
-    setShowCustomInput(false);
-    setCustomAmount("");
-  }
-
-  function applyCustomAmount() {
-    const parsed = parseInt(customAmount.replace(/\s/g, ""), 10);
-    if (!isNaN(parsed) && parsed > 0) {
-      setCommitmentAmount(parsed);
-      setShowCustomInput(false);
-    }
   }
 
   async function handleConfirm() {
@@ -195,63 +248,16 @@ export default function AddClientScreen() {
   function resetForm() {
     setStep(1);
     setName(""); setPhone(""); setLocality(""); setEmail(""); setGroupName("");
-    setCommitmentAmount(500); setCustomAmount(""); setShowCustomInput(false);
+    setAmountText("0");
     setFrequency("daily"); setActiveDays([0,1,2,3,4,5]);
     setHasGoal(false); setSavingsGoal("");
     setCreatedClient(null);
   }
 
-  // ── Progress bar ──────────────────────────────────────────────────────────────
+  // ── Progress bar helpers ──────────────────────────────────────────────────────
 
   const numericStep = step === "success" ? 4 : (step as number);
-
-  function ProgressBar() {
-    return (
-      <View style={styles.progressTrack}>
-        {[1, 2, 3, 4].map((s) => (
-          <View
-            key={s}
-            style={[
-              styles.progressSeg,
-              s < numericStep  && styles.progressDone,
-              s === numericStep && step !== "success" && styles.progressActive,
-              step === "success" && styles.progressDone,
-            ]}
-          />
-        ))}
-      </View>
-    );
-  }
-
-  // ── Nav row ───────────────────────────────────────────────────────────────────
-
-  function NavRow({ onBack, stepLabel }: { onBack: () => void; stepLabel: string }) {
-    return (
-      <View style={styles.navRow}>
-        <Pressable style={styles.backBtn} onPress={onBack}>
-          <ChevronLeft size={16} color={T.text3} strokeWidth={1.8} />
-          <Text style={styles.backLabel}>{step === 1 ? "Clients" : "Retour"}</Text>
-        </Pressable>
-        <View style={styles.stepBadge}>
-          <Text style={styles.stepBadgeText}>{stepLabel}</Text>
-        </View>
-      </View>
-    );
-  }
-
-  // ── Field wrapper ─────────────────────────────────────────────────────────────
-
-  function Field({ label, required, children }: { label: string; required?: boolean; children: React.ReactNode }) {
-    return (
-      <View style={styles.field}>
-        <Text style={styles.fieldLabel}>
-          {label}
-          {required && <Text style={{ color: T.orange }}> *</Text>}
-        </Text>
-        {children}
-      </View>
-    );
-  }
+  const isSuccess   = step === "success";
 
   // ── STEP 1 ────────────────────────────────────────────────────────────────────
 
@@ -261,8 +267,8 @@ export default function AddClientScreen() {
         behavior={Platform.OS === "ios" ? "padding" : "height"}
         style={{ flex: 1 }}
       >
-        <ProgressBar />
-        <NavRow onBack={() => router.back()} stepLabel="1 / 4" />
+        <StepProgressBar activeStep={numericStep} isSuccess={isSuccess} />
+        <StepNavRow onBack={() => router.back()} stepLabel="1 / 4" backLabel="Clients" />
         <ScrollView style={styles.body} showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled">
           <Text style={styles.screenTitle}>{isEdit ? "Modifier le client" : "Identité du membre"}</Text>
           <Text style={styles.screenSub}>{isEdit ? "Modifiez les informations du client." : "Renseignez les informations de base du nouveau membre de la tontine."}</Text>
@@ -339,99 +345,74 @@ export default function AddClientScreen() {
   // ── STEP 2 ────────────────────────────────────────────────────────────────────
 
   function Step2() {
+    const amount      = parseInt(amountText, 10) || 0;
+    const isValid     = amount >= baseUnit;
+    const units       = baseUnit > 0 ? Math.round(amount / baseUnit) : 0;
+    const formatted   = amount.toLocaleString("fr-FR");
+    const chips       = UNIT_QUICK_PICKS.map((q) => String(q * baseUnit));
+
+    function handleDigit(d: string) {
+      setAmountText((prev) => (prev === "0" ? d : prev + d));
+    }
+
+    function handleDelete() {
+      setAmountText((prev) => (prev.length > 1 ? prev.slice(0, -1) : "0"));
+    }
+
     return (
-      <>
-        <ProgressBar />
-        <NavRow onBack={() => setStep(1)} stepLabel="2 / 4" />
-        <ScrollView style={styles.body} showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled">
-          <Text style={styles.screenTitle}>{"Montant\nd'engagement"}</Text>
-          <Text style={styles.screenSub}>Choisissez le montant que ce membre s'engage à épargner chaque jour.</Text>
+      <View style={{ flex: 1 }}>
+        <StepProgressBar activeStep={numericStep} isSuccess={isSuccess} />
+        <StepNavRow onBack={() => setStep(1)} stepLabel="2 / 4" backLabel="Retour" />
 
-          {/* Amount display */}
-          <View style={styles.amountDisplay}>
-            <Text style={styles.amountBig}>
-              {formatNum(commitmentAmount)}
-              <Text style={styles.amountCur}> FCFA</Text>
+        {/* Amount display */}
+        <View style={styles.amountDisplay}>
+          <Text style={styles.amountLabel}>Épargne quotidienne</Text>
+          <Text style={[styles.amountValue, { color: isValid ? T.orange : T.text3 }]}>
+            {formatted} <Text style={styles.amountCurrency}>FCFA</Text>
+          </Text>
+          {amount > 0 && (
+            <Text style={styles.unitBaseHint}>
+              {isValid
+                ? `≈ ×${units} unité${units !== 1 ? "s" : ""} · min ${formatNum(baseUnit)} FCFA`
+                : `Minimum ${formatNum(baseUnit)} FCFA requis`}
             </Text>
-            <Text style={styles.amountPeriod}>par jour · 6 jours / semaine</Text>
-          </View>
-
-          {/* Presets */}
-          <View style={styles.presetGrid}>
-            {AMOUNT_PRESETS.map((a) => (
-              <Pressable
-                key={a}
-                style={[styles.presetBtn, commitmentAmount === a && !showCustomInput && styles.presetBtnActive]}
-                onPress={() => selectPreset(a)}
-              >
-                <Text style={[styles.presetVal, commitmentAmount === a && !showCustomInput && styles.presetValActive]}>
-                  {formatNum(a)}
-                </Text>
-                <Text style={[styles.presetLbl, commitmentAmount === a && !showCustomInput && styles.presetLblActive]}>
-                  FCFA / jour
-                </Text>
-              </Pressable>
-            ))}
-            <Pressable
-              style={[styles.presetBtn, styles.presetBtnCustom, showCustomInput && styles.presetBtnActive]}
-              onPress={() => setShowCustomInput(true)}
-            >
-              <Text style={[styles.presetVal, styles.presetValCustom]}>Autre…</Text>
-              <Text style={styles.presetLbl}>Montant libre</Text>
-            </Pressable>
-          </View>
-
-          {showCustomInput && (
-            <View style={styles.field}>
-              <Text style={styles.fieldLabel}>Montant personnalisé (FCFA)</Text>
-              <View style={styles.phoneRow}>
-                <TextInput
-                  style={[styles.fieldInput, { flex: 1 }]}
-                  placeholder="Ex. 750"
-                  placeholderTextColor={T.text3}
-                  value={customAmount}
-                  onChangeText={setCustomAmount}
-                  keyboardType="numeric"
-                  autoFocus
-                />
-                <Pressable style={styles.applyBtn} onPress={applyCustomAmount}>
-                  <Text style={styles.applyBtnText}>OK</Text>
-                </Pressable>
-              </View>
-            </View>
           )}
+        </View>
 
-          {/* Projection card */}
-          <View style={styles.projCard}>
-            <Text style={styles.projTitle}>Projection épargne</Text>
-            <View style={styles.projRow}>
-              <Text style={styles.projLabel}>Par semaine (×6 jrs)</Text>
-              <Text style={styles.projValue}>{formatNum(proj.weekly)} FCFA</Text>
-            </View>
-            <View style={styles.projRow}>
-              <Text style={styles.projLabel}>Par mois (×26 jrs)</Text>
-              <Text style={styles.projValue}>{formatNum(proj.monthly)} FCFA</Text>
-            </View>
-            <View style={styles.projRow}>
-              <Text style={styles.projLabel}>En 6 mois</Text>
-              <Text style={[styles.projValue, styles.projValueHighlight]}>{formatNum(proj.sixMonths)} FCFA</Text>
-            </View>
-            <View style={[styles.projRow, styles.projRowLast]}>
-              <Text style={styles.projLabel}>En 1 an</Text>
-              <Text style={[styles.projValue, styles.projValueHighlight]}>{formatNum(proj.oneYear)} FCFA</Text>
-            </View>
-          </View>
-
-          <View style={{ height: 24 }} />
+        {/* Quick chips */}
+        <ScrollView
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          contentContainerStyle={styles.chipsRow}
+          style={{ height: 52, flexShrink: 0 }}
+        >
+          {chips.map((val) => (
+            <Pressable
+              key={val}
+              style={[styles.chip, amountText === val && styles.chipActive]}
+              onPress={() => setAmountText(val)}
+            >
+              <Text style={[styles.chipText, amountText === val && styles.chipTextActive]}>
+                {parseInt(val, 10).toLocaleString("fr-FR")}
+              </Text>
+            </Pressable>
+          ))}
         </ScrollView>
 
+        {/* Numpad */}
+        <Numpad onPress={handleDigit} onDelete={handleDelete} />
+
+        {/* CTA */}
         <View style={styles.ctaWrap}>
-          <Pressable style={styles.btnMain} onPress={() => setStep(3)}>
+          <Pressable
+            style={[styles.btnMain, !isValid && styles.btnMainDisabled]}
+            onPress={() => isValid && setStep(3)}
+          >
             <Text style={styles.btnMainText}>Continuer</Text>
             <ChevronRight size={15} color="white" strokeWidth={1.8} />
           </Pressable>
         </View>
-      </>
+      </View>
     );
   }
 
@@ -448,8 +429,8 @@ export default function AddClientScreen() {
         behavior={Platform.OS === "ios" ? "padding" : "height"}
         style={{ flex: 1 }}
       >
-        <ProgressBar />
-        <NavRow onBack={() => setStep(2)} stepLabel="3 / 4" />
+        <StepProgressBar activeStep={numericStep} isSuccess={isSuccess} />
+        <StepNavRow onBack={() => setStep(2)} stepLabel="3 / 4" backLabel="Retour" />
         <ScrollView style={styles.body} showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled">
           <Text style={styles.screenTitle}>Fréquence de collecte</Text>
           <Text style={styles.screenSub}>À quelle fréquence l'agent passera-t-il collecter l'épargne ?</Text>
@@ -558,8 +539,8 @@ export default function AddClientScreen() {
 
     return (
       <>
-        <ProgressBar />
-        <NavRow onBack={() => setStep(3)} stepLabel="4 / 4" />
+        <StepProgressBar activeStep={numericStep} isSuccess={isSuccess} />
+        <StepNavRow onBack={() => setStep(3)} stepLabel="4 / 4" backLabel="Retour" />
 
         <ScrollView showsVerticalScrollIndicator={false}>
           {/* Orange header */}
@@ -743,12 +724,12 @@ export default function AddClientScreen() {
   // ── Render ────────────────────────────────────────────────────────────────────
 
   return (
-    <SafeAreaView style={styles.container} edges={["top", "bottom"]}>
-      {step === 1         && <Step1 />}
-      {step === 2         && <Step2 />}
-      {step === 3         && <Step3 />}
-      {step === 4         && <Step4 />}
-      {step === "success" && <SuccessScreen />}
+    <SafeAreaView style={styles.container} edges={["top"]}>
+      {step === 1         && Step1()}
+      {step === 2         && Step2()}
+      {step === 3         && Step3()}
+      {step === 4         && Step4()}
+      {step === "success" && SuccessScreen()}
     </SafeAreaView>
   );
 }
@@ -940,27 +921,65 @@ const styles = StyleSheet.create({
     fontWeight: "500",
   },
 
-  // Amount display
+  // Amount display (Step 2)
   amountDisplay: {
+    flex: 1,
     alignItems: "center",
-    paddingVertical: 20,
+    justifyContent: "center",
+    paddingHorizontal: 18,
   },
-  amountBig: {
-    fontSize: 48,
-    fontWeight: "700",
-    letterSpacing: -1.9,
-    color: T.orange,
-    lineHeight: 52,
+  amountLabel: {
+    fontSize: 12,
+    color: T.text3,
+    marginBottom: 6,
   },
-  amountCur: {
-    fontSize: 20,
+  amountValue: {
+    fontSize: 65,
+    fontWeight: "600",
+    letterSpacing: -1.5,
+    lineHeight: 50,
+  },
+  amountCurrency: {
+    fontSize: 18,
     fontWeight: "400",
     color: T.text3,
   },
-  amountPeriod: {
-    fontSize: 13,
+  unitBaseHint: {
+    fontSize: 11,
     color: T.text3,
-    marginTop: 4,
+    marginTop: 6,
+  },
+
+  // Horizontal chips row
+  chipsRow: {
+    flexDirection: "row",
+    alignItems: "flex-end",
+    gap: 8,
+    paddingHorizontal: 18,
+    paddingVertical: 18,
+    marginVertical: 2
+  },
+  chip: {
+    paddingHorizontal: 14,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: T.bg2,
+    borderWidth: 0.5,
+    borderColor: T.border,
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  chipActive: {
+    backgroundColor: T.orangeLt,
+    borderColor: T.orange,
+  },
+  chipText: {
+    fontSize: 14,
+    fontWeight: "600",
+    color: T.text2,
+  },
+  chipTextActive: {
+    color: T.orangeDk,
   },
 
   // Preset grid

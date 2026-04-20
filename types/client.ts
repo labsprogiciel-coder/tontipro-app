@@ -15,6 +15,7 @@ export interface Client {
   collectionFrequency?: CollectionFrequency;
   collectionDays?: number[];
   savingsGoal?: number;
+  accountNumber?: string;
   idNumber?: string;
   idType?: "cni" | "passport" | "permis" | "autre";
   kycVerified?: boolean;

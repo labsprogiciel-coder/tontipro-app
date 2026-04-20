@@ -43,7 +43,7 @@ const BORDER      = 'rgba(0,0,0,0.09)';
 const TEXT_MUTED  = '#888780';
 
 // ─── Tab definition ──────────────────────────────────────────────────────────
-export type TabKey = 'home' | 'clients' | 'history' | 'profile';
+export type TabKey = 'home' | 'clients' | 'history' | 'reports';
 
 interface Tab {
   key: TabKey;
@@ -94,13 +94,30 @@ function IconHistory({ active }: { active: boolean }) {
   const c = active ? ORANGE : TEXT_MUTED;
   return (
     <View style={{ width: 22, height: 22, alignItems: 'center', justifyContent: 'center' }}>
-      {/* Bar chart icon */}
       <View style={{ flexDirection: 'row', alignItems: 'flex-end', gap: 3 }}>
         <View style={{ width: 4, height: 8,  borderRadius: 2, backgroundColor: c }} />
         <View style={{ width: 4, height: 14, borderRadius: 2, backgroundColor: c }} />
         <View style={{ width: 4, height: 11, borderRadius: 2, backgroundColor: c }} />
         <View style={{ width: 4, height: 18, borderRadius: 2, backgroundColor: c }} />
       </View>
+    </View>
+  );
+}
+
+function IconReports({ active }: { active: boolean }) {
+  const c = active ? ORANGE : TEXT_MUTED;
+  // Trending line chart: base line + 3 nodes at ascending heights + connecting bars
+  return (
+    <View style={{ width: 22, height: 22, alignItems: 'center', justifyContent: 'center' }}>
+      {/* Nodes */}
+      <View style={{ position: 'absolute', flexDirection: 'row', alignItems: 'flex-end', gap: 5, bottom: 3 }}>
+        <View style={{ width: 4, height: 4, borderRadius: 2, backgroundColor: c }} />
+        <View style={{ width: 4, height: 4, borderRadius: 2, backgroundColor: c, marginBottom: 5 }} />
+        <View style={{ width: 4, height: 4, borderRadius: 2, backgroundColor: c, marginBottom: 10 }} />
+        <View style={{ width: 4, height: 4, borderRadius: 2, backgroundColor: c, marginBottom: 15 }} />
+      </View>
+      {/* Baseline */}
+      <View style={{ position: 'absolute', bottom: 2, left: 0, right: 0, height: 1.5, borderRadius: 1, backgroundColor: c, opacity: 0.3 }} />
     </View>
   );
 }
@@ -123,6 +140,7 @@ function IconProfile({ active }: { active: boolean }) {
     </View>
   );
 }
+
 
 // ─── FAB (center action button) ──────────────────────────────────────────────
 interface FABProps {
@@ -257,9 +275,9 @@ const TABS: Tab[] = [
     icon: (active) => <IconHistory active={active} />,
   },
   {
-    key: 'profile',
-    label: 'Profil',
-    icon: (active) => <IconProfile active={active} />,
+    key: 'reports',
+    label: 'Rapports',
+    icon: (active) => <IconReports active={active} />,
   },
 ];
 

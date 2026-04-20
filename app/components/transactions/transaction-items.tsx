@@ -7,11 +7,12 @@ export interface TransactionProps {
   time: string;
   amount: string;
   balance?: string;
+  multiplier?: number;
   isLast?: boolean;
   onPress?: () => void;
 }
 
-const TransactionItem: React.FC<TransactionProps> = ({ name, type, time, amount, balance, isLast, onPress }) => {
+const TransactionItem: React.FC<TransactionProps> = ({ name, type, time, amount, balance, multiplier, isLast, onPress }) => {
   const isDeposit = type === 'deposit';
 
   return (
@@ -22,9 +23,18 @@ const TransactionItem: React.FC<TransactionProps> = ({ name, type, time, amount,
         <Text style={styles.meta}>{time}</Text>
       </View>
       <View style={styles.right}>
-        <Text style={[styles.val, { color: isDeposit ? '#3b6d11' : '#993C1D' }]}>
-          {isDeposit ? `+${amount}` : `−${amount}`}
-        </Text>
+        <View style={styles.amountRow}>
+          {multiplier != null && multiplier > 0 && (
+            <View style={[styles.multiplierBadge, { backgroundColor: isDeposit ? '#eaf3de' : '#FAE8E0' }]}>
+              <Text style={[styles.multiplierText, { color: isDeposit ? '#3b6d11' : '#993C1D' }]}>
+                ×{multiplier}
+              </Text>
+            </View>
+          )}
+          <Text style={[styles.val, { color: isDeposit ? '#3b6d11' : '#993C1D' }]}>
+            {isDeposit ? `+${amount}` : `−${amount}`}
+          </Text>
+        </View>
         {balance && <Text style={styles.bal}>Solde : {balance}</Text>}
       </View>
     </TouchableOpacity>
@@ -45,6 +55,9 @@ const styles = StyleSheet.create({
   name: { fontSize: 13, fontWeight: '500', color: '#1a1a18' },
   meta: { fontSize: 11, color: '#888780' },
   right: { alignItems: 'flex-end' },
+  amountRow: { flexDirection: 'row', alignItems: 'center', gap: 5 },
+  multiplierBadge: { paddingHorizontal: 6, paddingVertical: 2, borderRadius: 6 },
+  multiplierText: { fontSize: 10, fontWeight: '700' },
   val: { fontSize: 13, fontWeight: '500' },
   bal: { fontSize: 10, color: '#888780', marginTop: 1 },
 });

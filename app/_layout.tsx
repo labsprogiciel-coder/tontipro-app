@@ -13,7 +13,6 @@ import { supabase } from "@/lib/supabase";
 import { useAuthStore, getUserDisplayName } from "@/stores/auth-store";
 import { useClientStore } from "@/stores/client-store";
 import { useTransactionStore } from "@/stores/transaction-store";
-import { DEV_MODE } from "@/__dev__/config";
 
 export const unstable_settings = {
   initialRouteName: "(auth)",
@@ -83,13 +82,6 @@ function RootLayoutNav() {
   // ✅ Tâche 4 : Restaurer la session au démarrage une seule fois
   useEffect(() => {
     const restoreSession = async () => {
-      // Dev mode: skip Supabase entirely and auto-login with mock data
-      if (DEV_MODE) {
-        useAuthStore.getState().mockLogin();
-        (useAuthStore as any).setState({ isInitialized: true });
-        return;
-      }
-
       try {
         const { data: { session } } = await supabase.auth.getSession();
 
@@ -131,8 +123,6 @@ function RootLayoutNav() {
     // ✅ Tâche 5 : Écouter uniquement SIGNED_OUT pour forcer le retour au login
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event) => {
       if (event === "SIGNED_OUT") {
-        useClientStore.getState().clearAll();
-        useTransactionStore.getState().clearAll();
         (useAuthStore as any).setState({ isAuthenticated: false, isInitialized: true, user: null });
       }
     });

@@ -11,7 +11,7 @@
  *   export-done    → done
  */
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View,
   Text,
@@ -19,7 +19,7 @@ import {
   StyleSheet,
   TouchableOpacity,
   Switch,
-  Animated,
+  Alert,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import {
@@ -34,11 +34,15 @@ import {
   Calendar,
   ChevronRight,
   AlertTriangle,
-  Info,
   X,
   Clock,
   Share2,
 } from 'lucide-react-native';
+import * as DocumentPicker from 'expo-document-picker';
+import { File as FSFile, Paths } from 'expo-file-system';
+import * as Sharing from 'expo-sharing';
+import { useClientStore } from '@/stores/client-store';
+import { useTransactionStore } from '@/stores/transaction-store';
 
 // ─── Design tokens ────────────────────────────────────────────────────────────
 const T = {
@@ -77,8 +81,211 @@ type Screen =
   | 'import-map'
   | 'import-preview'
   | 'import-success'
+  | 'import-tx-upload'
+  | 'import-tx-preview'
+  | 'import-tx-success'
+  | 'clean-data'
   | 'export-config'
   | 'export-done';
+
+type ParsedRow = {
+  externalId?: string;
+  name: string;
+  phone: string;
+  accountNumber?: string;
+  commitmentAmount?: number;
+  address?: string;
+  groupName?: string;
+  rawLine: number;
+  status: 'ok' | 'err' | 'dup';
+  errorReason?: string;
+};
+
+type ImportResult = {
+  imported: number;
+  duplicates: number;
+  errors: number;
+  total: number;
+};
+
+type ParsedTx = {
+  id: string;
+  clientId: string;
+  clientName: string;
+  type: 'deposit' | 'withdrawal';
+  amount: number;
+  date: string;
+  agentName: string;
+  notes?: string;
+  rawLine: number;
+  status: 'ok' | 'err' | 'dup';
+  errorReason?: string;
+};
+
+type TxImportResult = {
+  imported: number;
+  duplicates: number;
+  errors: number;
+  total: number;
+};
+
+// ─── CSV utilities ────────────────────────────────────────────────────────────
+
+function parseCsv(content: string): { headers: string[]; rows: string[][] } {
+  const lines = content.trim().split(/\r?\n/);
+  if (lines.length === 0) return { headers: [], rows: [] };
+  const clean = (v: string) => v.trim().replace(/^"|"$/g, '');
+  const headers = lines[0].split(',').map(clean);
+  const rows = lines.slice(1).filter(l => l.trim()).map(l => l.split(',').map(clean));
+  return { headers, rows };
+}
+
+// Maps normalised CSV header → ParsedRow field name
+const HEADER_MAP: Record<string, keyof ParsedRow> = {
+  id: 'externalId',
+  nom: 'name', nom_complet: 'name', name: 'name', prenom: 'name', prénom: 'name',
+  nom_client: 'name',
+  tel: 'phone', telephone: 'phone', téléphone: 'phone', phone: 'phone',
+  mobile: 'phone', portable: 'phone',
+  // backup format: "Numéro de compte" normalises to this key
+  numero_de_compte: 'accountNumber', account_number: 'accountNumber', compte: 'accountNumber',
+  montant: 'commitmentAmount', montant_engagement: 'commitmentAmount',
+  engagement: 'commitmentAmount', commitment: 'commitmentAmount',
+  // backup format: "Engagement d'épargne" normalises to this key
+  "engagement_d'epargne": 'commitmentAmount',
+  localite: 'address', localité: 'address', adresse: 'address',
+  address: 'address', quartier: 'address', ville: 'address',
+  groupe: 'groupName', groupe_tontine: 'groupName', group: 'groupName', tontine: 'groupName',
+};
+
+function normaliseKey(h: string): string {
+  return h.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/\s+/g, '_');
+}
+
+function detectMapping(headers: string[]): Record<string, keyof ParsedRow | 'skip'> {
+  const result: Record<string, keyof ParsedRow | 'skip'> = {};
+  for (const h of headers) {
+    result[h] = HEADER_MAP[normaliseKey(h)] ?? 'skip';
+  }
+  return result;
+}
+
+function buildParsedRows(
+  headers: string[],
+  rows: string[][],
+  mapping: Record<string, keyof ParsedRow | 'skip'>,
+): ParsedRow[] {
+  return rows.map((cols, i) => {
+    const record: Record<string, string> = {};
+    headers.forEach((h, j) => { record[h] = cols[j] ?? ''; });
+
+    let externalId: string | undefined;
+    let name = '';
+    let phone = '';
+    let accountNumber: string | undefined;
+    let commitmentAmount: number | undefined;
+    let address: string | undefined;
+    let groupName: string | undefined;
+
+    for (const h of headers) {
+      const field = mapping[h];
+      const val = record[h];
+      if (field === 'externalId' && val)         externalId = val || undefined;
+      if (field === 'name' && !name)             name = val;
+      if (field === 'phone' && !phone)           phone = val;
+      if (field === 'accountNumber' && val)      accountNumber = val || undefined;
+      if (field === 'commitmentAmount' && val)   commitmentAmount = parseFloat(val) || undefined;
+      if (field === 'address' && val)            address = val || undefined;
+      if (field === 'groupName' && val)          groupName = val || undefined;
+    }
+
+    return { externalId, name, phone, accountNumber, commitmentAmount, address, groupName, rawLine: i + 2, status: 'ok' };
+  });
+}
+
+function validateRows(rows: ParsedRow[], existingPhones: Set<string>): ParsedRow[] {
+  const seen = new Set<string>();
+  return rows.map(row => {
+    const phone = row.phone.replace(/\s/g, '');
+    if (!row.name.trim() || !phone) {
+      return { ...row, status: 'err' as const, errorReason: 'Champs requis manquants' };
+    }
+    if (existingPhones.has(phone) || seen.has(phone)) {
+      return { ...row, status: 'dup' as const, errorReason: 'Doublon téléphone' };
+    }
+    seen.add(phone);
+    return { ...row, status: 'ok' as const };
+  });
+}
+
+// ─── Transaction CSV utilities ────────────────────────────────────────────────
+
+function parseTxDate(dateStr: string, timeStr: string): string {
+  const parts = dateStr.split('/');
+  if (parts.length !== 3) return new Date().toISOString();
+  const [d, m, y] = parts;
+  let hours = 0, minutes = 0;
+  const t = (timeStr || '').trim();
+  if (/AM|PM/i.test(t)) {
+    const isPM = /PM/i.test(t);
+    const [h, min] = t.replace(/\s*(AM|PM)/i, '').split(':');
+    hours = parseInt(h) || 0;
+    minutes = parseInt(min) || 0;
+    if (isPM && hours !== 12) hours += 12;
+    if (!isPM && hours === 12) hours = 0;
+  } else {
+    const [h, min] = t.split(':');
+    hours = parseInt(h) || 0;
+    minutes = parseInt(min) || 0;
+  }
+  return new Date(parseInt(y), parseInt(m) - 1, parseInt(d), hours, minutes).toISOString();
+}
+
+function parseTxCsv(content: string): ParsedTx[] {
+  const { headers, rows } = parseCsv(content);
+  const norm = headers.map(normaliseKey);
+  const col = (name: string) => norm.indexOf(normaliseKey(name));
+
+  const iID    = col('ID');
+  const iCid   = col('ID Client');
+  const iCname = col('Nom Client');
+  const iType  = col('Type');
+  const iAmt   = col('Montant');
+  const iDate  = col('Date');
+  const iTime  = col('Heure');
+  const iAgent = col('Agent');
+  const iNotes = col('Notes');
+
+  const g = (cols: string[], i: number) => (i >= 0 ? cols[i] ?? '' : '').trim();
+  const seen = new Set<string>();
+
+  return rows.map((cols, i) => {
+    const id         = g(cols, iID);
+    const clientId   = g(cols, iCid);
+    const clientName = g(cols, iCname);
+    const typeRaw    = g(cols, iType).toLowerCase();
+    const amount     = parseFloat(g(cols, iAmt)) || 0;
+    const dateRaw    = g(cols, iDate);
+    const timeRaw    = g(cols, iTime);
+    const agentName  = g(cols, iAgent);
+    const notes      = g(cols, iNotes) || undefined;
+
+    const type: 'deposit' | 'withdrawal' | null =
+      typeRaw === 'collecte' ? 'deposit' : typeRaw === 'retrait' ? 'withdrawal' : null;
+
+    const base = { id, clientId, clientName, agentName, notes, rawLine: i + 2 };
+    const fallback = { ...base, type: (type ?? 'deposit') as 'deposit' | 'withdrawal', amount, date: new Date().toISOString() };
+
+    if (!id || !clientId || !type || !amount || !dateRaw) {
+      return { ...fallback, status: 'err' as const, errorReason: 'Champs requis manquants' };
+    }
+    if (seen.has(id)) {
+      return { ...fallback, status: 'dup' as const, errorReason: 'ID doublon' };
+    }
+    seen.add(id);
+    return { ...base, type, amount, date: parseTxDate(dateRaw, timeRaw), status: 'ok' as const };
+  });
+}
 
 // ─── Shared sub-components ────────────────────────────────────────────────────
 
@@ -219,18 +426,18 @@ function HubScreen({ onNavigate }: { onNavigate: (s: Screen) => void }) {
       icon: <Upload size={20} color={T.blue} strokeWidth={1.6} />,
     },
     {
-      key: 'hub' as Screen,
-      name: 'Sauvegarde\ncomplète',
-      desc: 'Archiver toutes les données',
+      key: 'import-tx-upload' as Screen,
+      name: 'Importer des\ntransactions',
+      desc: 'Charger un fichier CSV de transactions',
       bg:   T.purpleLt,
       borderColor: 'rgba(83,74,183,0.18)',
       iconBg: 'rgba(83,74,183,0.12)',
       icon: <RotateCcw size={20} color={T.purple} strokeWidth={1.6} />,
     },
     {
-      key: 'hub' as Screen,
+      key: 'clean-data' as Screen,
       name: 'Nettoyer\nles données',
-      desc: 'Supprimer les doublons',
+      desc: 'Effacer et réimporter',
       bg:   T.bgWarning,
       borderColor: 'rgba(133,79,11,0.18)',
       iconBg: 'rgba(133,79,11,0.12)',
@@ -336,14 +543,44 @@ function HubScreen({ onNavigate }: { onNavigate: (s: Screen) => void }) {
   );
 }
 
+// ─── Helpers ──────────────────────────────────────────────────────────────────
+
+async function shareOrSaveCsv(filename: string, content: string, title: string) {
+  const file = new FSFile(Paths.cache, filename);
+  file.write(content);
+  await Sharing.shareAsync(file.uri, { mimeType: 'text/csv', dialogTitle: title });
+}
+
+const ERROR_REPORT_CSV =
+  'nom_complet,telephone,erreur\n' +
+  'Binta Diallo,,Téléphone manquant\n' +
+  'Roukia Traoré,70 44 55 66,Doublon détecté\n';
+
+const EXPORT_CSV =
+  'nom_complet,telephone,solde,groupe_tontine\n' +
+  'Aïssata Zongo,70445566,25000,Groupe A\n' +
+  'Koné Seydou,76112233,18500,Groupe B\n' +
+  'Hamidou Kaboré,62889900,31200,Groupe A\n';
+
 // ─── IMPORT STEP 1 — Upload file ──────────────────────────────────────────────
 function ImportUploadScreen({
   onBack,
   onNext,
 }: {
   onBack: () => void;
-  onNext: () => void;
+  onNext: (file: DocumentPicker.DocumentPickerAsset) => void;
 }) {
+  const pickFile = async () => {
+    const result = await DocumentPicker.getDocumentAsync({
+      type: ['text/csv', 'application/vnd.ms-excel',
+             'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'],
+      copyToCacheDirectory: true,
+    });
+    if (!result.canceled && result.assets[0]) {
+      onNext(result.assets[0]);
+    }
+  };
+
   const required = [
     { col: 'nom_complet',          req: true  },
     { col: 'telephone',            req: true  },
@@ -369,7 +606,7 @@ function ImportUploadScreen({
 
         {/* Upload zone */}
         <TouchableOpacity
-          onPress={onNext}
+          onPress={pickFile}
           activeOpacity={0.8}
           style={styles.uploadZone}
         >
@@ -445,21 +682,44 @@ function ImportUploadScreen({
 function ImportMapScreen({
   onBack,
   onNext,
+  file,
 }: {
   onBack: () => void;
-  onNext: () => void;
+  onNext: (rows: ParsedRow[]) => void;
+  file: DocumentPicker.DocumentPickerAsset | null;
 }) {
-  const mappings = [
-    { csv: 'Nom',         field: 'nom_complet',        status: 'ok'   },
-    { csv: 'Tel',         field: 'telephone',           status: 'ok'   },
-    { csv: 'Montant_J',   field: 'montant_engagement',  status: 'ok'   },
-    { csv: 'Quartier',    field: 'localite',            status: 'ok'   },
-    { csv: 'Groupe',      field: 'groupe_tontine',      status: 'ok'   },
-    { csv: 'Email',       field: 'Ignoré',              status: 'skip' },
-  ];
+  const [headers, setHeaders]   = useState<string[]>([]);
+  const [csvRows, setCsvRows]   = useState<string[][]>([]);
+  const [mapping, setMapping]   = useState<Record<string, keyof ParsedRow | 'skip'>>({});
+  const [loading, setLoading]   = useState(false);
 
-  const fieldColor = (s: string) =>
-    s === 'ok' ? T.greenMid : s === 'warn' ? T.textWarning : T.text3;
+  useEffect(() => {
+    if (!file) return;
+    setLoading(true);
+    (async () => {
+      try {
+        const content = await new FSFile(file.uri).text();
+        const { headers: h, rows: r } = parseCsv(content);
+        setHeaders(h);
+        setCsvRows(r);
+        setMapping(detectMapping(h));
+      } finally {
+        setLoading(false);
+      }
+    })();
+  }, [file?.uri]);
+
+  const FIELD_LABELS: Partial<Record<keyof ParsedRow | 'skip', string>> = {
+    name: 'nom_complet', phone: 'telephone', commitmentAmount: 'montant_engagement',
+    address: 'localite', groupName: 'groupe_tontine', skip: 'Ignoré',
+  };
+
+  const fieldColor = (f: keyof ParsedRow | 'skip') =>
+    f === 'skip' ? T.text3 : T.greenMid;
+
+  const handleConfirm = () => {
+    onNext(buildParsedRows(headers, csvRows, mapping));
+  };
 
   return (
     <View style={{ flex: 1, backgroundColor: T.bg3 }}>
@@ -470,7 +730,9 @@ function ImportMapScreen({
         <View style={styles.screenTitleBlock}>
           <Text style={styles.screenTitle}>{'Correspondance\ndes colonnes'}</Text>
           <Text style={styles.screenSub}>
-            Fichier : <Text style={{ fontWeight: '600' }}>membres_koom.csv</Text> · 47 lignes détectées
+            Fichier :{' '}
+            <Text style={{ fontWeight: '600' }}>{file?.name ?? '—'}</Text>
+            {csvRows.length > 0 && ` · ${csvRows.length} lignes détectées`}
           </Text>
         </View>
 
@@ -480,10 +742,13 @@ function ImportMapScreen({
             <FileText size={16} color={T.greenMid} strokeWidth={1.5} />
           </View>
           <View style={{ flex: 1 }}>
-            <Text style={styles.fileName}>membres_koom.csv</Text>
-            <Text style={styles.fileMeta}>47 lignes · 8,2 ko · UTF-8</Text>
+            <Text style={styles.fileName}>{file?.name ?? '—'}</Text>
+            <Text style={styles.fileMeta}>
+              {file?.size ? `${Math.round(file.size / 1024)} ko` : ''}
+              {loading ? '  Lecture…' : ''}
+            </Text>
           </View>
-          <TouchableOpacity style={styles.fileRemove} activeOpacity={0.7}>
+          <TouchableOpacity style={styles.fileRemove} onPress={onBack} activeOpacity={0.7}>
             <X size={11} color={T.text3} strokeWidth={1.8} />
           </TouchableOpacity>
         </View>
@@ -493,36 +758,31 @@ function ImportMapScreen({
           <SecTitle label="Mappage automatique détecté" />
         </View>
         <View style={styles.colMap}>
-          {/* Header */}
           <View style={styles.mapHeader}>
             <Text style={styles.mapHeaderText}>Colonne CSV</Text>
             <View style={{ width: 20 }} />
-            <Text style={[styles.mapHeaderText, { textAlign: 'right' }]}>
-              Champ Kauridorr
-            </Text>
+            <Text style={[styles.mapHeaderText, { textAlign: 'right' }]}>Champ Kauridorr</Text>
           </View>
-          {/* Rows */}
-          {mappings.map((m, i) => (
-            <View
-              key={m.csv}
-              style={[
-                styles.mapRow,
-                i === mappings.length - 1 && { borderBottomWidth: 0 },
-              ]}
-            >
-              <Text style={styles.mapCsv}>{m.csv}</Text>
-              <ArrowRight size={14} color={T.text3} strokeWidth={1.5} />
-              <Text
-                style={[
-                  styles.mapField,
-                  { color: fieldColor(m.status) },
-                  m.status === 'skip' && { fontWeight: '400' },
-                ]}
-              >
-                {m.field}
-              </Text>
+          {headers.length === 0 && !loading && (
+            <View style={{ padding: 16 }}>
+              <Text style={{ color: T.text3, fontSize: 13 }}>Aucune colonne détectée</Text>
             </View>
-          ))}
+          )}
+          {headers.map((h, i) => {
+            const f = mapping[h] ?? 'skip';
+            return (
+              <View
+                key={h}
+                style={[styles.mapRow, i === headers.length - 1 && { borderBottomWidth: 0 }]}
+              >
+                <Text style={styles.mapCsv}>{h}</Text>
+                <ArrowRight size={14} color={T.text3} strokeWidth={1.5} />
+                <Text style={[styles.mapField, { color: fieldColor(f) }, f === 'skip' && { fontWeight: '400' }]}>
+                  {FIELD_LABELS[f] ?? String(f)}
+                </Text>
+              </View>
+            );
+          })}
         </View>
 
         <View style={styles.ctaWrap}>
@@ -530,7 +790,7 @@ function ImportMapScreen({
             label="Valider la correspondance"
             color={T.orange}
             icon={<ArrowRight size={15} color="#fff" strokeWidth={1.8} />}
-            onPress={onNext}
+            onPress={handleConfirm}
           />
         </View>
       </ScrollView>
@@ -542,26 +802,53 @@ function ImportMapScreen({
 function ImportPreviewScreen({
   onBack,
   onNext,
+  rawRows,
 }: {
   onBack: () => void;
-  onNext: () => void;
+  onNext: (result: ImportResult) => void;
+  rawRows: ParsedRow[];
 }) {
-  const rows = [
-    { name: 'Aïssata Zongo',  phone: '70 44 55 66', status: 'ok'  },
-    { name: 'Koné Seydou',    phone: '76 11 22 33', status: 'ok'  },
-    { name: 'Binta Diallo',   phone: '—',           status: 'err' },
-    { name: 'Roukia Traoré',  phone: '70 44 55 66', status: 'dup' },
-    { name: 'Hamidou Kaboré', phone: '62 88 99 00', status: 'ok'  },
-  ];
+  const clients    = useClientStore((s) => s.clients);
+  const addClient  = useClientStore((s) => s.addClient);
+  const [importing, setImporting] = useState(false);
 
-  const badgeBg: Record<string, string> = {
-    ok:  T.bgSuccess, err: T.bgDanger, dup: T.bgWarning,
-  };
-  const badgeText: Record<string, string> = {
-    ok: T.greenMid, err: T.textDanger, dup: T.textWarning,
-  };
-  const badgeLabel: Record<string, string> = {
-    ok: 'OK', err: 'Erreur', dup: 'Doublon',
+  const existingPhones = new Set(clients.map((c) => c.phone.replace(/\s/g, '')));
+  const rows = validateRows(rawRows, existingPhones);
+
+  const validCount = rows.filter((r) => r.status === 'ok').length;
+  const dupCount   = rows.filter((r) => r.status === 'dup').length;
+  const errCount   = rows.filter((r) => r.status === 'err').length;
+
+  const errorCsv =
+    'nom_complet,telephone,ligne,erreur\n' +
+    rows
+      .filter((r) => r.status !== 'ok')
+      .map((r) => `"${r.name}","${r.phone}",${r.rawLine},"${r.errorReason ?? ''}"`)
+      .join('\n');
+
+  const badgeBg:    Record<string, string> = { ok: T.bgSuccess,  err: T.bgDanger,  dup: T.bgWarning  };
+  const badgeTxt:   Record<string, string> = { ok: T.greenMid,   err: T.textDanger, dup: T.textWarning };
+  const badgeLbl:   Record<string, string> = { ok: 'OK', err: 'Erreur', dup: 'Doublon' };
+
+  const handleImport = async () => {
+    setImporting(true);
+    try {
+      const valid = rows.filter((r) => r.status === 'ok');
+      for (const row of valid) {
+        await addClient({
+          id:               row.externalId,
+          name:             row.name,
+          phone:            row.phone,
+          accountNumber:    row.accountNumber,
+          address:          row.address,
+          groupName:        row.groupName,
+          commitmentAmount: row.commitmentAmount,
+        });
+      }
+      onNext({ imported: valid.length, duplicates: dupCount, errors: errCount, total: rows.length });
+    } finally {
+      setImporting(false);
+    }
   };
 
   return (
@@ -579,9 +866,9 @@ function ImportPreviewScreen({
         <View style={styles.sectionPad}>
           <View style={styles.validationStrip}>
             {[
-              { num: '43', lbl: 'Valides',  color: T.greenMid    },
-              { num: '2',  lbl: 'Doublons', color: T.textWarning  },
-              { num: '2',  lbl: 'Erreurs',  color: T.textDanger   },
+              { num: String(validCount), lbl: 'Valides',  color: T.greenMid   },
+              { num: String(dupCount),   lbl: 'Doublons', color: T.textWarning },
+              { num: String(errCount),   lbl: 'Erreurs',  color: T.textDanger  },
             ].map((v) => (
               <View key={v.lbl} style={styles.valCell}>
                 <Text style={[styles.valNum, { color: v.color }]}>{v.num}</Text>
@@ -591,19 +878,23 @@ function ImportPreviewScreen({
           </View>
         </View>
 
-        {/* Warning banner */}
-        <View style={styles.warnBanner}>
-          <View style={{ marginTop: 1 }}>
-            <AlertTriangle size={14} color={T.textWarning} strokeWidth={1.4} />
+        {/* Warning banner — only if there are issues */}
+        {(dupCount > 0 || errCount > 0) && (
+          <View style={styles.warnBanner}>
+            <View style={{ marginTop: 1 }}>
+              <AlertTriangle size={14} color={T.textWarning} strokeWidth={1.4} />
+            </View>
+            <Text style={styles.warnBannerText}>
+              {dupCount > 0 && `${dupCount} doublon${dupCount > 1 ? 's' : ''} détecté${dupCount > 1 ? 's' : ''} (même téléphone). `}
+              {errCount > 0 && `${errCount} ligne${errCount > 1 ? 's' : ''} invalide${errCount > 1 ? 's' : ''}. `}
+              {`Seules les ${validCount} lignes valides seront importées.`}
+            </Text>
           </View>
-          <Text style={styles.warnBannerText}>
-            2 doublons détectés (même téléphone). 2 lignes ont un format invalide. Seules les 43 lignes valides seront importées.
-          </Text>
-        </View>
+        )}
 
         {/* Preview table */}
         <View style={[styles.sectionPad, { paddingBottom: 8 }]}>
-          <SecTitle label="Aperçu des données (5 premières)" />
+          <SecTitle label={`Aperçu des données (${Math.min(rows.length, 5)} premières)`} />
         </View>
         <View style={styles.previewTable}>
           <View style={styles.ptHeader}>
@@ -611,33 +902,23 @@ function ImportPreviewScreen({
             <Text style={styles.ptHeaderText}>Téléphone</Text>
             <Text style={[styles.ptHeaderText, { textAlign: 'right' }]}>Statut</Text>
           </View>
-          {rows.map((r, i) => (
+          {rows.slice(0, 5).map((r, i) => (
             <View
               key={i}
               style={[
                 styles.ptRow,
-                i === rows.length - 1 && { borderBottomWidth: 0 },
+                i === Math.min(rows.length, 5) - 1 && { borderBottomWidth: 0 },
                 r.status === 'err' && { backgroundColor: T.bgDanger },
               ]}
             >
-              <Text style={[styles.ptName, { flex: 2 }]}>{r.name}</Text>
-              <Text
-                style={[
-                  styles.ptPhone,
-                  r.status === 'err' && { color: T.textDanger },
-                ]}
-              >
-                {r.phone}
+              <Text style={[styles.ptName, { flex: 2 }]}>{r.name || '—'}</Text>
+              <Text style={[styles.ptPhone, r.status === 'err' && { color: T.textDanger }]}>
+                {r.phone || '—'}
               </Text>
               <View style={{ alignItems: 'flex-end' }}>
-                <View
-                  style={[
-                    styles.ptBadge,
-                    { backgroundColor: badgeBg[r.status] },
-                  ]}
-                >
-                  <Text style={[styles.ptBadgeText, { color: badgeText[r.status] }]}>
-                    {badgeLabel[r.status]}
+                <View style={[styles.ptBadge, { backgroundColor: badgeBg[r.status] }]}>
+                  <Text style={[styles.ptBadgeText, { color: badgeTxt[r.status] }]}>
+                    {badgeLbl[r.status]}
                   </Text>
                 </View>
               </View>
@@ -647,16 +928,18 @@ function ImportPreviewScreen({
 
         <View style={styles.ctaWrap}>
           <BtnMain
-            label="Importer 43 clients valides"
+            label={importing ? 'Import en cours…' : `Importer ${validCount} client${validCount !== 1 ? 's' : ''} valide${validCount !== 1 ? 's' : ''}`}
             color={T.orange}
             icon={<Download size={15} color="#fff" strokeWidth={1.8} />}
-            onPress={onNext}
+            onPress={handleImport}
           />
-          <BtnOutline
-            label="Télécharger rapport d'erreurs"
-            icon={<FileText size={14} color={T.text2} strokeWidth={1.5} />}
-            onPress={() => {}}
-          />
+          {(dupCount > 0 || errCount > 0) && (
+            <BtnOutline
+              label="Télécharger rapport d'erreurs"
+              icon={<FileText size={14} color={T.text2} strokeWidth={1.5} />}
+              onPress={() => shareOrSaveCsv('rapport_erreurs.csv', errorCsv, "Rapport d'erreurs")}
+            />
+          )}
         </View>
       </ScrollView>
     </View>
@@ -664,29 +947,28 @@ function ImportPreviewScreen({
 }
 
 // ─── IMPORT SUCCESS ───────────────────────────────────────────────────────────
-function ImportSuccessScreen({ onDone }: { onDone: () => void }) {
+function ImportSuccessScreen({ onDone, result }: { onDone: () => void; result: ImportResult }) {
+  const skipped = result.duplicates + result.errors;
   return (
     <ScrollView
       style={{ flex: 1, backgroundColor: T.bg }}
       contentContainerStyle={styles.successScreen}
       showsVerticalScrollIndicator={false}
     >
-      {/* Icon ring */}
       <View style={[styles.successRing, { backgroundColor: T.orangeLt }]}>
         <Check size={34} color={T.orange} strokeWidth={2.2} />
       </View>
       <Text style={styles.successH}>Import réussi !</Text>
       <Text style={styles.successP}>
-        {'43 nouveaux membres ont été\najoutés à Kauridorr.'}
+        {`${result.imported} nouveau${result.imported !== 1 ? 'x' : ''} membre${result.imported !== 1 ? 's' : ''} ajouté${result.imported !== 1 ? 's' : ''} à Kauridorr.`}
       </Text>
 
-      {/* Result grid */}
       <View style={styles.resultGrid}>
         {[
-          { val: '43', lbl: 'Importés',          color: T.greenMid    },
-          { val: '2',  lbl: 'Ignorés (doublons)', color: T.textWarning  },
-          { val: '2',  lbl: 'Erreurs',            color: T.textDanger   },
-          { val: '47', lbl: 'Total traités',      color: T.text1        },
+          { val: String(result.imported),    lbl: 'Importés',           color: T.greenMid   },
+          { val: String(result.duplicates),  lbl: 'Ignorés (doublons)', color: T.textWarning },
+          { val: String(result.errors),      lbl: 'Erreurs',            color: T.textDanger  },
+          { val: String(result.total),       lbl: 'Total traités',      color: T.text1       },
         ].map((r) => (
           <View key={r.lbl} style={styles.resultTile}>
             <Text style={[styles.resultVal, { color: r.color }]}>{r.val}</Text>
@@ -695,34 +977,442 @@ function ImportSuccessScreen({ onDone }: { onDone: () => void }) {
         ))}
       </View>
 
-      {/* Error summary */}
-      <View style={styles.errSummary}>
-        <View style={{ marginTop: 1 }}>
-          <AlertTriangle size={15} color={T.textWarning} strokeWidth={1.4} />
+      {skipped > 0 && (
+        <View style={styles.errSummary}>
+          <View style={{ marginTop: 1 }}>
+            <AlertTriangle size={15} color={T.textWarning} strokeWidth={1.4} />
+          </View>
+          <Text style={styles.errTxt}>
+            {`${skipped} ligne${skipped !== 1 ? 's' : ''} ignorée${skipped !== 1 ? 's' : ''}. `}
+            <Text style={{ fontWeight: '600', color: T.textWarning }}>Téléchargez le rapport</Text>
+            {' pour les corriger et réimporter.'}
+          </Text>
         </View>
-        <Text style={styles.errTxt}>
-          2 lignes ignorées pour téléphone manquant.{' '}
-          <Text style={{ fontWeight: '600', color: T.textWarning }}>
-            Téléchargez le rapport
-          </Text>{' '}
-          pour les corriger et réimporter.
-        </Text>
-      </View>
+      )}
 
       <View style={{ width: '100%', gap: 8 }}>
-        <BtnMain
-          label="Voir la liste des clients"
-          color={T.orange}
-          onPress={onDone}
-        />
-        <BtnOutline
-          label="Télécharger rapport d'erreurs"
-          icon={<FileText size={14} color={T.text2} strokeWidth={1.5} />}
-          onPress={() => {}}
-        />
+        <BtnMain label="Voir la liste des clients" color={T.orange} onPress={onDone} />
+        {skipped > 0 && (
+          <BtnOutline
+            label="Télécharger rapport d'erreurs"
+            icon={<FileText size={14} color={T.text2} strokeWidth={1.5} />}
+            onPress={() => shareOrSaveCsv('rapport_erreurs.csv', ERROR_REPORT_CSV, "Rapport d'erreurs")}
+          />
+        )}
         <BtnOutline label="Nouvel import" onPress={onDone} />
       </View>
     </ScrollView>
+  );
+}
+
+// ─── IMPORT TX STEP 1 — Upload ───────────────────────────────────────────────
+function ImportTxUploadScreen({
+  onBack,
+  onNext,
+}: {
+  onBack: () => void;
+  onNext: (file: DocumentPicker.DocumentPickerAsset) => void;
+}) {
+  const pickFile = async () => {
+    const result = await DocumentPicker.getDocumentAsync({
+      type: ['text/csv', 'application/vnd.ms-excel'],
+      copyToCacheDirectory: true,
+    });
+    if (!result.canceled && result.assets[0]) onNext(result.assets[0]);
+  };
+
+  const columns = [
+    { col: 'ID',         req: true  },
+    { col: 'ID Client',  req: true  },
+    { col: 'Nom Client', req: false },
+    { col: 'Type',       req: true  },
+    { col: 'Montant',    req: true  },
+    { col: 'Date',       req: true  },
+    { col: 'Heure',      req: false },
+    { col: 'Agent',      req: false },
+    { col: 'Notes',      req: false },
+  ];
+
+  return (
+    <View style={{ flex: 1, backgroundColor: T.bg3 }}>
+      <StepBar total={3} done={1} active={1} accent="orange" />
+      <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 32 }}>
+        <BackRow label="Données" step={1} total={3} onBack={onBack} />
+        <View style={styles.screenTitleBlock}>
+          <Text style={styles.screenTitle}>{'Importer des\ntransactions'}</Text>
+          <Text style={styles.screenSub}>
+            Chargez votre fichier de transactions au format backup CSV.
+          </Text>
+        </View>
+        <View style={styles.divider} />
+        <TouchableOpacity onPress={pickFile} activeOpacity={0.8} style={styles.uploadZone}>
+          <View style={styles.uploadIconWrap}>
+            <Upload size={24} color={T.orange} strokeWidth={1.5} />
+          </View>
+          <Text style={styles.uploadTitle}>Appuyer pour choisir un fichier</Text>
+          <Text style={styles.uploadSub}>{'Depuis votre téléphone,\nGoogle Drive ou WhatsApp'}</Text>
+          <View style={{ flexDirection: 'row', gap: 6 }}>
+            <View style={styles.fmtChip}>
+              <Text style={styles.fmtChipText}>.CSV</Text>
+            </View>
+          </View>
+        </TouchableOpacity>
+        <View style={[styles.sectionPad, { marginTop: 14 }]}>
+          <SecTitle label="Colonnes attendues" />
+          <View style={styles.card}>
+            {columns.map((r, i) => (
+              <View
+                key={r.col}
+                style={[styles.cardRow, i === columns.length - 1 && { borderBottomWidth: 0 }]}
+              >
+                <Text style={styles.cardLabel}>{r.col}</Text>
+                <View style={[styles.colBadge, { backgroundColor: r.req ? T.bgDanger : T.bg2 }]}>
+                  <Text style={[styles.colBadgeText, { color: r.req ? T.textDanger : T.text3 }]}>
+                    {r.req ? 'Requis' : 'Optionnel'}
+                  </Text>
+                </View>
+              </View>
+            ))}
+          </View>
+        </View>
+      </ScrollView>
+    </View>
+  );
+}
+
+// ─── IMPORT TX STEP 2 — Preview ──────────────────────────────────────────────
+function ImportTxPreviewScreen({
+  onBack,
+  onNext,
+  file,
+}: {
+  onBack: () => void;
+  onNext: (result: TxImportResult) => void;
+  file: DocumentPicker.DocumentPickerAsset | null;
+}) {
+  const importTransactions  = useTransactionStore((s) => s.importTransactions);
+  const existingTxs         = useTransactionStore((s) => s.transactions);
+  const reconcileBalances   = useClientStore((s) => s.reconcileBalances);
+
+  const [rows, setRows]         = useState<ParsedTx[]>([]);
+  const [loading, setLoading]   = useState(false);
+  const [importing, setImporting] = useState(false);
+
+  useEffect(() => {
+    if (!file) return;
+    setLoading(true);
+    (async () => {
+      try {
+        const content = await new FSFile(file.uri).text();
+        const parsed = parseTxCsv(content);
+        const existingIds = new Set(existingTxs.map((t) => t.id));
+        setRows(parsed.map((r) =>
+          r.status === 'ok' && existingIds.has(r.id)
+            ? { ...r, status: 'dup' as const, errorReason: 'Transaction déjà présente' }
+            : r
+        ));
+      } finally {
+        setLoading(false);
+      }
+    })();
+  }, [file?.uri]);
+
+  const validCount = rows.filter((r) => r.status === 'ok').length;
+  const dupCount   = rows.filter((r) => r.status === 'dup').length;
+  const errCount   = rows.filter((r) => r.status === 'err').length;
+
+  const badgeBg:  Record<string, string> = { ok: T.bgSuccess,  err: T.bgDanger,   dup: T.bgWarning  };
+  const badgeTxt: Record<string, string> = { ok: T.greenMid,   err: T.textDanger,  dup: T.textWarning };
+  const badgeLbl: Record<string, string> = { ok: 'OK', err: 'Erreur', dup: 'Doublon' };
+
+  const handleImport = async () => {
+    setImporting(true);
+    try {
+      const valid = rows.filter((r) => r.status === 'ok');
+      const toImport = valid.map((r) => ({
+        id:         r.id,
+        clientId:   r.clientId,
+        clientName: r.clientName,
+        amount:     r.amount,
+        type:       r.type,
+        date:       r.date,
+        status:     'completed' as const,
+        notes:      r.notes ?? (r.agentName ? `Agent: ${r.agentName}` : undefined),
+      }));
+      importTransactions(toImport);
+      const allTxs = [...existingTxs, ...toImport];
+      reconcileBalances(allTxs);
+      onNext({ imported: valid.length, duplicates: dupCount, errors: errCount, total: rows.length });
+    } finally {
+      setImporting(false);
+    }
+  };
+
+  return (
+    <View style={{ flex: 1, backgroundColor: T.bg3 }}>
+      <StepBar total={3} done={2} active={2} accent="orange" />
+      <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 32 }}>
+        <BackRow label="Retour" step={2} total={3} onBack={onBack} />
+        <View style={styles.screenTitleBlock}>
+          <Text style={styles.screenTitle}>{'Aperçu\navant import'}</Text>
+          <Text style={styles.screenSub}>
+            Fichier :{' '}
+            <Text style={{ fontWeight: '600' }}>{file?.name ?? '—'}</Text>
+            {rows.length > 0 && ` · ${rows.length} lignes`}
+          </Text>
+        </View>
+
+        <View style={styles.sectionPad}>
+          <View style={styles.validationStrip}>
+            {[
+              { num: String(validCount), lbl: 'Valides',  color: T.greenMid   },
+              { num: String(dupCount),   lbl: 'Doublons', color: T.textWarning },
+              { num: String(errCount),   lbl: 'Erreurs',  color: T.textDanger  },
+            ].map((v) => (
+              <View key={v.lbl} style={styles.valCell}>
+                <Text style={[styles.valNum, { color: v.color }]}>{v.num}</Text>
+                <Text style={styles.valLbl}>{v.lbl}</Text>
+              </View>
+            ))}
+          </View>
+        </View>
+
+        {(dupCount > 0 || errCount > 0) && (
+          <View style={styles.warnBanner}>
+            <View style={{ marginTop: 1 }}>
+              <AlertTriangle size={14} color={T.textWarning} strokeWidth={1.4} />
+            </View>
+            <Text style={styles.warnBannerText}>
+              {dupCount > 0 && `${dupCount} doublon${dupCount > 1 ? 's' : ''} ignoré${dupCount > 1 ? 's' : ''}. `}
+              {errCount > 0 && `${errCount} ligne${errCount > 1 ? 's' : ''} invalide${errCount > 1 ? 's' : ''}. `}
+              {`Seules les ${validCount} lignes valides seront importées.`}
+            </Text>
+          </View>
+        )}
+
+        <View style={[styles.sectionPad, { paddingBottom: 8 }]}>
+          <SecTitle label={`Aperçu (${Math.min(rows.length, 5)} premières lignes)`} />
+        </View>
+        <View style={styles.previewTable}>
+          <View style={styles.ptHeader}>
+            <Text style={[styles.ptHeaderText, { flex: 2 }]}>Client</Text>
+            <Text style={styles.ptHeaderText}>Montant</Text>
+            <Text style={[styles.ptHeaderText, { textAlign: 'right' }]}>Statut</Text>
+          </View>
+          {loading && (
+            <View style={{ padding: 16 }}>
+              <Text style={{ color: T.text3, fontSize: 13 }}>Lecture…</Text>
+            </View>
+          )}
+          {rows.slice(0, 5).map((r, i) => (
+            <View
+              key={i}
+              style={[
+                styles.ptRow,
+                i === Math.min(rows.length, 5) - 1 && { borderBottomWidth: 0 },
+                r.status === 'err' && { backgroundColor: T.bgDanger },
+              ]}
+            >
+              <Text style={[styles.ptName, { flex: 2 }]}>{r.clientName || '—'}</Text>
+              <Text style={[styles.ptPhone, r.status === 'err' && { color: T.textDanger }]}>
+                {r.amount.toLocaleString('fr-FR')} F
+              </Text>
+              <View style={{ alignItems: 'flex-end' }}>
+                <View style={[styles.ptBadge, { backgroundColor: badgeBg[r.status] }]}>
+                  <Text style={[styles.ptBadgeText, { color: badgeTxt[r.status] }]}>
+                    {badgeLbl[r.status]}
+                  </Text>
+                </View>
+              </View>
+            </View>
+          ))}
+        </View>
+
+        <View style={styles.ctaWrap}>
+          <BtnMain
+            label={importing ? 'Import en cours…' : `Importer ${validCount} transaction${validCount !== 1 ? 's' : ''}`}
+            color={T.orange}
+            icon={<Download size={15} color="#fff" strokeWidth={1.8} />}
+            onPress={handleImport}
+          />
+        </View>
+      </ScrollView>
+    </View>
+  );
+}
+
+// ─── IMPORT TX SUCCESS ────────────────────────────────────────────────────────
+function ImportTxSuccessScreen({ onDone, result }: { onDone: () => void; result: TxImportResult }) {
+  return (
+    <ScrollView
+      style={{ flex: 1, backgroundColor: T.bg }}
+      contentContainerStyle={styles.successScreen}
+      showsVerticalScrollIndicator={false}
+    >
+      <View style={[styles.successRing, { backgroundColor: T.purpleLt }]}>
+        <Check size={34} color={T.purple} strokeWidth={2.2} />
+      </View>
+      <Text style={styles.successH}>Import réussi !</Text>
+      <Text style={styles.successP}>
+        {`${result.imported} transaction${result.imported !== 1 ? 's' : ''} importée${result.imported !== 1 ? 's' : ''}.`}
+      </Text>
+      <View style={styles.resultGrid}>
+        {[
+          { val: String(result.imported),   lbl: 'Importées',           color: T.greenMid    },
+          { val: String(result.duplicates), lbl: 'Ignorées (doublons)', color: T.textWarning  },
+          { val: String(result.errors),     lbl: 'Erreurs',             color: T.textDanger   },
+          { val: String(result.total),      lbl: 'Total traitées',      color: T.text1        },
+        ].map((r) => (
+          <View key={r.lbl} style={styles.resultTile}>
+            <Text style={[styles.resultVal, { color: r.color }]}>{r.val}</Text>
+            <Text style={styles.resultLbl}>{r.lbl}</Text>
+          </View>
+        ))}
+      </View>
+      <View style={{ width: '100%', gap: 8 }}>
+        <BtnMain label="Retour aux données" color={T.purple} onPress={onDone} />
+        <BtnOutline label="Nouvel import" onPress={onDone} />
+      </View>
+    </ScrollView>
+  );
+}
+
+// ─── CLEAN DATA ───────────────────────────────────────────────────────────────
+function CleanDataScreen({ onBack, onNavigate }: { onBack: () => void; onNavigate: (s: Screen) => void }) {
+  const clients           = useClientStore((s) => s.clients);
+  const clearClients      = useClientStore((s) => s.clearAll);
+  const reconcileBalances = useClientStore((s) => s.reconcileBalances);
+  const transactions      = useTransactionStore((s) => s.transactions);
+  const pendingTxs        = useTransactionStore((s) => s.pendingTransactions);
+  const clearTxs          = useTransactionStore((s) => s.clearAll);
+
+  const clientCount = clients.length;
+  const txCount     = transactions.length + pendingTxs.length;
+
+  const confirm = (title: string, message: string, onConfirm: () => void) =>
+    Alert.alert(title, message, [
+      { text: 'Annuler', style: 'cancel' },
+      { text: 'Effacer', style: 'destructive', onPress: onConfirm },
+    ]);
+
+  const actions = [
+    {
+      label:   'Effacer les clients',
+      sub:     `${clientCount} client${clientCount !== 1 ? 's' : ''} en mémoire`,
+      count:   clientCount,
+      bg:      T.bgDanger,
+      border:  'rgba(163,45,45,0.18)',
+      iconBg:  'rgba(163,45,45,0.12)',
+      txtColor: T.textDanger,
+      reimport: 'import-upload' as Screen,
+      onPress: () =>
+        confirm(
+          'Effacer les clients ?',
+          `Cette action supprimera ${clientCount} client${clientCount !== 1 ? 's' : ''} de l'appareil. Les données sur le serveur ne seront pas affectées.`,
+          clearClients,
+        ),
+    },
+    {
+      label:   'Effacer les transactions',
+      sub:     `${txCount} transaction${txCount !== 1 ? 's' : ''} en mémoire`,
+      count:   txCount,
+      bg:      T.bgWarning,
+      border:  'rgba(133,79,11,0.18)',
+      iconBg:  'rgba(133,79,11,0.12)',
+      txtColor: T.textWarning,
+      reimport: 'import-tx-upload' as Screen,
+      onPress: () =>
+        confirm(
+          'Effacer les transactions ?',
+          `Cette action supprimera ${txCount} transaction${txCount !== 1 ? 's' : ''} de l'appareil. Les données sur le serveur ne seront pas affectées.`,
+          clearTxs,
+        ),
+    },
+    {
+      label:   'Tout effacer',
+      sub:     `Clients + transactions`,
+      count:   clientCount + txCount,
+      bg:      T.bg2,
+      border:  T.border2,
+      iconBg:  T.bg3,
+      txtColor: T.text1,
+      reimport: 'import-upload' as Screen,
+      onPress: () =>
+        confirm(
+          'Tout effacer ?',
+          `Supprime ${clientCount} client${clientCount !== 1 ? 's' : ''} et ${txCount} transaction${txCount !== 1 ? 's' : ''} de l'appareil.`,
+          () => { clearClients(); clearTxs(); },
+        ),
+    },
+  ];
+
+  return (
+    <View style={{ flex: 1, backgroundColor: T.bg3 }}>
+      <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 32 }}>
+        <BackRow label="Données" step={1} total={1} onBack={onBack} />
+
+        <View style={styles.screenTitleBlock}>
+          <Text style={styles.screenTitle}>{'Nettoyer\nles données'}</Text>
+          <Text style={styles.screenSub}>
+            Effacez les données locales pour repartir d'un import propre. Les données sur le serveur restent intactes.
+          </Text>
+        </View>
+
+        <View style={[styles.sectionPad, { paddingBottom: 10 }]}>
+          <SecTitle label="Actions disponibles" />
+        </View>
+
+        <View style={{ paddingHorizontal: 18, gap: 10 }}>
+          {actions.map((a) => (
+            <TouchableOpacity
+              key={a.label}
+              onPress={a.onPress}
+              activeOpacity={0.8}
+              style={[styles.cleanCard, { backgroundColor: a.bg, borderColor: a.border }]}
+            >
+              <View style={[styles.cleanIcon, { backgroundColor: a.iconBg }]}>
+                <XCircle size={20} color={a.txtColor} strokeWidth={1.6} />
+              </View>
+              <View style={{ flex: 1 }}>
+                <Text style={[styles.cleanLabel, { color: a.txtColor }]}>{a.label}</Text>
+                <Text style={styles.cleanSub}>{a.sub}</Text>
+              </View>
+              <View style={[styles.cleanBadge, { backgroundColor: a.iconBg }]}>
+                <Text style={[styles.cleanBadgeTxt, { color: a.txtColor }]}>{a.count}</Text>
+              </View>
+            </TouchableOpacity>
+          ))}
+        </View>
+
+        <View style={[styles.sectionPad, { paddingTop: 20, paddingBottom: 10 }]}>
+          <SecTitle label="Réconciliation" />
+        </View>
+        <View style={{ paddingHorizontal: 18, gap: 8 }}>
+          <BtnOutline
+            label="Recalculer les soldes depuis les transactions"
+            icon={<RotateCcw size={14} color={T.text2} strokeWidth={1.5} />}
+            onPress={() => reconcileBalances([...transactions, ...pendingTxs])}
+          />
+        </View>
+
+        <View style={[styles.sectionPad, { paddingTop: 20, paddingBottom: 10 }]}>
+          <SecTitle label="Réimporter après nettoyage" />
+        </View>
+        <View style={{ paddingHorizontal: 18, gap: 8 }}>
+          <BtnMain
+            label="Importer des clients"
+            color={T.orange}
+            icon={<Download size={15} color="#fff" strokeWidth={1.8} />}
+            onPress={() => onNavigate('import-upload')}
+          />
+          <BtnOutline
+            label="Importer des transactions"
+            icon={<RotateCcw size={14} color={T.text2} strokeWidth={1.5} />}
+            onPress={() => onNavigate('import-tx-upload')}
+          />
+        </View>
+      </ScrollView>
+    </View>
   );
 }
 
@@ -951,12 +1641,12 @@ function ExportDoneScreen({ onDone }: { onDone: () => void }) {
           label="Télécharger le fichier"
           color={T.blue}
           icon={<Download size={15} color="#fff" strokeWidth={1.8} />}
-          onPress={() => {}}
+          onPress={() => shareOrSaveCsv('kauridorr_export_avril2025.csv', EXPORT_CSV, 'Télécharger export')}
         />
         <BtnOutline
           label="Partager via WhatsApp / e-mail"
           icon={<Share2 size={14} color={T.text2} strokeWidth={1.5} />}
-          onPress={() => {}}
+          onPress={() => shareOrSaveCsv('kauridorr_export_avril2025.csv', EXPORT_CSV, 'Partager export')}
         />
         <BtnOutline label="Nouvel export" onPress={onDone} />
       </View>
@@ -966,19 +1656,17 @@ function ExportDoneScreen({ onDone }: { onDone: () => void }) {
 
 // ─── Root component ───────────────────────────────────────────────────────────
 export default function DataScreen() {
-  const [screen, setScreen] = useState<Screen>('hub');
+  const [screen, setScreen]             = useState<Screen>('hub');
+  const [pickedFile, setPickedFile]     = useState<DocumentPicker.DocumentPickerAsset | null>(null);
+  const [txFile, setTxFile]             = useState<DocumentPicker.DocumentPickerAsset | null>(null);
+  const [parsedRows, setParsedRows]     = useState<ParsedRow[]>([]);
+  const [importResult, setImportResult] = useState<ImportResult>({ imported: 0, duplicates: 0, errors: 0, total: 0 });
+  const [txResult, setTxResult]         = useState<TxImportResult>({ imported: 0, duplicates: 0, errors: 0, total: 0 });
 
   const nav = (s: Screen) => setScreen(s);
 
-  const renderTopBar = () => {
-    if (screen === 'hub') return null;
-    return null; // step screens have their own back rows
-  };
-
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: T.bg3 }} edges={['top']}>
-      {renderTopBar()}
-
       {screen === 'hub' && (
         <HubScreen onNavigate={nav} />
       )}
@@ -986,26 +1674,51 @@ export default function DataScreen() {
       {screen === 'import-upload' && (
         <ImportUploadScreen
           onBack={() => nav('hub')}
-          onNext={() => nav('import-map')}
+          onNext={(file) => { setPickedFile(file); nav('import-map'); }}
         />
       )}
 
       {screen === 'import-map' && (
         <ImportMapScreen
           onBack={() => nav('import-upload')}
-          onNext={() => nav('import-preview')}
+          onNext={(rows) => { setParsedRows(rows); nav('import-preview'); }}
+          file={pickedFile}
         />
       )}
 
       {screen === 'import-preview' && (
         <ImportPreviewScreen
           onBack={() => nav('import-map')}
-          onNext={() => nav('import-success')}
+          onNext={(result) => { setImportResult(result); nav('import-success'); }}
+          rawRows={parsedRows}
         />
       )}
 
       {screen === 'import-success' && (
-        <ImportSuccessScreen onDone={() => nav('hub')} />
+        <ImportSuccessScreen onDone={() => nav('hub')} result={importResult} />
+      )}
+
+      {screen === 'import-tx-upload' && (
+        <ImportTxUploadScreen
+          onBack={() => nav('hub')}
+          onNext={(file) => { setTxFile(file); nav('import-tx-preview'); }}
+        />
+      )}
+
+      {screen === 'import-tx-preview' && (
+        <ImportTxPreviewScreen
+          onBack={() => nav('import-tx-upload')}
+          onNext={(result) => { setTxResult(result); nav('import-tx-success'); }}
+          file={txFile}
+        />
+      )}
+
+      {screen === 'import-tx-success' && (
+        <ImportTxSuccessScreen onDone={() => nav('hub')} result={txResult} />
+      )}
+
+      {screen === 'clean-data' && (
+        <CleanDataScreen onBack={() => nav('hub')} onNavigate={nav} />
       )}
 
       {screen === 'export-config' && (
@@ -1626,4 +2339,30 @@ const styles = StyleSheet.create({
     borderColor: T.border,
   },
   progFill: { height: '100%', borderRadius: 4 },
+
+  // ── Clean data ──
+  cleanCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    borderRadius: 14,
+    borderWidth: 0.5,
+    paddingHorizontal: 14,
+    paddingVertical: 14,
+  },
+  cleanIcon: {
+    width: 40,
+    height: 40,
+    borderRadius: 12,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  cleanLabel: { fontSize: 14, fontWeight: '600' },
+  cleanSub:   { fontSize: 11, color: T.text3, marginTop: 2 },
+  cleanBadge: {
+    paddingHorizontal: 9,
+    paddingVertical: 4,
+    borderRadius: 20,
+  },
+  cleanBadgeTxt: { fontSize: 13, fontWeight: '700' },
 });

@@ -15,10 +15,26 @@ const ID_TYPE_LABELS: Record<string, string> = {
   autre: "Autre",
 };
 
+const FREQ_LABELS: Record<string, string> = {
+  daily: 'Quotidien',
+  weekly: 'Hebdomadaire',
+  biweekly: 'Bihebdomadaire',
+  monthly: 'Mensuel',
+};
+
+function formatTxTime(isoDate: string): string {
+  const d = new Date(isoDate);
+  const now = new Date();
+  const isToday = d.toDateString() === now.toDateString();
+  const time = d.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' });
+  if (isToday) return `Aujourd'hui · ${time}`;
+  return d.toLocaleDateString('fr-FR', { day: '2-digit', month: 'short' }) + ` · ${time}`;
+}
+
 
 
   import React from 'react';
-  import { View, Text, StyleSheet, ScrollView, Pressable, ActivityIndicator, Alert } from 'react-native';
+  import { View, Text, StyleSheet, ScrollView, Pressable, ActivityIndicator, Alert, TextInput } from 'react-native';
   import { SafeAreaView } from 'react-native-safe-area-context';
   import {
       ChevronLeft,
@@ -31,6 +47,7 @@ const ID_TYPE_LABELS: Record<string, string> = {
   } from 'lucide-react-native';
 import TransactionItem from "@/app/components/transactions/transaction-items";
 import SectionHeader from "@/app/components/ui/section-header";
+import { usePermissions } from "@/hooks/usePermissions";
 
   
   const ClientDetails = () => {
@@ -42,6 +59,9 @@ import SectionHeader from "@/app/components/ui/section-header";
     const [isLoading, setIsLoading] = useState(true);
     const [client, setClient] = useState<Client | null>(null);
     const [transactions, setTransactions] = useState<Transaction[]>([]);
+    const [editingBalance, setEditingBalance] = useState(false);
+    const [balanceInput, setBalanceInput] = useState('');
+    const perms = usePermissions();
   
     useEffect(() => {
       if (id) {
@@ -84,6 +104,15 @@ import SectionHeader from "@/app/components/ui/section-header";
       });
     };
   
+    const handleSaveBalance = async () => {
+      const newBalance = parseInt(balanceInput.replace(/\s/g, ''), 10);
+      if (!isNaN(newBalance) && newBalance >= 0 && client) {
+        const updated = await updateClient(id, { balance: newBalance });
+        setClient(updated);
+      }
+      setEditingBalance(false);
+    };
+
     const handleScanKyc = () => {
       router.push({
         pathname: "/(app)/clients/scan",
@@ -137,10 +166,26 @@ import SectionHeader from "@/app/components/ui/section-header";
                       </View>
 
                       <View style={styles.statsStrip}>
-                          <View style={styles.statCell}>
-                              <Text style={styles.statVal}>{client!.balance.toLocaleString('fr-FR')}</Text>
-                              <Text style={styles.statLbl}>Solde (FCFA)</Text>
-                          </View>
+                          <Pressable
+                              style={styles.statCell}
+                              onPress={perms.editClient ? () => { setBalanceInput(String(client!.balance)); setEditingBalance(true); } : undefined}
+                          >
+                              {editingBalance && perms.editClient ? (
+                                  <TextInput
+                                      style={[styles.statVal, { color: 'white', minWidth: 80, textAlign: 'center' }]}
+                                      value={balanceInput}
+                                      onChangeText={setBalanceInput}
+                                      keyboardType="numeric"
+                                      autoFocus
+                                      returnKeyType="done"
+                                      onSubmitEditing={handleSaveBalance}
+                                      onBlur={handleSaveBalance}
+                                  />
+                              ) : (
+                                  <Text style={styles.statVal}>{client!.balance.toLocaleString('fr-FR')}</Text>
+                              )}
+                              <Text style={styles.statLbl}>{editingBalance && perms.editClient ? 'Entrée pour valider' : perms.editClient ? 'Solde ✎' : 'Solde'}</Text>
+                          </Pressable>
                           <View style={[styles.statCell, styles.statCellBorder]}>
                               <Text style={styles.statVal}>{transactions.length}</Text>
                               <Text style={styles.statLbl}>Transactions</Text>
@@ -157,7 +202,10 @@ import SectionHeader from "@/app/components/ui/section-header";
   
                       {/* Quick Actions */}
                       <View style={styles.actionStrip}>
-                          <Pressable style={styles.actBtn} onPress={() => router.push({ pathname: "/(app)/clients/add", params: { clientId: id } })}>
+                          <Pressable
+                              style={[styles.actBtn, !perms.editClient && { opacity: 0.4 }]}
+                              onPress={perms.editClient ? () => router.push({ pathname: "/(app)/clients/add", params: { clientId: id } }) : undefined}
+                          >
                               <View style={[styles.actIcon, { backgroundColor: '#FAE8E0' }]}>
                                   <Pencil size={15} color="#993C1D" strokeWidth={1.6} />
                               </View>
@@ -179,70 +227,101 @@ import SectionHeader from "@/app/components/ui/section-header";
   
                       {/* Informations */}
                       <View style={styles.section}>
-                          <SectionHeader title="Informations" linkText="Modifier" onLinkClick={() => router.push({ pathname: "/(app)/clients/add", params: { clientId: id } })} />
+                          <SectionHeader title="Informations" linkText={perms.editClient ? "Modifier" : undefined} onLinkClick={perms.editClient ? () => router.push({ pathname: "/(app)/clients/add", params: { clientId: id } }) : undefined} />
                           <View style={styles.infoCard}>
                               <View style={styles.infoRow}>
                                   <Text style={styles.infoLabel}>Nom complet</Text>
-                                  <Text style={styles.infoValue}>Awa Konaté</Text>
+                                  <Text style={styles.infoValue}>{client!.name}</Text>
                               </View>
                               <View style={styles.infoRow}>
                                   <Text style={styles.infoLabel}>Téléphone</Text>
-                                  <Text style={[styles.infoValue, styles.infoAccent]}>+226 70 11 22 33</Text>
+                                  <Text style={[styles.infoValue, styles.infoAccent]}>{client!.phone}</Text>
                               </View>
+                              {client!.accountNumber && (
+                                  <View style={styles.infoRow}>
+                                      <Text style={styles.infoLabel}>Numéro de compte</Text>
+                                      <Text style={styles.infoValue}>{client!.accountNumber}</Text>
+                                  </View>
+                              )}
                               <View style={styles.infoRow}>
                                   <Text style={styles.infoLabel}>Adresse</Text>
-                                  <Text style={styles.infoValue}>Gounghin, Ouagadougou</Text>
+                                  <Text style={styles.infoValue}>{client!.address ?? '—'}</Text>
                               </View>
-                              <View style={styles.infoRow}>
-                                  <Text style={styles.infoLabel}>Agent référent</Text>
-                                  <Text style={styles.infoValue}>Konaté Djibril</Text>
-                              </View>
-                              <View style={styles.progressWrap}>
-                                  <View style={styles.progressTop}>
-                                      <Text style={styles.progressLabel}>Progression objectif</Text>
-                                      <Text style={styles.progressPct}>68%</Text>
+                              {client!.groupName && (
+                                  <View style={styles.infoRow}>
+                                      <Text style={styles.infoLabel}>Groupe</Text>
+                                      <Text style={styles.infoValue}>{client!.groupName}</Text>
                                   </View>
-                                  <View style={styles.progressBarBg}>
-                                      <View style={styles.progressBarFill} />
+                              )}
+                              {client!.commitmentAmount != null && (
+                                  <View style={styles.infoRow}>
+                                      <Text style={styles.infoLabel}>Engagement/jour</Text>
+                                      <Text style={styles.infoValue}>{client!.commitmentAmount.toLocaleString('fr-FR')} F</Text>
                                   </View>
-                                  <Text style={styles.progressSub}>85 000 / 125 000 FCFA · objectif déc. 2025</Text>
-                              </View>
-                              <View style={[styles.infoRow, styles.infoRowLast]}>
-                                  <Text style={styles.infoLabel}>Fréquence</Text>
-                                  <Text style={styles.infoValue}>Hebdomadaire</Text>
-                              </View>
+                              )}
+                              {client!.collectionFrequency && (
+                                  <View style={styles.infoRow}>
+                                      <Text style={styles.infoLabel}>Fréquence</Text>
+                                      <Text style={styles.infoValue}>{FREQ_LABELS[client!.collectionFrequency] ?? client!.collectionFrequency}</Text>
+                                  </View>
+                              )}
+                              {(() => {
+                                  const goal = client!.savingsGoal ?? 0;
+                                  const pct = goal > 0 ? Math.min(100, Math.round((client!.balance / goal) * 100)) : 0;
+                                  return (
+                                      <View style={[styles.progressWrap, styles.infoRowLast]}>
+                                          <View style={styles.progressTop}>
+                                              <Text style={styles.progressLabel}>Progression objectif</Text>
+                                              <Text style={styles.progressPct}>{pct}%</Text>
+                                          </View>
+                                          <View style={styles.progressBarBg}>
+                                              <View style={[styles.progressBarFill, { width: `${pct}%` }]} />
+                                          </View>
+                                          <Text style={styles.progressSub}>
+                                              {client!.balance.toLocaleString('fr-FR')} / {goal > 0 ? goal.toLocaleString('fr-FR') : '—'} FCFA
+                                          </Text>
+                                      </View>
+                                  );
+                              })()}
                           </View>
                       </View>
-  
+
                       {/* Transactions récentes */}
                       <View style={styles.section}>
                           <SectionHeader title="Transactions récentes" linkText="Voir toutes" />
                           <View style={styles.txCard}>
-                              <TransactionItem name="Dépôt" type="deposit" time="Aujourd'hui · 10:22" amount="15 000" balance="85 000" />
-                              <TransactionItem name="Dépôt" type="deposit" time="14 avr. · 08:55" amount="10 000" balance="70 000" />
-                              <TransactionItem name="Retrait" type="withdrawal" time="10 avr. · 14:30" amount="20 000" balance="60 000" />
-                              <TransactionItem name="Dépôt" type="deposit" time="07 avr. · 09:10" amount="15 000" balance="80 000" isLast />
-                          </View>
-                      </View>
-  
-                      {/* Note de l'agent */}
-                      <View style={styles.section}>
-                          <SectionHeader title="Note de l'agent" linkText="Modifier" />
-                          <View style={styles.noteCard}>
-                              <Text style={styles.noteText}>
-                                  Cliente très régulière dans ses dépôts. Préfère être contactée le matin avant 11h. À informer dès que son solde dépasse 100 000 FCFA.
-                              </Text>
-                              <Text style={styles.noteDate}>Dernière mise à jour : 10 avr. 2025 · Konaté D.</Text>
+                              {transactions.length === 0 ? (
+                                  <View style={{ padding: 16 }}>
+                                      <Text style={{ fontSize: 13, color: '#888780', textAlign: 'center' }}>Aucune transaction</Text>
+                                  </View>
+                              ) : (
+                                  transactions.slice(0, 5).map((tx, i) => (
+                                      <TransactionItem
+                                          key={tx.id}
+                                          name={tx.type === 'deposit' ? 'Dépôt' : 'Retrait'}
+                                          type={tx.type}
+                                          time={formatTxTime(tx.date)}
+                                          amount={tx.amount.toLocaleString('fr-FR')}
+                                          isLast={i === Math.min(transactions.length, 5) - 1}
+                                      />
+                                  ))
+                              )}
                           </View>
                       </View>
   
                       {/* CTA Buttons */}
                       <View style={styles.bottomActions}>
-                          <Pressable style={styles.btnDep} onPress={handleNewDeposit}>
+                          <Pressable
+                              style={[styles.btnDep, !perms.deposit && { opacity: 0.4 }]}
+                              onPress={perms.deposit ? handleNewDeposit : undefined}
+                          >
                               <ArrowDown size={14} color="white" strokeWidth={1.8} />
                               <Text style={styles.btnDepText}>Dépôt</Text>
                           </Pressable>
-                          <Pressable style={styles.btnRet} onPress={handleNewWithdrawal}>
+                          <Pressable
+                              style={[styles.btnRet, !perms.withdrawal && { opacity: 0.4 }]}
+                              onPress={perms.withdrawal ? handleNewWithdrawal : undefined}
+                          >
                               <ArrowUp size={14} color="#1a1a18" strokeWidth={1.8} />
                               <Text style={styles.btnRetText}>Retrait</Text>
                           </Pressable>

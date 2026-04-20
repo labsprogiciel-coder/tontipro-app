@@ -7,89 +7,98 @@ import {
   Pressable,
   Switch,
   Alert,
+  ActivityIndicator,
+  Modal,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useLocalSearchParams, useRouter } from "expo-router";
-import { ChevronLeft, MoreHorizontal } from "lucide-react-native";
+import { ChevronLeft, MoreHorizontal, KeyRound } from "lucide-react-native";
 import { KAURIDORR_THEME as T } from "@/constants/colors";
-import { mockAgents } from "@/__dev__/mocks/agents";
+import { useAgentStore } from "@/stores/agent-store";
+import { AgentRole, AgentPermissions } from "@/types/agent";
+import { usePermissions } from "@/hooks/usePermissions";
+import { Numpad } from "@/app/components/ui/numpad";
 
-// ── Types ─────────────────────────────────────────────────────────────────────
+// ── Helpers ───────────────────────────────────────────────────────────────────
 
-type AgentRole = "admin" | "agent" | "blocked";
-
-interface AgentDetail {
-  id: string;
-  initials: string;
-  name: string;
-  role: AgentRole;
-  phone: string;
-  zone: string;
-  ref: string;
-  joinedAt: string;
-  online: boolean;
-  stats: { clients: number; transactions: number; collected: string };
-  permissions: { label: string; enabled: boolean }[];
+function getInitials(name: string): string {
+  return name
+    .split(" ")
+    .slice(0, 2)
+    .map((w) => w[0]?.toUpperCase() ?? "")
+    .join("");
 }
 
-// ── Data ──────────────────────────────────────────────────────────────────────
-
-const PERM_LABELS = [
-  "Ajouter un client",
-  "Effectuer un dépôt",
-  "Effectuer un retrait",
-  "Exporter les rapports",
-  "Gérer les agents",
-] as const;
-
-function mockToDetail(a: (typeof mockAgents)[number]): AgentDetail {
-  return {
-    id: a.id,
-    initials: a.initials,
-    name: a.name,
-    role: a.role,
-    phone: a.phone,
-    zone: a.zone,
-    ref: a.ref,
-    joinedAt: new Date(a.joinedAt).toLocaleDateString("fr-FR", {
-      day: "2-digit", month: "short", year: "numeric",
-    }),
-    online: a.online,
-    stats: a.stats,
-    permissions: [
-      { label: "Ajouter un client",     enabled: a.permissions.addClient     },
-      { label: "Effectuer un dépôt",    enabled: a.permissions.deposit       },
-      { label: "Effectuer un retrait",  enabled: a.permissions.withdrawal    },
-      { label: "Exporter les rapports", enabled: a.permissions.exportReports },
-      { label: "Gérer les agents",      enabled: a.permissions.manageAgents  },
-    ],
-  };
-}
-
-const AGENTS_MAP: Record<string, AgentDetail> = Object.fromEntries(
-  mockAgents.map((a) => [a.id, mockToDetail(a)])
-);
+// ── Constants ─────────────────────────────────────────────────────────────────
 
 const ROLE_LABEL: Record<AgentRole, string> = {
   admin:   "Administrateur",
   agent:   "Agent",
   blocked: "Bloqué",
 };
-const ROLE_BADGE_BG: Record<AgentRole, string>  = { admin: T.orangeLt, agent: "#e6f1fb", blocked: "#fcebeb" };
-const ROLE_BADGE_FG: Record<AgentRole, string>  = { admin: T.orangeDk, agent: "#185fa5", blocked: T.textDanger };
+const ROLE_BADGE_BG: Record<AgentRole, string> = { admin: T.orangeLt, agent: "#e6f1fb", blocked: "#fcebeb" };
+const ROLE_BADGE_FG: Record<AgentRole, string> = { admin: T.orangeDk, agent: "#185fa5", blocked: T.textDanger };
+
+const PERM_KEYS: { label: string; key: keyof AgentPermissions }[] = [
+  { label: "Ajouter un client",       key: "addClient"     },
+  { label: "Modifier un client",      key: "editClient"    },
+  { label: "Effectuer un dépôt",      key: "deposit"       },
+  { label: "Effectuer un retrait",    key: "withdrawal"    },
+  { label: "Exporter les rapports",   key: "exportReports" },
+  { label: "Gérer les agents",        key: "manageAgents"  },
+];
 
 // ── Screen ────────────────────────────────────────────────────────────────────
 
 export default function AgentDetailScreen() {
-  const { id } = useLocalSearchParams<{ id: string }>();
-  const router  = useRouter();
+  const { id }      = useLocalSearchParams<{ id: string }>();
+  const router      = useRouter();
+  const agent       = useAgentStore((s) => s.getAgentById(id ?? ""));
+  const updateAgent = useAgentStore((s) => s.updateAgent);
+  const myPerms     = usePermissions();
 
-  const agent = AGENTS_MAP[id ?? ""] ?? AGENTS_MAP["AGT002"];
+  const [localPerms, setLocalPerms] = useState<AgentPermissions | null>(null);
+  const [pinModalVisible, setPinModalVisible] = useState(false);
+  const [pinInput, setPinInput] = useState("");
+  const [pinSaving, setPinSaving] = useState(false);
+  const setAgentPin = useAgentStore((s) => s.setAgentPin);
 
-  const [perms, setPerms] = useState(agent.permissions.map((p) => ({ ...p })));
+  if (!agent) {
+    return (
+      <SafeAreaView style={s.root} edges={["top"]}>
+        <View style={s.center}>
+          <ActivityIndicator color={T.orange} />
+        </View>
+      </SafeAreaView>
+    );
+  }
 
-  const togglePerm = (i: number) => {
-    setPerms((prev) => prev.map((p, idx) => idx === i ? { ...p, enabled: !p.enabled } : p));
+  const perms = localPerms ?? agent.permissions;
+
+  const togglePerm = (key: keyof AgentPermissions) => {
+    const updated = { ...perms, [key]: !perms[key] };
+    setLocalPerms(updated);
+    updateAgent(agent.id, { permissions: updated });
+  };
+
+  const handlePinDigit = async (digit: string) => {
+    if (pinSaving) return;
+    const next = pinInput.length < 4 ? pinInput + digit : pinInput;
+    setPinInput(next);
+    if (next.length === 4) {
+      setPinSaving(true);
+      try {
+        await setAgentPin(agent.id, next);
+        setPinModalVisible(false);
+        setPinInput("");
+        Alert.alert("PIN défini", `Le PIN de ${agent.name} a été mis à jour.`);
+      } catch {
+        Alert.alert("Erreur", "Impossible de définir le PIN.");
+        setPinInput("");
+      } finally {
+        setPinSaving(false);
+      }
+    }
   };
 
   const handleBlock = () => {
@@ -98,12 +107,21 @@ export default function AgentDetailScreen() {
       `Voulez-vous bloquer ${agent.name} ? Il ne pourra plus se connecter.`,
       [
         { text: "Annuler", style: "cancel" },
-        { text: "Bloquer", style: "destructive", onPress: () => router.back() },
+        {
+          text: "Bloquer",
+          style: "destructive",
+          onPress: () => {
+            updateAgent(agent.id, { role: "blocked" });
+            router.back();
+          },
+        },
       ]
     );
   };
 
-  const isOnline  = agent.online;
+  const joinedAt = new Date(agent.joinedAt).toLocaleDateString("fr-FR", {
+    day: "2-digit", month: "short", year: "numeric",
+  });
   const roleBadge = { bg: ROLE_BADGE_BG[agent.role], fg: ROLE_BADGE_FG[agent.role] };
 
   return (
@@ -111,7 +129,6 @@ export default function AgentDetailScreen() {
       <ScrollView showsVerticalScrollIndicator={false}>
         {/* ── Dark header ── */}
         <View style={s.darkHdr}>
-          {/* Nav row */}
           <View style={s.navRow}>
             <Pressable style={s.backBtn} onPress={() => router.back()}>
               <ChevronLeft size={16} color="rgba(255,255,255,0.5)" />
@@ -122,13 +139,12 @@ export default function AgentDetailScreen() {
             </Pressable>
           </View>
 
-          {/* Avatar + name */}
           <View style={s.hdrCenter}>
             <View style={s.hdrAvatarWrap}>
               <View style={[s.hdrAvatar, { backgroundColor: T.orangeLt }]}>
-                <Text style={[s.hdrAvatarText, { color: T.orangeDk }]}>{agent.initials}</Text>
+                <Text style={[s.hdrAvatarText, { color: T.orangeDk }]}>{getInitials(agent.name)}</Text>
               </View>
-              <View style={[s.dot, isOnline ? s.dotOnline : s.dotOffline]} />
+              <View style={[s.dot, agent.online ? s.dotOnline : s.dotOffline]} />
             </View>
             <Text style={s.hdrName}>{agent.name}</Text>
             <Text style={s.hdrPhone}>{agent.phone}</Text>
@@ -136,7 +152,7 @@ export default function AgentDetailScreen() {
               <View style={[s.pill, { backgroundColor: roleBadge.bg }]}>
                 <Text style={[s.pillTxt, { color: roleBadge.fg }]}>{ROLE_LABEL[agent.role]}</Text>
               </View>
-              {isOnline && (
+              {agent.online && (
                 <View style={s.pillOnline}>
                   <Text style={s.pillOnlineTxt}>● En ligne</Text>
                 </View>
@@ -144,7 +160,6 @@ export default function AgentDetailScreen() {
             </View>
           </View>
 
-          {/* Stats strip */}
           <View style={s.statsStrip}>
             <View style={s.statCell}>
               <Text style={s.statVal}>{agent.stats.clients}</Text>
@@ -163,7 +178,6 @@ export default function AgentDetailScreen() {
 
         {/* ── Body ── */}
         <View style={s.body}>
-          {/* Info section */}
           <Text style={s.secTitle}>Informations</Text>
           <View style={s.card}>
             <Row label="Nom complet" value={agent.name} />
@@ -172,30 +186,44 @@ export default function AgentDetailScreen() {
             <RowDivider />
             <Row label="Rôle" value={ROLE_LABEL[agent.role]} />
             <RowDivider />
-            <Row label="Inscrit le" value={agent.joinedAt} />
+            <Row label="Inscrit le" value={joinedAt} />
             <RowDivider />
             <Row label="Réf." value={agent.ref} valueStyle={{ fontSize: 11, color: T.text3 }} />
           </View>
 
-          {/* Permissions */}
           <Text style={s.secTitle}>Permissions actives</Text>
+          {!myPerms.manageAgents && (
+            <View style={{ backgroundColor: "#fff3cd", borderRadius: 8, padding: 10, marginBottom: 8, marginHorizontal: 0 }}>
+              <Text style={{ fontSize: 12, color: "#856404" }}>🔒 Lecture seule — vous ne pouvez pas modifier les permissions.</Text>
+            </View>
+          )}
           <View style={s.permCard}>
-            {perms.map((p, i) => (
-              <View key={p.label} style={[s.permRow, i < perms.length - 1 && s.permBorder]}>
+            {PERM_KEYS.map((p, i) => (
+              <View key={p.key} style={[s.permRow, i < PERM_KEYS.length - 1 && s.permBorder]}>
                 <Text style={s.permLabel}>{p.label}</Text>
                 <Switch
-                  value={p.enabled}
-                  onValueChange={() => togglePerm(i)}
+                  value={perms[p.key]}
+                  onValueChange={() => { if (myPerms.manageAgents) togglePerm(p.key); }}
                   trackColor={{ false: T.border2, true: T.orange }}
                   thumbColor="white"
+                  disabled={!myPerms.manageAgents}
                 />
               </View>
             ))}
           </View>
 
-          {/* Actions */}
+          {myPerms.manageAgents && (
+            <Pressable style={s.btnPin} onPress={() => { setPinInput(""); setPinModalVisible(true); }}>
+              <KeyRound size={14} color={T.orange} />
+              <Text style={s.btnPinTxt}>Définir le PIN</Text>
+            </Pressable>
+          )}
+
           <View style={s.actionRow}>
-            <Pressable style={s.btnBlock} onPress={handleBlock}>
+            <Pressable
+              style={[s.btnBlock, !myPerms.manageAgents && { opacity: 0.4 }]}
+              onPress={myPerms.manageAgents ? handleBlock : undefined}
+            >
               <Text style={s.btnBlockTxt}>Bloquer l'agent</Text>
             </Pressable>
             <Pressable style={s.btnEdit}>
@@ -206,6 +234,26 @@ export default function AgentDetailScreen() {
           <View style={{ height: 40 }} />
         </View>
       </ScrollView>
+
+      <Modal visible={pinModalVisible} transparent animationType="slide" onRequestClose={() => setPinModalVisible(false)}>
+        <Pressable style={s.modalOverlay} onPress={() => setPinModalVisible(false)}>
+          <Pressable style={s.modalSheet} onPress={() => {}}>
+            <View style={s.modalHandle} />
+            <Text style={s.modalTitle}>Définir le PIN</Text>
+            <Text style={s.modalSub}>{agent.name}</Text>
+            <View style={s.pinDots}>
+              {[0, 1, 2, 3].map((i) => (
+                <View key={i} style={[s.dot2, i < pinInput.length && s.dot2Filled]} />
+              ))}
+            </View>
+            {pinSaving ? (
+              <ActivityIndicator color={T.orange} style={{ marginVertical: 32 }} />
+            ) : (
+              <Numpad onPress={handlePinDigit} onDelete={() => setPinInput((p) => p.slice(0, -1))} />
+            )}
+          </Pressable>
+        </Pressable>
+      </Modal>
     </SafeAreaView>
   );
 }
@@ -229,6 +277,7 @@ function RowDivider() {
 
 const s = StyleSheet.create({
   root:          { flex: 1, backgroundColor: T.bg },
+  center:        { flex: 1, alignItems: "center", justifyContent: "center" },
 
   darkHdr:       { backgroundColor: "#1a1a18", paddingBottom: 20 },
   navRow:        { flexDirection: "row", alignItems: "center", justifyContent: "space-between", paddingHorizontal: 18, paddingTop: 10, marginBottom: 18 },
@@ -276,4 +325,16 @@ const s = StyleSheet.create({
   btnBlockTxt:   { fontSize: 12, fontWeight: "500", color: T.textDanger },
   btnEdit:       { flex: 1, padding: 12, borderRadius: 12, backgroundColor: T.orange, alignItems: "center" },
   btnEditTxt:    { fontSize: 12, fontWeight: "500", color: "white" },
+
+  btnPin:        { flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 6, padding: 12, borderRadius: 12, borderWidth: 0.5, borderColor: T.orange, backgroundColor: T.orangeLt, marginTop: 12 },
+  btnPinTxt:     { fontSize: 12, fontWeight: "500", color: T.orange },
+
+  modalOverlay:  { flex: 1, backgroundColor: "rgba(0,0,0,0.45)", justifyContent: "flex-end" },
+  modalSheet:    { backgroundColor: T.bg, borderTopLeftRadius: 20, borderTopRightRadius: 20, paddingTop: 12, paddingBottom: 32 },
+  modalHandle:   { width: 36, height: 4, borderRadius: 2, backgroundColor: T.border2, alignSelf: "center", marginBottom: 16 },
+  modalTitle:    { fontSize: 16, fontWeight: "600", color: T.text1, textAlign: "center", marginBottom: 4 },
+  modalSub:      { fontSize: 12, color: T.text3, textAlign: "center", marginBottom: 24 },
+  pinDots:       { flexDirection: "row", justifyContent: "center", gap: 14, marginBottom: 24 },
+  dot2:          { width: 14, height: 14, borderRadius: 7, borderWidth: 1.5, borderColor: T.border2, backgroundColor: "transparent" },
+  dot2Filled:    { backgroundColor: T.orange, borderColor: T.orange },
 });

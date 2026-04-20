@@ -17,6 +17,7 @@ export interface MockAgent {
   };
   permissions: {
     addClient: boolean;
+    editClient: boolean;
     deposit: boolean;
     withdrawal: boolean;
     exportReports: boolean;
@@ -38,6 +39,7 @@ export const mockAgents: MockAgent[] = [
     stats: { clients: 38, transactions: 310, collected: "820k" },
     permissions: {
       addClient: true,
+      editClient: true,
       deposit: true,
       withdrawal: true,
       exportReports: true,
@@ -57,6 +59,7 @@ export const mockAgents: MockAgent[] = [
     stats: { clients: 24, transactions: 186, collected: "312k" },
     permissions: {
       addClient: true,
+      editClient: true,
       deposit: true,
       withdrawal: true,
       exportReports: false,
@@ -76,6 +79,7 @@ export const mockAgents: MockAgent[] = [
     stats: { clients: 19, transactions: 142, collected: "205k" },
     permissions: {
       addClient: true,
+      editClient: true,
       deposit: true,
       withdrawal: false,
       exportReports: false,
@@ -95,6 +99,7 @@ export const mockAgents: MockAgent[] = [
     stats: { clients: 17, transactions: 120, collected: "178k" },
     permissions: {
       addClient: true,
+      editClient: true,
       deposit: true,
       withdrawal: false,
       exportReports: false,
@@ -114,6 +119,7 @@ export const mockAgents: MockAgent[] = [
     stats: { clients: 12, transactions: 88, collected: "110k" },
     permissions: {
       addClient: true,
+      editClient: true,
       deposit: true,
       withdrawal: false,
       exportReports: false,
@@ -133,6 +139,7 @@ export const mockAgents: MockAgent[] = [
     stats: { clients: 8, transactions: 54, collected: "67k" },
     permissions: {
       addClient: false,
+      editClient: false,
       deposit: false,
       withdrawal: false,
       exportReports: false,

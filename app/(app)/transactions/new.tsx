@@ -1,20 +1,28 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import {
   Alert,
+  Animated,
+  Modal,
   Platform,
+  Pressable,
+  ScrollView,
   StyleSheet,
   Text,
   TouchableOpacity,
   View,
 } from "react-native";
+import * as Haptics from "expo-haptics";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { KAURIDORR_THEME } from "@/constants/colors";
 import { Numpad } from "@/app/components/ui/numpad";
-import { Client } from "@/types/client";
 import TransactionToggle from "@/app/components/transactions/toggle";
+import SuccessReceipt from "@/app/components/transactions/receipt";
 import { useClientStore } from "@/stores/client-store";
 import { useTransactionStore } from "@/stores/transaction-store";
+import { useAuthStore } from "@/stores/auth-store";
 import { useRouter, useLocalSearchParams } from "expo-router";
+import { Transaction } from "@/types/transaction";
+import { usePermissions } from "@/hooks/usePermissions";
   
   const T = KAURIDORR_THEME;
   
@@ -29,6 +37,72 @@ import { useRouter, useLocalSearchParams } from "expo-router";
     onContinue?: (type: string, amount: string) => void;
   }
   
+const HOLD_DURATION = 700; // ms to hold before confirming
+
+function HoldToConfirm({
+  label,
+  accentColor,
+  onConfirm,
+  disabled,
+}: {
+  label: string;
+  accentColor: string;
+  onConfirm: () => void;
+  disabled?: boolean;
+}) {
+  const progress = useRef(new Animated.Value(0)).current;
+  const anim     = useRef<Animated.CompositeAnimation | null>(null);
+  const fired    = useRef(false);
+
+  const startHold = () => {
+    if (disabled) return;
+    fired.current = false;
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    anim.current = Animated.timing(progress, {
+      toValue: 1,
+      duration: HOLD_DURATION,
+      useNativeDriver: false,
+    });
+    anim.current.start(({ finished }) => {
+      if (finished && !fired.current) {
+        fired.current = true;
+        Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+        onConfirm();
+      }
+    });
+  };
+
+  const cancelHold = () => {
+    anim.current?.stop();
+    Animated.spring(progress, { toValue: 0, useNativeDriver: false }).start();
+  };
+
+  const fillWidth = progress.interpolate({
+    inputRange: [0, 1],
+    outputRange: ["0%", "100%"],
+  });
+
+  const labelOpacity = progress.interpolate({
+    inputRange: [0, 0.15, 1],
+    outputRange: [1, 0.5, 0],
+  });
+
+  return (
+    <Pressable
+      onPressIn={startHold}
+      onPressOut={cancelHold}
+      disabled={disabled}
+      style={[s.holdBtn, { backgroundColor: accentColor, opacity: disabled ? 0.5 : 1 }]}
+    >
+      {/* Fill bar */}
+      <Animated.View style={[s.holdFill, { width: fillWidth, backgroundColor: "rgba(255,255,255,0.25)" }]} />
+      {/* Label */}
+      <Animated.Text style={[s.holdLabel, { opacity: labelOpacity }]}>{label}</Animated.Text>
+      <Text style={s.holdHint}>Maintenez pour confirmer</Text>
+    </Pressable>
+  );
+}
+
   const TransactionEntryScreen = ({
     clientName = "Awa Konaté",
     clientInitials = "AK",
@@ -36,50 +110,65 @@ import { useRouter, useLocalSearchParams } from "expo-router";
     onBack,
     onContinue,
   }: TransactionEntryProps) => {
-    const [type, setType] = useState<"deposit" | "withdraw">("deposit");
-    const [amount, setAmount] = useState("15000");
-  
-    const isDeposit = type === "deposit";
-    const accentColor = isDeposit ? T.orange : T.greenDk;
-    const accentLt = isDeposit ? T.orangeLt : T.greenLt;
-    const chips = isDeposit ? DEPOSIT_CHIPS : WITHDRAW_CHIPS;
-  
-    const numericAmount = parseInt(amount || "0", 10);
-    const balanceAfterWithdraw = clientBalance - numericAmount;
-    const showWarning = !isDeposit && numericAmount > 0;
-  
-    const formattedAmount = numericAmount.toLocaleString("fr-FR");
-    const formattedBalance = clientBalance.toLocaleString("fr-FR");
-    const formattedBalanceAfter = Math.max(0, balanceAfterWithdraw).toLocaleString("fr-FR");
-  
-    const handleNumpad = (digit: string) => {
-      setAmount((prev) => (prev === "0" ? digit : prev + digit));
-    };
-  
-    const handleDelete = () => {
-      setAmount((prev) => (prev.length > 1 ? prev.slice(0, -1) : "0"));
-    };
-
     const router = useRouter();
     const { clientId, type: typeParam } = useLocalSearchParams<{ clientId?: string; type?: string }>();
-    const { clients, getClientById } = useClientStore();
+    const selectedClient = useClientStore(
+      (s) => (clientId ? s.clients.find((c) => c.id === clientId) ?? null : null)
+    );
     const { addTransaction } = useTransactionStore();
-    
-    const [selectedClient, setSelectedClient] = useState<Client | null>(null);
-    const [showClientPicker, setShowClientPicker] = useState(false);
-    const [notes, setNotes] = useState("");
+
+    const agentName = useAuthStore((s) => s.user?.name ?? "—");
+    const perms = usePermissions();
+
+    const [type, setType] = useState<"deposit" | "withdraw">("deposit");
+    const [amount, setAmount] = useState("0");
+    const [notes] = useState("");
     const [isLoading, setIsLoading] = useState(false);
-  
-    useEffect(() => {
-      if (clientId) {
-        const client = getClientById(clientId);
-        if (client) setSelectedClient(client);
-      }
-    }, [clientId, getClientById]);
+    const [successTx, setSuccessTx] = useState<Transaction | null>(null);
 
     useEffect(() => {
       if (typeParam === "withdrawal") setType("withdraw");
     }, [typeParam]);
+
+    const isDeposit = type === "deposit";
+    const accentColor = isDeposit ? T.orange : T.greenDk;
+    const accentLt = isDeposit ? T.orangeLt : T.greenLt;
+
+    const canDeposit = perms.deposit;
+    const canWithdraw = perms.withdrawal;
+    const actionAllowed = isDeposit ? canDeposit : canWithdraw;
+    const handleSetType = (t: "deposit" | "withdraw") => {
+      if (t === "deposit" && !canDeposit) return;
+      if (t === "withdraw" && !canWithdraw) return;
+      setType(t);
+    };
+
+    const displayName     = selectedClient?.name ?? clientName;
+    const displayInitials = selectedClient
+      ? selectedClient.name.split(" ").map((w) => w[0] ?? "").join("").toUpperCase().slice(0, 2)
+      : clientInitials;
+    const displayBalance  = selectedClient?.balance ?? clientBalance;
+
+    const commitment = selectedClient?.commitmentAmount;
+    const chips = commitment && commitment > 0
+      ? [1, 2, 3, 5, 10].map((m) => String(m * commitment))
+      : isDeposit ? DEPOSIT_CHIPS : WITHDRAW_CHIPS;
+
+    const numericAmount = parseInt(amount || "0", 10);
+    const balanceAfterWithdraw = displayBalance - numericAmount;
+    const showWarning = !isDeposit && numericAmount > 0;
+
+    const formattedAmount = numericAmount.toLocaleString("fr-FR");
+    const formattedBalance = displayBalance.toLocaleString("fr-FR");
+    const formattedBalanceAfter = Math.max(0, balanceAfterWithdraw).toLocaleString("fr-FR");
+
+    const handleNumpad = (digit: string) => {
+      setAmount((prev) => (prev === "0" ? digit : prev + digit));
+    };
+
+    const handleDelete = () => {
+      setAmount((prev) => (prev.length > 1 ? prev.slice(0, -1) : "0"));
+    };
   
     const handleAddTransaction = async () => {
       if (!selectedClient) {
@@ -95,20 +184,15 @@ import { useRouter, useLocalSearchParams } from "expo-router";
       setIsLoading(true);
   
       try {
-        await addTransaction({
+        const result = await addTransaction({
           clientId: selectedClient.id,
           amount: parseInt(amount, 10),
           type: type === "withdraw" ? "withdrawal" : "deposit",
           notes,
         });
-  
-        Alert.alert(
-          "Succès",
-          `Dépôt de ${parseInt(amount, 10).toLocaleString()} FCFA enregistré pour ${selectedClient.name}`,
-          [{ text: "OK", onPress: () => router.back() }]
-        );
+        setSuccessTx(result);
       } catch (error) {
-        Alert.alert("Erreur", "Impossible d'enregistrer le dépôt. Veuillez réessayer.");
+        Alert.alert("Erreur", "Impossible d'enregistrer la transaction. Veuillez réessayer.");
       } finally {
         setIsLoading(false);
       }
@@ -126,15 +210,15 @@ import { useRouter, useLocalSearchParams } from "expo-router";
         </View>
   
         {/* Toggle */}
-        <TransactionToggle activeType={type} setType={setType} />
+        <TransactionToggle activeType={type} setType={handleSetType} />
   
         {/* Client bar */}
         <View style={styles.clientBar}>
           <View style={styles.avatar}>
-            <Text style={styles.avatarText}>{clientInitials}</Text>
+            <Text style={styles.avatarText}>{displayInitials}</Text>
           </View>
           <View style={styles.clientInfo}>
-            <Text style={styles.clientName}>{clientName}</Text>
+            <Text style={styles.clientName}>{displayName}</Text>
             <Text style={styles.clientBalance}>
               {isDeposit ? "Solde actuel" : "Solde disponible"} :{" "}
               <Text style={styles.clientBalanceStrong}>{formattedBalance} FCFA</Text>
@@ -205,14 +289,50 @@ import { useRouter, useLocalSearchParams } from "expo-router";
           accentColor={accentColor}
         />
   
-        {/* Continue button */}
-        <TouchableOpacity
-          style={[styles.mainBtn, { backgroundColor: accentColor }]}
-          onPress={() => onContinue?.(type, amount)}
-        >
-          <Text style={styles.btnArrow}>{isDeposit ? "↓" : "↑"}</Text>
-          <Text style={styles.btnText}>Continuer</Text>
-        </TouchableOpacity>
+        {/* Permission denied notice */}
+        {!actionAllowed && (
+          <View style={styles.permDenied}>
+            <Text style={styles.permDeniedText}>
+              🔒 Vous n'avez pas la permission d'effectuer des {isDeposit ? "dépôts" : "retraits"}.
+            </Text>
+          </View>
+        )}
+
+        {/* Hold-to-confirm */}
+        <HoldToConfirm
+          label={isDeposit ? `↓  Confirmer le dépôt` : `↑  Confirmer le retrait`}
+          accentColor={accentColor}
+          onConfirm={handleAddTransaction}
+          disabled={isLoading || !selectedClient || !amount || parseInt(amount, 10) <= 0 || !actionAllowed}
+        />
+
+        {/* Success overlay */}
+        <Modal visible={!!successTx} animationType="slide" transparent>
+          <View style={styles.overlayBackdrop}>
+            <SafeAreaView style={styles.overlaySheet}>
+              <ScrollView contentContainerStyle={styles.overlayContent} showsVerticalScrollIndicator={false}>
+                <Text style={styles.overlayTitle}>Transaction réussie</Text>
+                {successTx && (
+                  <SuccessReceipt
+                    amount={successTx.amount.toLocaleString("fr-FR")}
+                    type={successTx.type === "withdrawal" ? "withdraw" : "deposit"}
+                    reference={successTx.id}
+                    clientName={successTx.clientName}
+                    balanceAfter={(selectedClient?.balance ?? 0).toLocaleString("fr-FR")}
+                    agentName={agentName}
+                    date={new Date(successTx.date).toLocaleDateString("fr-FR")}
+                  />
+                )}
+                <TouchableOpacity
+                  style={[styles.doneBtn, { backgroundColor: accentColor }]}
+                  onPress={() => router.back()}
+                >
+                  <Text style={styles.doneBtnText}>Terminer</Text>
+                </TouchableOpacity>
+              </ScrollView>
+            </SafeAreaView>
+          </View>
+        </Modal>
       </SafeAreaView>
     );
   };
@@ -241,7 +361,7 @@ import { useRouter, useLocalSearchParams } from "expo-router";
       alignItems: "center",
       marginHorizontal: 18,
       marginTop: 0,
-      marginBottom: 16,
+      marginBottom: 0,
       backgroundColor: T.bg2,
       borderWidth: 0.5,
       borderColor: T.border,
@@ -268,9 +388,9 @@ import { useRouter, useLocalSearchParams } from "expo-router";
     // Amount display
     amountDisplay: {
       alignItems: "center",
-      paddingVertical: 28,
+      paddingVertical: 20,
       paddingHorizontal: 18,
-      marginBottom: 4,
+      marginBottom: 0
     },
     amountLabel: { fontSize: 12, color: T.text3, marginBottom: 6 },
     amountValue: {
@@ -317,7 +437,7 @@ import { useRouter, useLocalSearchParams } from "expo-router";
     },
     chipText: { fontSize: 12, fontWeight: "500", color: T.text2 },
   
-    // Continue button
+    // Hold-to-confirm button
     mainBtn: {
       marginHorizontal: 18,
       marginBottom: Platform.OS === "ios" ? 0 : 24,
@@ -329,8 +449,81 @@ import { useRouter, useLocalSearchParams } from "expo-router";
       gap: 7,
     },
     btnArrow: { color: "#fff", fontSize: 16 },
-    btnText: { color: "#fff", fontSize: 14, fontWeight: "500" },
+    btnText:  { color: "#fff", fontSize: 14, fontWeight: "500" },
+
+    // Success overlay
+    overlayBackdrop: {
+      flex: 1,
+      backgroundColor: "rgba(0,0,0,0.45)",
+      justifyContent: "flex-end",
+    },
+    overlaySheet: {
+      backgroundColor: T.bg,
+      borderTopLeftRadius: 20,
+      borderTopRightRadius: 20,
+      maxHeight: "85%",
+    },
+    overlayContent: {
+      padding: 20,
+      paddingBottom: 32,
+    },
+    overlayTitle: {
+      fontSize: 16,
+      fontWeight: "600",
+      color: T.text1,
+      textAlign: "center",
+      marginBottom: 16,
+    },
+    doneBtn: {
+      marginTop: 4,
+      padding: 15,
+      borderRadius: 13,
+      alignItems: "center",
+    },
+    doneBtnText: { color: "#fff", fontSize: 15, fontWeight: "600" },
+
+    permDenied: {
+      marginHorizontal: 18,
+      marginBottom: 8,
+      backgroundColor: "#fff3cd",
+      borderRadius: 10,
+      paddingVertical: 10,
+      paddingHorizontal: 12,
+    },
+    permDeniedText: { fontSize: 12, color: "#856404" },
   });
   
+const s = StyleSheet.create({
+  holdBtn: {
+    marginHorizontal: 18,
+    marginBottom: Platform.OS === "ios" ? 0 : 24,
+    height: 52,
+    borderRadius: 13,
+    overflow: "hidden",
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  holdFill: {
+    position: "absolute",
+    left: 0,
+    top: 0,
+    bottom: 0,
+    borderRadius: 13,
+  },
+  holdLabel: {
+    color: "#fff",
+    fontSize: 14,
+    fontWeight: "600",
+    letterSpacing: 0.2,
+    position: "absolute",
+  },
+  holdHint: {
+    color: "rgba(255,255,255,0.55)",
+    fontSize: 11,
+    position: "absolute",
+    bottom: 8,
+  },
+});
+
   export default TransactionEntryScreen;
   

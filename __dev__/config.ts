@@ -8,5 +8,4 @@
  *
  *   EXPO_PUBLIC_DEV_MOCK=false npx expo start
  */
-export const DEV_MODE: boolean =
-  __DEV__ && process.env.EXPO_PUBLIC_DEV_MOCK !== "false";
+export const DEV_MODE = false;

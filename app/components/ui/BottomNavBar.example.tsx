@@ -36,14 +36,14 @@ const ROUTE_TO_TAB: Record<string, TabKey> = {
   Home:    'home',
   Clients: 'clients',
   History: 'history',
-  Profile: 'profile',
+  Reports: 'reports',
 };
 
 const TAB_TO_ROUTE: Record<TabKey, string> = {
   home:    'Home',
   clients: 'Clients',
   history: 'History',
-  profile: 'Profile',
+  reports: 'reports',
 };
 
 export default function App() {
