@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useMemo } from "react";
 
 import { useLocalSearchParams, useRouter } from "expo-router";
 
@@ -54,28 +54,28 @@ import { usePermissions } from "@/hooks/usePermissions";
 
     const router = useRouter();
     const { id, scannedId } = useLocalSearchParams<{ id: string; scannedId?: string }>();
-    const { getClientById, updateClient } = useClientStore();
-    const { getTransactionsByClientId } = useTransactionStore();
+    const { updateClient } = useClientStore();
+    const client = useClientStore((state) => state.clients.find((c) => c.id === id) || null);
+    const allTransactions = useTransactionStore((state) => state.transactions);
+    const allPendingTransactions = useTransactionStore((state) => state.pendingTransactions);
+    
     const [isLoading, setIsLoading] = useState(true);
-    const [client, setClient] = useState<Client | null>(null);
-    const [transactions, setTransactions] = useState<Transaction[]>([]);
     const [editingBalance, setEditingBalance] = useState(false);
     const [balanceInput, setBalanceInput] = useState('');
     const perms = usePermissions();
+    
+    const transactions = useMemo(() => {
+      if (!id) return [];
+      return [...allTransactions, ...allPendingTransactions]
+        .filter((t) => t.clientId === id)
+        .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+    }, [id, allTransactions, allPendingTransactions]);
   
     useEffect(() => {
       if (id) {
-        const clientData = getClientById(id);
-        if (clientData) {
-          setClient(clientData);
-          setTransactions(getTransactionsByClientId(id));
-        } else {
-          Alert.alert("Erreur", "Client introuvable");
-          router.back();
-        }
         setIsLoading(false);
       }
-    }, [id, getClientById, getTransactionsByClientId, router]);
+    }, [id]);
   
     useEffect(() => {
       if (scannedId && id && client) {
@@ -83,10 +83,8 @@ import { usePermissions } from "@/hooks/usePermissions";
           idNumber: scannedId,
           kycVerified: true,
           kycDate: new Date().toISOString(),
-        }).then((updated) => {
-          setClient(updated);
-          Alert.alert("KYC mis à jour", `Numéro d'identité enregistré : ${scannedId}`);
         });
+        Alert.alert("KYC mis à jour", `Numéro d'identité enregistré : ${scannedId}`);
       }
     }, [scannedId, id, client, updateClient]);
   
@@ -107,8 +105,7 @@ import { usePermissions } from "@/hooks/usePermissions";
     const handleSaveBalance = async () => {
       const newBalance = parseInt(balanceInput.replace(/\s/g, ''), 10);
       if (!isNaN(newBalance) && newBalance >= 0 && client) {
-        const updated = await updateClient(id, { balance: newBalance });
-        setClient(updated);
+        await updateClient(id, { balance: newBalance });
       }
       setEditingBalance(false);
     };

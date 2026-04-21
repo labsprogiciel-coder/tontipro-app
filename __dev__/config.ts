@@ -8,4 +8,4 @@
  *
  *   EXPO_PUBLIC_DEV_MOCK=false npx expo start
  */
-export const DEV_MODE = false;
+export const DEV_MODE = true;

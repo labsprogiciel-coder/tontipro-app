@@ -130,6 +130,11 @@ function HoldToConfirm({
       if (typeParam === "withdrawal") setType("withdraw");
     }, [typeParam]);
 
+    // Clear any previous success state when switching client
+    useEffect(() => {
+      setSuccessTx(null);
+    }, [clientId]);
+
     const isDeposit = type === "deposit";
     const accentColor = isDeposit ? T.orange : T.greenDk;
     const accentLt = isDeposit ? T.orangeLt : T.greenLt;
@@ -325,7 +330,7 @@ function HoldToConfirm({
                 )}
                 <TouchableOpacity
                   style={[styles.doneBtn, { backgroundColor: accentColor }]}
-                  onPress={() => router.back()}
+                  onPress={() => { setSuccessTx(null); router.back(); }}
                 >
                   <Text style={styles.doneBtnText}>Terminer</Text>
                 </TouchableOpacity>

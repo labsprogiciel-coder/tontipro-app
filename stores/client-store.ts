@@ -61,6 +61,13 @@ export const useClientStore = create<ClientStoreState>()(
           } = await supabase.auth.getUser();
 
           if (!user) {
+            // ✅ No authenticated user - fallback to dev mocks in dev mode
+            if (__DEV__) {
+              console.warn("No authenticated user, loading dev mocks instead");
+              await get().loadDevMocks();
+              set({ isLoadingClients: false });
+              return;
+            }
             throw new Error("No authenticated user");
           }
 
@@ -79,11 +86,18 @@ export const useClientStore = create<ClientStoreState>()(
             id: client.id,
             name: client.name,
             phone: client.phone,
+            accountNumber: client.account_number,
             balance: client.balance,
             joinDate: client.join_date,
             lastDeposit: client.last_deposit,
             status: client.status,
             address: client.address,
+            email: client.email,
+            groupName: client.group_name,
+            commitmentAmount: client.commitment_amount,
+            collectionFrequency: client.collection_frequency,
+            collectionDays: client.collection_days,
+            savingsGoal: client.savings_goal,
             idNumber: client.id_number,
             idType: client.id_type,
             kycVerified: client.kyc_verified,
@@ -160,10 +174,17 @@ export const useClientStore = create<ClientStoreState>()(
                     id: newClient.id,
                     name: newClient.name,
                     phone: newClient.phone,
+                    account_number: newClient.accountNumber,
                     balance: newClient.balance,
                     join_date: newClient.joinDate,
                     status: newClient.status,
                     address: newClient.address,
+                    email: newClient.email,
+                    group_name: newClient.groupName,
+                    commitment_amount: newClient.commitmentAmount,
+                    collection_frequency: newClient.collectionFrequency,
+                    collection_days: newClient.collectionDays,
+                    savings_goal: newClient.savingsGoal,
                     id_number: newClient.idNumber,
                     id_type: newClient.idType,
                     kyc_verified: newClient.kycVerified,
@@ -387,10 +408,17 @@ export const useClientStore = create<ClientStoreState>()(
                 id: client.id,
                 name: client.name,
                 phone: client.phone,
+                account_number: client.accountNumber,
                 balance: client.balance,
                 join_date: client.joinDate,
                 status: client.status,
                 address: client.address,
+                email: client.email,
+                group_name: client.groupName,
+                commitment_amount: client.commitmentAmount,
+                collection_frequency: client.collectionFrequency,
+                collection_days: client.collectionDays,
+                savings_goal: client.savingsGoal,
                 id_number: client.idNumber,
                 id_type: client.idType,
                 kyc_verified: client.kycVerified,

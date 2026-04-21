@@ -11,24 +11,31 @@ import SearchInput from '../../components/quickactions/search-input';
 const T = KAURIDORR_THEME;
 
 type SortOrder = 'desc' | 'asc';
+type SearchType = 'name' | 'code';
 
 export const ClientsScreen: React.FC = () => {
   const router = useRouter();
   const [searchQuery, setSearchQuery] = useState('');
   const [sortOrder, setSortOrder] = useState<SortOrder>('desc');
+  const [searchType, setSearchType] = useState<SearchType>('name');
   const clients = useClientStore((state) => state.clients);
 
   const filteredClients = useMemo(() => {
     const q = searchQuery.toLowerCase();
-    const result = clients.filter(
-      (c) => c.name.toLowerCase().includes(q) || c.phone.includes(searchQuery)
-    );
+    const result = clients.filter((c) => {
+      if (searchType === 'name') {
+        return c.name.toLowerCase().includes(q) || c.phone.includes(searchQuery);
+      } else if (searchType === 'code') {
+        return c.accountNumber?.toLowerCase().includes(q) || false;
+      }
+      return false;
+    });
     result.sort((a, b) => {
       const diff = new Date(a.joinDate).getTime() - new Date(b.joinDate).getTime();
       return sortOrder === 'desc' ? -diff : diff;
     });
     return result;
-  }, [clients, searchQuery, sortOrder]);
+  }, [clients, searchQuery, sortOrder, searchType]);
 
   const renderClient = ({ item }: any) => (
     <TouchableOpacity
@@ -39,12 +46,19 @@ export const ClientsScreen: React.FC = () => {
         <Text style={styles.avatarText}>{item.name.substring(0, 2).toUpperCase()}</Text>
       </View>
       <View style={{ flex: 1 }}>
-        <Text style={styles.name}>{item.name}</Text>
-        <Text style={styles.phone}>{item.accountNumber ?? item.phone}</Text>
-      </View>
-      <View style={{ alignItems: 'flex-end' }}>
-        <Text style={styles.balance}>{item.balance.toLocaleString('fr-FR')} F</Text>
-        <StatusBadge status={item.status} />
+        <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 4 }}>
+          <Text style={styles.name}>{item.name}</Text>
+          <Text style={styles.balance}>{item.balance.toLocaleString('fr-FR')} F</Text>
+        </View>
+        <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
+          <Text style={styles.phone}>{item.phone}</Text>
+          <StatusBadge status={item.status} />
+        </View>
+        {item.accountNumber && (
+          <View style={{ marginTop: 8 }}>
+            <Text style={styles.code}>{item.accountNumber}</Text>
+          </View>
+        )}
       </View>
     </TouchableOpacity>
   );
@@ -60,12 +74,28 @@ export const ClientsScreen: React.FC = () => {
           <Text style={styles.sortLabel}>{sortOrder === 'desc' ? 'Plus récent' : 'Plus ancien'}</Text>
         </TouchableOpacity>
       </View>
+
+      <View style={styles.searchTypeRow}>
+        <TouchableOpacity
+          style={[styles.searchTypeBtn, searchType === 'name' && styles.searchTypeBtnActive]}
+          onPress={() => { setSearchType('name'); setSearchQuery(''); }}
+        >
+          <Text style={[styles.searchTypeText, searchType === 'name' && styles.searchTypeTextActive]}>Par nom</Text>
+        </TouchableOpacity>
+        <TouchableOpacity
+          style={[styles.searchTypeBtn, searchType === 'code' && styles.searchTypeBtnActive]}
+          onPress={() => { setSearchType('code'); setSearchQuery(''); }}
+        >
+          <Text style={[styles.searchTypeText, searchType === 'code' && styles.searchTypeTextActive]}>Par code</Text>
+        </TouchableOpacity>
+      </View>
+
       <View style={styles.searchInputWrapper}>
-      <SearchInput
-            value={searchQuery}
-            onChangeText={setSearchQuery}
-            onFilterPress={() => {}}
-      />
+        <SearchInput
+          value={searchQuery}
+          onChangeText={setSearchQuery}
+          onFilterPress={() => {}}
+        />
       </View>
       <FlatList
         data={filteredClients}
@@ -84,9 +114,16 @@ const styles = StyleSheet.create({
   title: { fontSize: 22, fontWeight: '700' },
   sortBtn: { flexDirection: 'row', alignItems: 'center', gap: 4, backgroundColor: T.orangeLt, paddingHorizontal: 10, paddingVertical: 5, borderRadius: 20 },
   sortLabel: { fontSize: 11, fontWeight: '500', color: T.orange },
+  
+  searchTypeRow: { flexDirection: 'row', gap: 8, paddingHorizontal: 18, paddingVertical: 8 },
+  searchTypeBtn: { flex: 1, paddingVertical: 8, paddingHorizontal: 12, borderRadius: 8, borderWidth: 1, borderColor: T.border, backgroundColor: T.bg2, alignItems: 'center' },
+  searchTypeBtnActive: { borderColor: T.orange, backgroundColor: T.orangeLt },
+  searchTypeText: { fontSize: 12, fontWeight: '600', color: T.text3 },
+  searchTypeTextActive: { color: T.orange },
+  
   clientCard: { 
     flexDirection: 'row', 
-    alignItems: 'center', 
+    alignItems: 'flex-start', 
     padding: 14, 
     marginHorizontal: 18, 
     marginBottom: 8,
@@ -101,10 +138,12 @@ const styles = StyleSheet.create({
     width: 44, height: 44, borderRadius: 22, 
     backgroundColor: T.orangeLt, 
     justifyContent: 'center', alignItems: 'center', 
-    marginRight: 12 
+    marginRight: 12,
+    marginTop: 2
   },
   avatarText: { color: T.orange, fontWeight: '700', fontSize: 14 },
-  name: { fontSize: 15, fontWeight: '600', color: T.text1 },
-  phone: { fontSize: 12, color: T.text3 },
-  balance: { fontSize: 14, fontWeight: '700', color: T.text1, marginBottom: 4 }
+  name: { fontSize: 15, fontWeight: '600', color: T.text1, flex: 1 },
+  code: { fontSize: 11, fontWeight: '600', color: T.orange, backgroundColor: T.orangeLt, paddingHorizontal: 8, paddingVertical: 4, borderRadius: 6, alignSelf: 'flex-start' },
+  phone: { fontSize: 12, color: T.text3, flex: 1 },
+  balance: { fontSize: 14, fontWeight: '700', color: T.text1 }
 });

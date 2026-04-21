@@ -1,5 +1,6 @@
 import { Tabs, useRouter } from "expo-router";
 import type { BottomTabBarProps } from "@react-navigation/bottom-tabs";
+import { CommonActions } from "@react-navigation/native";
 import { useNetworkSync } from "@/hooks/useNetworkSync";
 import { useTransactionRealtimeSubscribe } from "@/hooks/useTransactionRealtime";
 import { useAuthStore } from "@/stores/auth-store";
@@ -31,7 +32,16 @@ function AppTabBar({ state, navigation }: BottomTabBarProps) {
   return (
     <BottomNavBar
       activeTab={activeTab}
-      onTabPress={(tab) => navigation.navigate(TAB_TO_ROUTE[tab])}
+      onTabPress={(tab) => {
+        const route = TAB_TO_ROUTE[tab];
+        // Reset stack when clicking tab to clear detail pages
+        navigation.dispatch(
+          CommonActions.reset({
+            index: 0,
+            routes: [{ name: route }],
+          })
+        );
+      }}
       onAddPress={() => router.push("/(app)/transactions/new")}
     />
   );

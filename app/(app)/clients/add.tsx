@@ -165,11 +165,12 @@ export default function AddClientScreen() {
   const [step, setStep] = useState<Step>(1);
 
   // Step 1 – Identity
-  const [name,      setName]      = useState("");
-  const [phone,     setPhone]     = useState("");
-  const [locality,  setLocality]  = useState("");
-  const [email,     setEmail]     = useState("");
-  const [groupName, setGroupName] = useState("");
+  const [name,          setName]          = useState("");
+  const [phone,         setPhone]         = useState("");
+  const [accountNumber, setAccountNumber] = useState("");
+  const [locality,      setLocality]      = useState("");
+  const [email,         setEmail]         = useState("");
+  const [groupName,     setGroupName]     = useState("");
 
   // Step 2 – Daily commitment amount (entered via numpad, must be >= baseUnit)
   const [amountText, setAmountText] = useState("0");
@@ -193,6 +194,7 @@ export default function AddClientScreen() {
     if (!existing) return;
     setName(existing.name);
     setPhone(existing.phone.replace(/^\+226\s?/, ""));
+    setAccountNumber(existing.accountNumber ?? "");
     setLocality(existing.address ?? "");
     setEmail(existing.email ?? "");
     setGroupName(existing.groupName ?? "");
@@ -223,6 +225,7 @@ export default function AddClientScreen() {
       const payload = {
         name:                name.trim(),
         phone:               "+226 " + phone.trim(),
+        accountNumber:       accountNumber.trim() || undefined,
         address:             locality.trim() || undefined,
         groupName:           groupName.trim() || undefined,
         commitmentAmount,
@@ -247,7 +250,7 @@ export default function AddClientScreen() {
 
   function resetForm() {
     setStep(1);
-    setName(""); setPhone(""); setLocality(""); setEmail(""); setGroupName("");
+    setName(""); setPhone(""); setAccountNumber(""); setLocality(""); setEmail(""); setGroupName("");
     setAmountText("0");
     setFrequency("daily"); setActiveDays([0,1,2,3,4,5]);
     setHasGoal(false); setSavingsGoal("");
@@ -304,6 +307,18 @@ export default function AddClientScreen() {
                 <Text style={styles.fieldHintOkText}>Numéro vérifié</Text>
               </View>
             )}
+          </Field>
+
+          <Field label="Code client (optionnel)">
+            <TextInput
+              style={[styles.fieldInput, accountNumber.length > 0 && styles.fieldInputFilled]}
+              placeholder="ACC228"
+              placeholderTextColor={T.text3}
+              value={accountNumber}
+              onChangeText={setAccountNumber}
+              autoCapitalize="characters"
+            />
+            <Text style={styles.fieldHintInfo}>Un identifiant unique pour ce client</Text>
           </Field>
 
           <Field label="Quartier / Localité">
@@ -546,7 +561,14 @@ export default function AddClientScreen() {
           {/* Orange header */}
           <View style={styles.reviewHeader}>
             <Text style={styles.reviewLabel}>Nouveau membre</Text>
-            <Text style={styles.reviewName}>{name}</Text>
+            <View style={styles.reviewNameRow}>
+              <Text style={styles.reviewName}>{name}</Text>
+              {accountNumber && (
+                <View style={styles.reviewCodeBadge}>
+                  <Text style={styles.reviewCodeBadgeText}>{accountNumber}</Text>
+                </View>
+              )}
+            </View>
             <Text style={styles.reviewPhone}>
               +226 {phone}{locality ? ` · ${locality}` : ""}
             </Text>
@@ -675,6 +697,12 @@ export default function AddClientScreen() {
             <Text style={styles.rLabel}>Téléphone</Text>
             <Text style={[styles.rValue, styles.rValueOrange]}>{createdClient.phone}</Text>
           </View>
+          {createdClient.accountNumber && (
+            <View style={styles.rRow}>
+              <Text style={styles.rLabel}>Code client</Text>
+              <Text style={[styles.rValue, styles.rValueOrange]}>{createdClient.accountNumber}</Text>
+            </View>
+          )}
           {createdClient.commitmentAmount != null && (
             <View style={styles.rRow}>
               <Text style={styles.rLabel}>Engagement</Text>
@@ -1200,6 +1228,25 @@ const styles = StyleSheet.create({
     fontWeight: "600",
     color: "white",
     letterSpacing: -0.44,
+  },
+  reviewNameRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 10,
+    marginTop: 4,
+  },
+  reviewCodeBadge: {
+    backgroundColor: "rgba(255,255,255,0.2)",
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 6,
+    borderWidth: 1,
+    borderColor: "rgba(255,255,255,0.3)",
+  },
+  reviewCodeBadgeText: {
+    fontSize: 11,
+    fontWeight: "600",
+    color: "white",
   },
   reviewPhone: {
     fontSize: 13,

@@ -111,10 +111,26 @@ function RootLayoutNav() {
           }
         } else {
           (useAuthStore as any).setState({ isAuthenticated: false, isInitialized: true, user: null });
+          // ✅ Charger les mocks en mode développement si pas de session
+          if (__DEV__) {
+            try {
+              await useClientStore.getState().loadDevMocks();
+            } catch (e) {
+              console.warn("Chargement mocks échoué:", e);
+            }
+          }
         }
       } catch (e) {
         console.error("Erreur restauration session:", e);
         (useAuthStore as any).setState({ isAuthenticated: false, isInitialized: true, user: null });
+        // ✅ Charger les mocks en mode développement en cas d'erreur
+        if (__DEV__) {
+          try {
+            await useClientStore.getState().loadDevMocks();
+          } catch (e) {
+            console.warn("Chargement mocks échoué:", e);
+          }
+        }
       }
     };
 
