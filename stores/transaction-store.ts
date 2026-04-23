@@ -8,6 +8,7 @@ import { supabase } from "@/lib/supabase";
 import { rowToTransaction, transactionToInsertRow } from "@/lib/transaction-supabase";
 import { Transaction } from "@/types/transaction";
 import { useClientStore } from "./client-store";
+import { DEV_MOCKS_ENABLED } from "@/__dev__/config";
 
 function sortByDateDesc(a: Transaction, b: Transaction): number {
   return new Date(b.date).getTime() - new Date(a.date).getTime();
@@ -63,7 +64,7 @@ export const useTransactionStore = create<TransactionStoreState>()(
       transactionSyncFailures: 0,
 
       loadDevMocks: async () => {
-        if (!__DEV__) return;
+        if (!DEV_MOCKS_ENABLED) return;
         if (get().transactions.length > 0) return;
         const { mockTransactions } = await import("@/__dev__/mocks/transactions");
         set({ transactions: mockTransactions, pendingTransactions: [] });
@@ -90,7 +91,13 @@ export const useTransactionStore = create<TransactionStoreState>()(
           } = await supabase.auth.getUser();
 
           if (!user) {
-            throw new Error("No authenticated user");
+            if (DEV_MOCKS_ENABLED) {
+              await get().loadDevMocks();
+              set({ isLoading: false, error: null });
+              return;
+            }
+            set({ transactions: [], pendingTransactions: [], isLoading: false, error: null });
+            return;
           }
 
           const { data: rows, error } = await supabase

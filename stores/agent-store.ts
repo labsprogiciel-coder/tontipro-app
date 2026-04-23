@@ -5,6 +5,7 @@ import { generateId } from "@/utils/id-generator";
 import { isConnected } from "@/utils/network";
 import { supabase } from "@/lib/supabase";
 import { Agent, AgentPermissions, AgentRole } from "@/types/agent";
+import { DEV_MOCKS_ENABLED } from "@/__dev__/config";
 
 interface AgentStoreState {
   agents: Agent[];
@@ -120,7 +121,7 @@ export const useAgentStore = create<AgentStoreState>()(
       },
 
       loadDevMocks: async () => {
-        if (!__DEV__) return;
+        if (!DEV_MOCKS_ENABLED) return;
         if (get().agents.length > 0) return;
         const { mockAgents } = await import("@/__dev__/mocks/agents");
         const agents: Agent[] = mockAgents.map((a) => ({

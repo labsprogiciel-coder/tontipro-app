@@ -13,6 +13,8 @@ import { supabase } from "@/lib/supabase";
 import { useAuthStore, getUserDisplayName } from "@/stores/auth-store";
 import { useClientStore } from "@/stores/client-store";
 import { useTransactionStore } from "@/stores/transaction-store";
+import { useAgentStore } from "@/stores/agent-store";
+import { DEV_MOCKS_ENABLED } from "@/__dev__/config";
 
 export const unstable_settings = {
   initialRouteName: "(auth)",
@@ -112,24 +114,32 @@ function RootLayoutNav() {
         } else {
           (useAuthStore as any).setState({ isAuthenticated: false, isInitialized: true, user: null });
           // ✅ Charger les mocks en mode développement si pas de session
-          if (__DEV__) {
+          if (DEV_MOCKS_ENABLED) {
             try {
               await useClientStore.getState().loadDevMocks();
             } catch (e) {
               console.warn("Chargement mocks échoué:", e);
             }
+          } else {
+            useClientStore.getState().clearAll();
+            useTransactionStore.getState().clearAll();
+            useAgentStore.getState().clearAll();
           }
         }
       } catch (e) {
         console.error("Erreur restauration session:", e);
         (useAuthStore as any).setState({ isAuthenticated: false, isInitialized: true, user: null });
         // ✅ Charger les mocks en mode développement en cas d'erreur
-        if (__DEV__) {
+        if (DEV_MOCKS_ENABLED) {
           try {
             await useClientStore.getState().loadDevMocks();
           } catch (e) {
             console.warn("Chargement mocks échoué:", e);
           }
+        } else {
+          useClientStore.getState().clearAll();
+          useTransactionStore.getState().clearAll();
+          useAgentStore.getState().clearAll();
         }
       }
     };

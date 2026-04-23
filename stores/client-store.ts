@@ -5,6 +5,7 @@ import { generateId } from "@/utils/id-generator";
 import { isConnected } from "@/utils/network";
 import { supabase } from "@/lib/supabase";
 import { Client } from "@/types/client";
+import { DEV_MOCKS_ENABLED } from "@/__dev__/config";
 
 interface ClientStoreState {
   clients: Client[];
@@ -62,13 +63,14 @@ export const useClientStore = create<ClientStoreState>()(
 
           if (!user) {
             // ✅ No authenticated user - fallback to dev mocks in dev mode
-            if (__DEV__) {
+            if (DEV_MOCKS_ENABLED) {
               console.warn("No authenticated user, loading dev mocks instead");
               await get().loadDevMocks();
               set({ isLoadingClients: false });
               return;
             }
-            throw new Error("No authenticated user");
+            set({ clients: [], isLoadingClients: false, error: null });
+            return;
           }
 
           // ✅ Query clients where agent_id = auth.uid() (enforced by RLS)
@@ -116,7 +118,7 @@ export const useClientStore = create<ClientStoreState>()(
       },
 
       loadDevMocks: async () => {
-        if (!__DEV__) return;
+        if (!DEV_MOCKS_ENABLED) return;
         if (get().clients.length > 0) return;
         const { mockClients } = await import("@/__dev__/mocks/clients");
         const mockClientsWithSync: Client[] = mockClients.map((c) => ({
