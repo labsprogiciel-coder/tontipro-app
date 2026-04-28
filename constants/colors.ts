@@ -34,6 +34,7 @@ export const KAURIDORR_THEME = {
 
   // Green (withdraw)
   green: "#3b6d11",
+  greenMid: "#3b6d11",
   greenDk: "#2a5c0f",
   greenLt: "#eaf3de",
 

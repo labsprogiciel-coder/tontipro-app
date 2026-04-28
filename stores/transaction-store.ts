@@ -96,7 +96,8 @@ export const useTransactionStore = create<TransactionStoreState>()(
               set({ isLoading: false, error: null });
               return;
             }
-            set({ transactions: [], pendingTransactions: [], isLoading: false, error: null });
+            // Offline-first fallback: keep persisted local data when no auth is available.
+            set({ isLoading: false, error: null });
             return;
           }
 

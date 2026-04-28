@@ -5,7 +5,7 @@ import { KAURIDORR_THEME } from '@/constants/colors';
 const T = KAURIDORR_THEME;
 
 interface StatusBadgeProps {
-  status: 'completed' | 'pending' | 'failed' | 'active' | 'suspended';
+  status: 'completed' | 'pending' | 'failed' | 'active' | 'suspended' | 'inactive';
 }
 
 export const StatusBadge: React.FC<StatusBadgeProps> = ({ status }) => {
@@ -13,6 +13,8 @@ export const StatusBadge: React.FC<StatusBadgeProps> = ({ status }) => {
     switch (status) {
       case 'completed': case 'active':
         return { bg: T.greenLt, text: T.green, label: status === 'active' ? 'Actif' : 'Terminé' };
+      case 'inactive':
+        return { bg: T.bg2, text: T.text3, label: 'Inactif' };
       case 'pending':
         return { bg: T.bgWarning, text: T.textWarning, label: 'En attente' };
       default:

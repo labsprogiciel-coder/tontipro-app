@@ -13,6 +13,9 @@ interface ClientStoreState {
   isLoadingClients: boolean;
   error: string | null;
 
+  // ✅ Load clients (local first in dev, Supabase in production)
+  loadClients: () => Promise<void>;
+  
   // ✅ Fetch clients from Supabase for the current agent
   loadClientsFromSupabase: () => Promise<void>;
   
@@ -53,6 +56,30 @@ export const useClientStore = create<ClientStoreState>()(
       isLoadingClients: false,
       error: null,
 
+      // ✅ Load clients - local first in dev mode, Supabase in production
+      loadClients: async () => {
+        // In dev mode with mocks enabled, just load from local storage (no Supabase)
+        if (DEV_MOCKS_ENABLED) {
+          set({ isLoadingClients: true, error: null });
+          try {
+            // Data is already in store via persist middleware
+            // If empty, load dev mocks
+            if (get().clients.length === 0) {
+              await get().loadDevMocks();
+            }
+            set({ isLoadingClients: false });
+          } catch (error) {
+            set({
+              isLoadingClients: false,
+              error: error instanceof Error ? error.message : "Failed to load clients",
+            });
+          }
+          return;
+        }
+        // In production mode, load from Supabase
+        await get().loadClientsFromSupabase();
+      },
+      
       // ✅ Fetch all clients from Supabase for the current agent
       loadClientsFromSupabase: async () => {
         set({ isLoadingClients: true, error: null });
@@ -69,7 +96,8 @@ export const useClientStore = create<ClientStoreState>()(
               set({ isLoadingClients: false });
               return;
             }
-            set({ clients: [], isLoadingClients: false, error: null });
+            // Offline-first fallback: keep persisted local data when no auth is available.
+            set({ isLoadingClients: false, error: null });
             return;
           }
 

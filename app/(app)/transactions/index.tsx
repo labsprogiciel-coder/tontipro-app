@@ -6,7 +6,7 @@ import { KAURIDORR_THEME } from '@/constants/colors';
 import { useTransactionStore, mergeTransactionsSorted } from '@/stores/transaction-store';
 import { useClientStore } from '@/stores/client-store';
 import { useRouter } from 'expo-router';
-import { ArrowUp, ArrowDown } from 'lucide-react-native';
+import { ArrowUp, ArrowDown, ChevronLeft } from 'lucide-react-native';
 import SearchInput from '../../components/quickactions/search-input';
 
 const T = KAURIDORR_THEME;
@@ -94,7 +94,12 @@ export const HistoryScreen: React.FC = () => {
   return (
     <SafeAreaView style={styles.container} edges={["top"]}>
       <View style={styles.titleRow}>
-        <Text style={styles.title}>Historique</Text>
+        <View style={styles.titleLeft}>
+          <TouchableOpacity style={styles.backBtn} onPress={() => router.back()}>
+            <ChevronLeft size={18} color={T.text2} strokeWidth={2} />
+          </TouchableOpacity>
+          <Text style={styles.title}>Historique</Text>
+        </View>
         <TouchableOpacity style={styles.sortBtn} onPress={() => setSortOrder(o => o === 'desc' ? 'asc' : 'desc')}>
           {sortOrder === 'desc'
             ? <ArrowDown size={13} color={T.orange} strokeWidth={2} />
@@ -141,6 +146,8 @@ const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: T.bg },
   searchInputWrapper: { paddingHorizontal: 20 },
   titleRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 18, paddingVertical: 12 },
+  titleLeft: { flexDirection: 'row', alignItems: 'center', gap: 8 },
+  backBtn: { width: 30, height: 30, borderRadius: 15, alignItems: 'center', justifyContent: 'center', backgroundColor: T.bg2, borderWidth: 0.5, borderColor: T.border },
   title: { fontSize: 22, fontWeight: '700', color: T.text1 },
   sortBtn: { flexDirection: 'row', alignItems: 'center', gap: 4, backgroundColor: T.orangeLt, paddingHorizontal: 10, paddingVertical: 5, borderRadius: 20 },
   sortLabel: { fontSize: 11, fontWeight: '500', color: T.orange },

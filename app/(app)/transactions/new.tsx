@@ -1,7 +1,8 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState, useCallback } from "react";
 import {
   Alert,
   Animated,
+  FlatList,
   Modal,
   Platform,
   Pressable,
@@ -11,6 +12,7 @@ import {
   TouchableOpacity,
   View,
 } from "react-native";
+import { useFocusEffect } from "@react-navigation/native";
 import * as Haptics from "expo-haptics";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { KAURIDORR_THEME } from "@/constants/colors";
@@ -22,7 +24,10 @@ import { useTransactionStore } from "@/stores/transaction-store";
 import { useAuthStore } from "@/stores/auth-store";
 import { useRouter, useLocalSearchParams } from "expo-router";
 import { Transaction } from "@/types/transaction";
+import { Client } from "@/types/client";
 import { usePermissions } from "@/hooks/usePermissions";
+import SearchInput from "@/app/components/quickactions/search-input";
+import StatusBadge from "@/app/components/ui/status-bar";
   
   const T = KAURIDORR_THEME;
   
@@ -30,11 +35,7 @@ import { usePermissions } from "@/hooks/usePermissions";
   const WITHDRAW_CHIPS = ["5000", "10000", "20000", "30000", "50000"];
   
   interface TransactionEntryProps {
-    clientName?: string;
-    clientInitials?: string;
-    clientBalance?: number;
-    onBack?: () => void;
-    onContinue?: (type: string, amount: string) => void;
+    // Removed default client props
   }
   
 const HOLD_DURATION = 700; // ms to hold before confirming
@@ -103,18 +104,14 @@ function HoldToConfirm({
   );
 }
 
-  const TransactionEntryScreen = ({
-    clientName = "Awa Konaté",
-    clientInitials = "AK",
-    clientBalance = 85000,
-    onBack,
-    onContinue,
-  }: TransactionEntryProps) => {
+  const TransactionEntryScreen = ({}: TransactionEntryProps) => {
     const router = useRouter();
     const { clientId, type: typeParam } = useLocalSearchParams<{ clientId?: string; type?: string }>();
     const selectedClient = useClientStore(
       (s) => (clientId ? s.clients.find((c) => c.id === clientId) ?? null : null)
     );
+    const allClients = useClientStore((s) => s.clients);
+    const loadClients = useClientStore((s) => s.loadClientsFromSupabase);
     const { addTransaction } = useTransactionStore();
 
     const agentName = useAuthStore((s) => s.user?.name ?? "—");
@@ -126,14 +123,55 @@ function HoldToConfirm({
     const [isLoading, setIsLoading] = useState(false);
     const [successTx, setSuccessTx] = useState<Transaction | null>(null);
 
+    const [searchQuery, setSearchQuery] = useState("");
+    const [searchType, setSearchType] = useState<"name" | "code">("name");
+    const [isClientPickerVisible, setIsClientPickerVisible] = useState(false);
+    const [currentSelectedClientId, setCurrentSelectedClientId] = useState<string | null>(
+      selectedClient?.id ?? null
+    );
+    const currentSelectedClient = useMemo(
+      () =>
+        allClients.find((c) => c.id === currentSelectedClientId) ??
+        (selectedClient ?? null),
+      [allClients, currentSelectedClientId, selectedClient]
+    );
+
+    // Filtered clients for search
+    const filteredClients = useMemo(() => {
+      const q = searchQuery.trim().toLowerCase();
+      const phoneQ = searchQuery.replace(/\s/g, "");
+      return allClients.filter((c) => {
+        const matchesName = c.name.toLowerCase().includes(q);
+        const matchesPhone = c.phone.replace(/\s/g, "").includes(phoneQ);
+        const matchesCode = c.accountNumber?.toLowerCase().includes(q) ?? false;
+        if (!q) return true;
+        if (searchType === "name") {
+          return matchesName || matchesPhone;
+        }
+        return matchesCode;
+      });
+    }, [allClients, searchQuery, searchType]);
+
     useEffect(() => {
       if (typeParam === "withdrawal") setType("withdraw");
     }, [typeParam]);
 
+    useFocusEffect(
+      useCallback(() => {
+        loadClients();
+      }, [loadClients])
+    );
+
+    useEffect(() => {
+      if (selectedClient?.id) {
+        setCurrentSelectedClientId(selectedClient.id);
+      }
+    }, [selectedClient]);
+
     // Clear any previous success state when switching client
     useEffect(() => {
       setSuccessTx(null);
-    }, [clientId]);
+    }, [currentSelectedClient]);
 
     const isDeposit = type === "deposit";
     const accentColor = isDeposit ? T.orange : T.greenDk;
@@ -148,13 +186,13 @@ function HoldToConfirm({
       setType(t);
     };
 
-    const displayName     = selectedClient?.name ?? clientName;
-    const displayInitials = selectedClient
-      ? selectedClient.name.split(" ").map((w) => w[0] ?? "").join("").toUpperCase().slice(0, 2)
-      : clientInitials;
-    const displayBalance  = selectedClient?.balance ?? clientBalance;
+    const displayName     = currentSelectedClient?.name ?? "Sélectionner un client";
+    const displayInitials = currentSelectedClient
+      ? currentSelectedClient.name.split(" ").map((w) => w[0] ?? "").join("").toUpperCase().slice(0, 2)
+      : "—";
+    const displayBalance  = currentSelectedClient?.balance ?? 0;
 
-    const commitment = selectedClient?.commitmentAmount;
+    const commitment = currentSelectedClient?.commitmentAmount;
     const chips = commitment && commitment > 0
       ? [1, 2, 3, 5, 10].map((m) => String(m * commitment))
       : isDeposit ? DEPOSIT_CHIPS : WITHDRAW_CHIPS;
@@ -176,7 +214,7 @@ function HoldToConfirm({
     };
   
     const handleAddTransaction = async () => {
-      if (!selectedClient) {
+      if (!currentSelectedClient) {
         Alert.alert("Erreur", "Veuillez sélectionner un client");
         return;
       }
@@ -190,7 +228,7 @@ function HoldToConfirm({
   
       try {
         const result = await addTransaction({
-          clientId: selectedClient.id,
+          clientId: currentSelectedClient.id,
           amount: parseInt(amount, 10),
           type: type === "withdraw" ? "withdrawal" : "deposit",
           notes,
@@ -206,32 +244,45 @@ function HoldToConfirm({
   
     return (
       <SafeAreaView style={styles.screen}>
+        <ScrollView
+          style={styles.contentScroll}
+          contentContainerStyle={styles.contentScrollContainer}
+          keyboardShouldPersistTaps="handled"
+          showsVerticalScrollIndicator={false}
+        >
         {/* Back row */}
         <View style={styles.backRow}>
           <TouchableOpacity style={styles.backBtn} onPress={() => router.back()}>
             <Text style={styles.backChevron}>‹</Text>
           </TouchableOpacity>
-          <Text style={styles.backLabel}>{selectedClient?.name ?? clientName}</Text>
+          <Text style={styles.backLabel}>{currentSelectedClient?.name ?? "Nouvelle Transaction"}</Text>
         </View>
-  
+
         {/* Toggle */}
         <TransactionToggle activeType={type} setType={handleSetType} />
-  
-        {/* Client bar */}
-        <View style={styles.clientBar}>
+
+        {/* Client dropdown trigger */}
+        <TouchableOpacity
+          style={styles.clientBar}
+          activeOpacity={0.8}
+          onPress={() => setIsClientPickerVisible(true)}
+        >
           <View style={styles.avatar}>
             <Text style={styles.avatarText}>{displayInitials}</Text>
           </View>
           <View style={styles.clientInfo}>
             <Text style={styles.clientName}>{displayName}</Text>
             <Text style={styles.clientBalance}>
-              {isDeposit ? "Solde actuel" : "Solde disponible"} :{" "}
-              <Text style={styles.clientBalanceStrong}>{formattedBalance} FCFA</Text>
+              {currentSelectedClient ? (isDeposit ? "Solde actuel" : "Solde disponible") + " : " : ""}
+              {currentSelectedClient ? (
+                <Text style={styles.clientBalanceStrong}>{formattedBalance} FCFA</Text>
+              ) : (
+                <Text style={styles.clientBalanceStrong}>Recherchez un client</Text>
+              )}
             </Text>
           </View>
-          <Text style={styles.chevron}>›</Text>
-        </View>
-  
+          <Text style={styles.chevron}>▾</Text>
+        </TouchableOpacity>
         {/* Amount display */}
         <View style={styles.amountDisplay}>
           <Text style={styles.amountLabel}>
@@ -242,7 +293,7 @@ function HoldToConfirm({
             <Text style={styles.currency}>FCFA</Text>
           </Text>
         </View>
-  
+
         {/* Balance warning (withdraw only) */}
         {showWarning && (
           <View style={styles.warningPill}>
@@ -253,7 +304,7 @@ function HoldToConfirm({
             </Text>
           </View>
         )}
-  
+
         {/* Quick amount chips */}
         <View style={styles.chipRow}>
           {chips.map((val) => {
@@ -284,16 +335,14 @@ function HoldToConfirm({
             );
           })}
         </View>
-  
-        <View style={{ flex: 1 }} />
-  
+
         {/* Numpad */}
         <Numpad
           onPress={handleNumpad}
           onDelete={handleDelete}
           accentColor={accentColor}
         />
-  
+
         {/* Permission denied notice */}
         {!actionAllowed && (
           <View style={styles.permDenied}>
@@ -308,8 +357,87 @@ function HoldToConfirm({
           label={isDeposit ? `↓  Confirmer le dépôt` : `↑  Confirmer le retrait`}
           accentColor={accentColor}
           onConfirm={handleAddTransaction}
-          disabled={isLoading || !selectedClient || !amount || parseInt(amount, 10) <= 0 || !actionAllowed}
+          disabled={isLoading || !currentSelectedClient || !amount || parseInt(amount, 10) <= 0 || !actionAllowed}
         />
+        </ScrollView>
+
+        {/* Client picker modal */}
+        <Modal visible={isClientPickerVisible} animationType="slide" transparent>
+          <View style={styles.pickerBackdrop}>
+            <SafeAreaView style={styles.pickerSheet}>
+              <View style={styles.pickerHeader}>
+                <Text style={styles.pickerTitle}>Sélectionner un client</Text>
+                <TouchableOpacity onPress={() => setIsClientPickerVisible(false)}>
+                  <Text style={styles.pickerClose}>Fermer</Text>
+                </TouchableOpacity>
+              </View>
+
+              <View style={styles.searchTypeRow}>
+                <TouchableOpacity
+                  style={[styles.searchTypeBtn, searchType === 'name' && styles.searchTypeBtnActive]}
+                  onPress={() => { setSearchType('name'); setSearchQuery(''); }}
+                >
+                  <Text style={[styles.searchTypeText, searchType === 'name' && styles.searchTypeTextActive]}>Par nom</Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  style={[styles.searchTypeBtn, searchType === 'code' && styles.searchTypeBtnActive]}
+                  onPress={() => { setSearchType('code'); setSearchQuery(''); }}
+                >
+                  <Text style={[styles.searchTypeText, searchType === 'code' && styles.searchTypeTextActive]}>Par code</Text>
+                </TouchableOpacity>
+              </View>
+
+              <View style={styles.searchInputWrapper}>
+                <SearchInput
+                  value={searchQuery}
+                  onChangeText={setSearchQuery}
+                  placeholder={searchType === 'name' ? "Rechercher par nom..." : "Rechercher par code..."}
+                />
+              </View>
+
+              <FlatList
+                data={filteredClients}
+                keyExtractor={(item: Client) => item.id}
+                renderItem={({ item }: { item: Client }) => (
+                  <TouchableOpacity
+                    style={styles.clientCard}
+                    onPress={() => {
+                      setCurrentSelectedClientId(item.id);
+                      setSearchQuery("");
+                      setIsClientPickerVisible(false);
+                    }}
+                  >
+                    <View style={styles.avatar}>
+                      <Text style={styles.avatarText}>{item.name.substring(0, 2).toUpperCase()}</Text>
+                    </View>
+                    <View style={{ flex: 1 }}>
+                      <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 4 }}>
+                        <Text style={styles.name}>{item.name}</Text>
+                        <Text style={styles.balance}>{item.balance.toLocaleString('fr-FR')} F</Text>
+                      </View>
+                      <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
+                        <Text style={styles.phone}>{item.phone}</Text>
+                        <StatusBadge status={item.status} />
+                      </View>
+                      {item.accountNumber && (
+                        <View style={{ marginTop: 8 }}>
+                          <Text style={styles.code}>{item.accountNumber}</Text>
+                        </View>
+                      )}
+                    </View>
+                  </TouchableOpacity>
+                )}
+                contentContainerStyle={styles.listContainer}
+                showsVerticalScrollIndicator={false}
+                ListEmptyComponent={
+                  <View style={styles.emptySearchState}>
+                    <Text style={styles.emptySearchText}>Aucun client trouvé pour cette recherche</Text>
+                  </View>
+                }
+              />
+            </SafeAreaView>
+          </View>
+        </Modal>
 
         {/* Success overlay */}
         <Modal visible={!!successTx} animationType="slide" transparent>
@@ -323,7 +451,7 @@ function HoldToConfirm({
                     type={successTx.type === "withdrawal" ? "withdraw" : "deposit"}
                     reference={successTx.id}
                     clientName={successTx.clientName}
-                    balanceAfter={(selectedClient?.balance ?? 0).toLocaleString("fr-FR")}
+                    balanceAfter={(currentSelectedClient?.balance ?? 0).toLocaleString("fr-FR")}
                     agentName={agentName}
                     date={new Date(successTx.date).toLocaleDateString("fr-FR")}
                   />
@@ -338,6 +466,7 @@ function HoldToConfirm({
             </SafeAreaView>
           </View>
         </Modal>
+
       </SafeAreaView>
     );
   };
@@ -346,6 +475,12 @@ function HoldToConfirm({
     screen: {
       flex: 1,
       backgroundColor: T.bg,
+    },
+    contentScroll: {
+      flex: 1,
+    },
+    contentScrollContainer: {
+      paddingBottom: 16,
     },
   
     // Back row
@@ -462,6 +597,37 @@ function HoldToConfirm({
       backgroundColor: "rgba(0,0,0,0.45)",
       justifyContent: "flex-end",
     },
+    pickerBackdrop: {
+      flex: 1,
+      backgroundColor: "rgba(0,0,0,0.35)",
+      justifyContent: "flex-end",
+    },
+    pickerSheet: {
+      backgroundColor: T.bg,
+      borderTopLeftRadius: 20,
+      borderTopRightRadius: 20,
+      maxHeight: "82%",
+      minHeight: "58%",
+    },
+    pickerHeader: {
+      flexDirection: "row",
+      alignItems: "center",
+      justifyContent: "space-between",
+      paddingHorizontal: 18,
+      paddingVertical: 14,
+      borderBottomWidth: 0.5,
+      borderBottomColor: T.border,
+    },
+    pickerTitle: {
+      fontSize: 15,
+      fontWeight: "600",
+      color: T.text1,
+    },
+    pickerClose: {
+      fontSize: 13,
+      color: T.orange,
+      fontWeight: "500",
+    },
     overlaySheet: {
       backgroundColor: T.bg,
       borderTopLeftRadius: 20,
@@ -496,6 +662,93 @@ function HoldToConfirm({
       paddingHorizontal: 12,
     },
     permDeniedText: { fontSize: 12, color: "#856404" },
+
+    // Client selection styles
+    searchTypeRow: {
+      flexDirection: "row",
+      marginHorizontal: 18,
+      marginTop: 10,
+      marginBottom: 10,
+      backgroundColor: T.bg2,
+      borderRadius: 10,
+      padding: 4,
+    },
+    searchTypeBtn: {
+      flex: 1,
+      paddingVertical: 8,
+      alignItems: "center",
+      borderRadius: 8,
+    },
+    searchTypeBtnActive: {
+      backgroundColor: T.bg,
+      shadowColor: "#000",
+      shadowOffset: { width: 0, height: 1 },
+      shadowOpacity: 0.1,
+      shadowRadius: 2,
+      elevation: 2,
+    },
+    searchTypeText: {
+      fontSize: 14,
+      color: T.text3,
+    },
+    searchTypeTextActive: {
+      color: T.text1,
+      fontWeight: "500",
+    },
+    searchInputWrapper: {
+      marginHorizontal: 18,
+      marginBottom: 16,
+    },
+    listContainer: {
+      paddingHorizontal: 18,
+      paddingBottom: 10,
+    },
+    emptySearchState: {
+      marginHorizontal: 18,
+      marginBottom: 14,
+      backgroundColor: T.bg2,
+      borderRadius: 10,
+      borderWidth: 0.5,
+      borderColor: T.border,
+      paddingVertical: 12,
+      paddingHorizontal: 14,
+    },
+    emptySearchText: {
+      fontSize: 12,
+      color: T.text3,
+      textAlign: "center",
+    },
+    clientCard: {
+      backgroundColor: T.bg,
+      borderRadius: 14,
+      padding: 13,
+      marginBottom: 8,
+      flexDirection: "row",
+      alignItems: "center",
+      borderWidth: 0.5,
+      borderColor: T.border,
+    },
+    name: {
+      fontSize: 14,
+      fontWeight: "500",
+      color: T.text1,
+    },
+    phone: {
+      fontSize: 12,
+      color: T.text3,
+    },
+    balance: {
+      fontSize: 12,
+      fontWeight: "500",
+      color: T.text1,
+    },
+    code: {
+      fontSize: 11,
+      color: T.text3,
+      fontWeight: "500",
+    },
+
+    // Modal styles
   });
   
 const s = StyleSheet.create({

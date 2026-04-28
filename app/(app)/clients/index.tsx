@@ -1,9 +1,10 @@
-import React, { useMemo, useState } from 'react';
+import React, { useMemo, useState, useCallback } from 'react';
 import { FlatList, View, Text, StyleSheet, TouchableOpacity } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { useFocusEffect } from '@react-navigation/native';
 import { useClientStore } from '@/stores/client-store';
 import { useRouter } from 'expo-router';
-import { ArrowUp, ArrowDown } from 'lucide-react-native';
+import { ArrowUp, ArrowDown, ChevronLeft } from 'lucide-react-native';
 import StatusBadge from '../../components/ui/status-bar';
 import { KAURIDORR_THEME } from '@/constants/colors';
 import SearchInput from '../../components/quickactions/search-input';
@@ -19,6 +20,14 @@ export const ClientsScreen: React.FC = () => {
   const [sortOrder, setSortOrder] = useState<SortOrder>('desc');
   const [searchType, setSearchType] = useState<SearchType>('name');
   const clients = useClientStore((state) => state.clients);
+  const loadClients = useClientStore((state) => state.loadClientsFromSupabase);
+
+  // Reload clients when page comes into focus
+  useFocusEffect(
+    useCallback(() => {
+      loadClients();
+    }, [loadClients])
+  );
 
   const filteredClients = useMemo(() => {
     const q = searchQuery.toLowerCase();
@@ -66,7 +75,12 @@ export const ClientsScreen: React.FC = () => {
   return (
     <SafeAreaView style={styles.container} edges={["top"]}>
       <View style={styles.titleRow}>
-        <Text style={styles.title}>Mes Clients</Text>
+        <View style={styles.titleLeft}>
+          <TouchableOpacity style={styles.backBtn} onPress={() => router.back()}>
+            <ChevronLeft size={18} color={T.text2} strokeWidth={2} />
+          </TouchableOpacity>
+          <Text style={styles.title}>Mes Clients</Text>
+        </View>
         <TouchableOpacity style={styles.sortBtn} onPress={() => setSortOrder(o => o === 'desc' ? 'asc' : 'desc')}>
           {sortOrder === 'desc'
             ? <ArrowDown size={13} color={T.orange} strokeWidth={2} />
@@ -111,6 +125,8 @@ export default ClientsScreen;
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: T.bg },
   titleRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 18, paddingVertical: 12 },
+  titleLeft: { flexDirection: 'row', alignItems: 'center', gap: 8 },
+  backBtn: { width: 30, height: 30, borderRadius: 15, alignItems: 'center', justifyContent: 'center', backgroundColor: T.bg2, borderWidth: 0.5, borderColor: T.border },
   title: { fontSize: 22, fontWeight: '700' },
   sortBtn: { flexDirection: 'row', alignItems: 'center', gap: 4, backgroundColor: T.orangeLt, paddingHorizontal: 10, paddingVertical: 5, borderRadius: 20 },
   sortLabel: { fontSize: 11, fontWeight: '500', color: T.orange },

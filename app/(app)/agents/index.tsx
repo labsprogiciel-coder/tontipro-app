@@ -9,7 +9,7 @@ import {
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useRouter } from "expo-router";
-import { Plus, Search, ChevronRight } from "lucide-react-native";
+import { Plus, Search, ChevronRight, ChevronLeft } from "lucide-react-native";
 import { KAURIDORR_THEME as T } from "@/constants/colors";
 import { useAgentStore } from "@/stores/agent-store";
 import { Agent, AgentRole } from "@/types/agent";
@@ -105,7 +105,12 @@ export default function AgentsScreen() {
     <SafeAreaView style={s.root} edges={["top"]}>
       {/* Top bar */}
       <View style={s.topbar}>
-        <Text style={s.pageTitle}>Agents</Text>
+        <View style={s.topbarLeft}>
+          <Pressable style={s.backBtn} onPress={() => router.back()}>
+            <ChevronLeft size={18} color={T.text2} strokeWidth={2} />
+          </Pressable>
+          <Text style={s.pageTitle}>Agents</Text>
+        </View>
         <Pressable
           style={s.addBtn}
           // @ts-ignore
@@ -205,6 +210,8 @@ export default function AgentsScreen() {
 const s = StyleSheet.create({
   root:            { flex: 1, backgroundColor: T.bg3 },
   topbar:          { flexDirection: "row", alignItems: "center", justifyContent: "space-between", paddingHorizontal: 18, paddingVertical: 14, backgroundColor: T.bg, borderBottomWidth: 0.5, borderBottomColor: T.border },
+  topbarLeft:      { flexDirection: "row", alignItems: "center", gap: 8 },
+  backBtn:         { width: 30, height: 30, borderRadius: 15, alignItems: "center", justifyContent: "center", backgroundColor: T.bg2, borderWidth: 0.5, borderColor: T.border },
   pageTitle:       { fontSize: 18, fontWeight: "600", color: T.text1, letterSpacing: -0.3 },
   addBtn:          { width: 34, height: 34, borderRadius: 17, backgroundColor: T.orange, alignItems: "center", justifyContent: "center" },
 
