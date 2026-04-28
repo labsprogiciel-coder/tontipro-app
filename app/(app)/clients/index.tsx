@@ -111,6 +111,26 @@ export const ClientsScreen: React.FC = () => {
           onFilterPress={() => {}}
         />
       </View>
+
+      {/* Message et bouton d'ajout si aucun client trouvé */}
+      {searchQuery.length > 0 && filteredClients.length === 0 && (
+        <View style={styles.noResultContainer}>
+          <Text style={styles.noResultText}>Ce client n'existe pas, voulez-vous l'ajouter&nbsp;?</Text>
+          <TouchableOpacity
+            style={styles.addBtn}
+            onPress={() => {
+              if (searchType === 'code') {
+                router.push({ pathname: '/(app)/clients/add', params: { code: searchQuery } });
+              } else {
+                router.push({ pathname: '/(app)/clients/add', params: { name: searchQuery } });
+              }
+            }}
+          >
+            <Text style={styles.addBtnText}>Ajouter</Text>
+          </TouchableOpacity>
+        </View>
+      )}
+
       <FlatList
         data={filteredClients}
         renderItem={renderClient}
@@ -123,6 +143,33 @@ export const ClientsScreen: React.FC = () => {
 export default ClientsScreen;
 
 const styles = StyleSheet.create({
+    noResultContainer: {
+      alignItems: 'center',
+      marginVertical: 24,
+      marginHorizontal: 24,
+      padding: 18,
+      backgroundColor: T.bg2,
+      borderRadius: 12,
+      borderWidth: 0.5,
+      borderColor: T.border,
+    },
+    noResultText: {
+      fontSize: 15,
+      color: T.text3,
+      marginBottom: 12,
+      textAlign: 'center',
+    },
+    addBtn: {
+      backgroundColor: T.orange,
+      paddingHorizontal: 24,
+      paddingVertical: 10,
+      borderRadius: 8,
+    },
+    addBtnText: {
+      color: '#fff',
+      fontWeight: '700',
+      fontSize: 15,
+    },
   container: { flex: 1, backgroundColor: T.bg },
   titleRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 18, paddingVertical: 12 },
   titleLeft: { flexDirection: 'row', alignItems: 'center', gap: 8 },

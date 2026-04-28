@@ -135,7 +135,7 @@ function Field({ label, required, children }: { label: string; required?: boolea
 
 export default function AddClientScreen() {
   const router  = useRouter();
-  const { clientId } = useLocalSearchParams<{ clientId?: string }>();
+  const { clientId, name: initialNameParam, code: initialCodeParam } = useLocalSearchParams<{ clientId?: string; name?: string; code?: string }>();
   const addClient    = useClientStore((s) => s.addClient);
   const updateClient = useClientStore((s) => s.updateClient);
   const getClientById = useClientStore((s) => s.getClientById);
@@ -165,7 +165,7 @@ export default function AddClientScreen() {
   const [step, setStep] = useState<Step>(1);
 
   // Step 1 – Identity
-  const [name,          setName]          = useState("");
+  const [name, setName] = useState("");
   const [phone,         setPhone]         = useState("");
   const [accountNumber, setAccountNumber] = useState("");
   const [locality,      setLocality]      = useState("");
@@ -187,22 +187,27 @@ export default function AddClientScreen() {
   const [createdClient, setCreatedClient] = useState<Client | null>(null);
   const [isSubmitting,  setIsSubmitting]  = useState(false);
 
-  // ── Pre-populate in edit mode ─────────────────────────────────────────────────
+  // ── Pre-populate in edit mode ou via paramètre 'name' ─────────────────────────
   useEffect(() => {
-    if (!clientId) return;
-    const existing = getClientById(clientId);
-    if (!existing) return;
-    setName(existing.name);
-    setPhone(existing.phone.replace(/^\+226\s?/, ""));
-    setAccountNumber(existing.accountNumber ?? "");
-    setLocality(existing.address ?? "");
-    setEmail(existing.email ?? "");
-    setGroupName(existing.groupName ?? "");
-    if (existing.commitmentAmount) setAmountText(String(existing.commitmentAmount));
-    if (existing.collectionFrequency) setFrequency(existing.collectionFrequency);
-    if (existing.collectionDays?.length) setActiveDays(existing.collectionDays);
-    if (existing.savingsGoal) { setHasGoal(true); setSavingsGoal(String(existing.savingsGoal)); }
-  }, [clientId]);
+    if (clientId) {
+      const existing = getClientById(clientId);
+      if (!existing) return;
+      setName(existing.name);
+      setPhone(existing.phone.replace(/^\+226\s?/, ""));
+      setAccountNumber(existing.accountNumber ?? "");
+      setLocality(existing.address ?? "");
+      setEmail(existing.email ?? "");
+      setGroupName(existing.groupName ?? "");
+      if (existing.commitmentAmount) setAmountText(String(existing.commitmentAmount));
+      if (existing.collectionFrequency) setFrequency(existing.collectionFrequency);
+      if (existing.collectionDays?.length) setActiveDays(existing.collectionDays);
+      if (existing.savingsGoal) { setHasGoal(true); setSavingsGoal(String(existing.savingsGoal)); }
+    } else if (initialNameParam) {
+      setName(initialNameParam);
+    } else if (initialCodeParam) {
+      setAccountNumber(initialCodeParam);
+    }
+  }, [clientId, initialNameParam, initialCodeParam, getClientById]);
 
   // ── Derived ──────────────────────────────────────────────────────────────────
   const proj = useMemo(() => getProjection(commitmentAmount), [commitmentAmount]);
