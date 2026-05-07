@@ -10,6 +10,7 @@ import { Transaction } from "@/types/transaction";
 import { useClientStore } from "./client-store";
 import { DEV_MOCKS_ENABLED } from "@/__dev__/config";
 
+
 function sortByDateDesc(a: Transaction, b: Transaction): number {
   return new Date(b.date).getTime() - new Date(a.date).getTime();
 }
@@ -53,7 +54,7 @@ interface TransactionStoreState {
   loadDevMocks: () => Promise<void>;
   clearAll: () => void;
 }
-
+let activeChannel: RealtimeChannel | null = null;
 export const useTransactionStore = create<TransactionStoreState>()(
   persist(
     (set, get) => ({
@@ -303,6 +304,12 @@ export const useTransactionStore = create<TransactionStoreState>()(
       },
 
       subscribeToTransactionsRealtime: (userId: string) => {
+         // ✅ Nettoie l'ancien channel s'il existe déjà
+        if (activeChannel) {
+          supabase.removeChannel(activeChannel);
+          activeChannel = null;
+        }
+        
         const channel: RealtimeChannel = supabase
           .channel(`agent-transactions-${userId}`)
           .on(
@@ -334,8 +341,11 @@ export const useTransactionStore = create<TransactionStoreState>()(
           )
           .subscribe();
 
+          activeChannel = channel;
+
         return () => {
           supabase.removeChannel(channel);
+          activeChannel = null;
         };
       },
 
