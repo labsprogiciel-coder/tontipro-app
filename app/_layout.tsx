@@ -12,6 +12,7 @@ import { useNavigationStore } from "@/stores/navigation-store";
 import { supabase } from "@/lib/supabase";
 import { useAuthStore, getUserDisplayName } from "@/stores/auth-store";
 import { useClientStore } from "@/stores/client-store";
+import { useAgentStore } from "@/stores/agent-store";
 import { useTransactionStore } from "@/stores/transaction-store";
 import { DEV_MOCKS_ENABLED } from "@/__dev__/config";
 
