@@ -561,6 +561,7 @@ const DEFAULT_PERMISSIONS = [
   { label: "Effectuer un retrait",  sub: "Autoriser les décaissements",      enabled: true  },
   { label: "Exporter les rapports", sub: "Télécharger CSV / données",        enabled: false },
   { label: "Gérer les agents",      sub: "Créer / bloquer des agents",       enabled: false },
+  { label: "Importer des données",  sub: "Charger fichiers CSV / sauvegardes", enabled: false },
 ];
 
 export default function AddAgentScreen() {
@@ -631,6 +632,7 @@ export default function AddAgentScreen() {
           withdrawal:    form.permissions[3].enabled,
           exportReports: form.permissions[4].enabled,
           manageAgents:  form.permissions[5].enabled,
+          importData:    form.permissions[6].enabled,
         },
       });
       setCreatedId(agent.id);

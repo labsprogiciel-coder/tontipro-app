@@ -43,6 +43,7 @@ import { File as FSFile, Paths } from 'expo-file-system';
 import * as Sharing from 'expo-sharing';
 import { useClientStore } from '@/stores/client-store';
 import { useTransactionStore } from '@/stores/transaction-store';
+import { usePermissions } from '@/hooks/usePermissions';
 
 // ─── Design tokens ────────────────────────────────────────────────────────────
 const T = {
@@ -406,7 +407,9 @@ function SecTitle({ label }: { label: string }) {
 
 // ─── HUB SCREEN ───────────────────────────────────────────────────────────────
 function HubScreen({ onNavigate }: { onNavigate: (s: Screen) => void }) {
-  const tiles = [
+  const perms = usePermissions();
+
+  const allTiles = [
     {
       key: 'import-upload' as Screen,
       name: 'Importer\ndes clients',
@@ -415,6 +418,7 @@ function HubScreen({ onNavigate }: { onNavigate: (s: Screen) => void }) {
       borderColor: 'rgba(216,90,48,0.18)',
       iconBg: 'rgba(216,90,48,0.15)',
       icon: <Download size={20} color={T.orange} strokeWidth={1.6} />,
+      requirePerm: 'importData' as const,
     },
     {
       key: 'export-config' as Screen,
@@ -424,6 +428,7 @@ function HubScreen({ onNavigate }: { onNavigate: (s: Screen) => void }) {
       borderColor: 'rgba(24,95,165,0.18)',
       iconBg: 'rgba(24,95,165,0.12)',
       icon: <Upload size={20} color={T.blue} strokeWidth={1.6} />,
+      requirePerm: 'exportReports' as const,
     },
     {
       key: 'import-tx-upload' as Screen,
@@ -433,6 +438,7 @@ function HubScreen({ onNavigate }: { onNavigate: (s: Screen) => void }) {
       borderColor: 'rgba(83,74,183,0.18)',
       iconBg: 'rgba(83,74,183,0.12)',
       icon: <RotateCcw size={20} color={T.purple} strokeWidth={1.6} />,
+      requirePerm: 'importData' as const,
     },
     {
       key: 'clean-data' as Screen,
@@ -442,8 +448,11 @@ function HubScreen({ onNavigate }: { onNavigate: (s: Screen) => void }) {
       borderColor: 'rgba(133,79,11,0.18)',
       iconBg: 'rgba(133,79,11,0.12)',
       icon: <XCircle size={20} color={T.textWarning} strokeWidth={1.6} />,
+      requirePerm: 'importData' as const,
     },
   ];
+
+  const tiles = allTiles.filter((t) => perms[t.requirePerm]);
 
   const history = [
     {

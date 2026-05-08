@@ -8,6 +8,7 @@ const ALL_PERMISSIONS: AgentPermissions = {
   withdrawal: true,
   exportReports: true,
   manageAgents: true,
+  importData: true,
 };
 
 export function usePermissions(): AgentPermissions {

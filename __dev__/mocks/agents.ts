@@ -22,6 +22,7 @@ export interface MockAgent {
     withdrawal: boolean;
     exportReports: boolean;
     manageAgents: boolean;
+    importData: boolean;
   };
 }
 
@@ -44,6 +45,7 @@ export const mockAgents: MockAgent[] = [
       withdrawal: true,
       exportReports: true,
       manageAgents: true,
+      importData: true,
     },
   },
   {
@@ -64,6 +66,7 @@ export const mockAgents: MockAgent[] = [
       withdrawal: true,
       exportReports: false,
       manageAgents: false,
+      importData: false,
     },
   },
   {
@@ -84,6 +87,7 @@ export const mockAgents: MockAgent[] = [
       withdrawal: false,
       exportReports: false,
       manageAgents: false,
+      importData: false,
     },
   },
   {
@@ -104,6 +108,7 @@ export const mockAgents: MockAgent[] = [
       withdrawal: false,
       exportReports: false,
       manageAgents: false,
+      importData: false,
     },
   },
   {
@@ -124,6 +129,7 @@ export const mockAgents: MockAgent[] = [
       withdrawal: false,
       exportReports: false,
       manageAgents: false,
+      importData: false,
     },
   },
   {
@@ -144,6 +150,7 @@ export const mockAgents: MockAgent[] = [
       withdrawal: false,
       exportReports: false,
       manageAgents: false,
+      importData: false,
     },
   },
 ];

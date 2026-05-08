@@ -46,6 +46,7 @@ const PERM_KEYS: { label: string; key: keyof AgentPermissions }[] = [
   { label: "Effectuer un retrait",    key: "withdrawal"    },
   { label: "Exporter les rapports",   key: "exportReports" },
   { label: "Gérer les agents",        key: "manageAgents"  },
+  { label: "Importer des données",    key: "importData"    },
 ];
 
 // ── Screen ────────────────────────────────────────────────────────────────────

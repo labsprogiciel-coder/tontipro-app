@@ -7,6 +7,7 @@ export interface AgentPermissions {
   withdrawal: boolean;
   exportReports: boolean;
   manageAgents: boolean;
+  importData: boolean;
 }
 
 export interface Agent {

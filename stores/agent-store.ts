@@ -39,6 +39,7 @@ function permissionsToDb(p: AgentPermissions) {
     withdrawal: p.withdrawal,
     export_reports: p.exportReports,
     manage_agents: p.manageAgents,
+    import_data: p.importData,
   };
 }
 
@@ -50,6 +51,7 @@ function permissionsFromDb(p: any): AgentPermissions {
     withdrawal: p?.withdrawal ?? false,
     exportReports: p?.export_reports ?? false,
     manageAgents: p?.manage_agents ?? false,
+    importData: p?.import_data ?? false,
   };
 }
 
