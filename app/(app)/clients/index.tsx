@@ -135,6 +135,20 @@ export const ClientsScreen: React.FC = () => {
         data={filteredClients}
         renderItem={renderClient}
         keyExtractor={item => item.id}
+        ListEmptyComponent={
+          searchQuery.length === 0 ? (
+            <View style={styles.emptyContainer}>
+              <View style={styles.emptyIconCircle}>
+                <Text style={styles.emptyIcon}>👤</Text>
+              </View>
+              <Text style={styles.emptyTitle}>Aucun client</Text>
+              <Text style={styles.emptySubtitle}>Ajoutez votre premier client pour commencer à gérer vos épargnes.</Text>
+              <TouchableOpacity style={styles.addBtn} onPress={() => router.push('/(app)/clients/add')}>
+                <Text style={styles.addBtnText}>Ajouter un client</Text>
+              </TouchableOpacity>
+            </View>
+          ) : null
+        }
       />
     </SafeAreaView>
   );
@@ -195,6 +209,23 @@ const styles = StyleSheet.create({
     borderWidth: 0.5,
     borderColor: T.border 
   },
+  emptyContainer: {
+    alignItems: 'center',
+    marginTop: 60,
+    paddingHorizontal: 32,
+  },
+  emptyIconCircle: {
+    width: 72,
+    height: 72,
+    borderRadius: 36,
+    backgroundColor: T.orangeLt,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 16,
+  },
+  emptyIcon: { fontSize: 30 },
+  emptyTitle: { fontSize: 18, fontWeight: '700', color: T.text1, marginBottom: 8 },
+  emptySubtitle: { fontSize: 13, color: T.text3, textAlign: 'center', lineHeight: 20, marginBottom: 24 },
   searchInputWrapper: { paddingHorizontal: 20},
 
   avatar: { 

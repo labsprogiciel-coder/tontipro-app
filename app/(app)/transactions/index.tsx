@@ -130,11 +130,24 @@ export const HistoryScreen: React.FC = () => {
           onFilterPress={() => {}}
         />
       </View>
-      <FlatList 
-        data={filteredTransactions} 
+      <FlatList
+        data={filteredTransactions}
         renderItem={renderTransaction}
         keyExtractor={item => item.id}
         contentContainerStyle={{ paddingBottom: 20 }}
+        ListEmptyComponent={
+          <View style={styles.emptyContainer}>
+            <View style={styles.emptyIconCircle}>
+              <Text style={styles.emptyIcon}>📋</Text>
+            </View>
+            <Text style={styles.emptyTitle}>Aucune transaction</Text>
+            <Text style={styles.emptySubtitle}>
+              {search.length > 0
+                ? 'Aucune transaction ne correspond à votre recherche.'
+                : 'Les transactions apparaîtront ici une fois enregistrées.'}
+            </Text>
+          </View>
+        }
       />
     </SafeAreaView>
   );
@@ -158,6 +171,23 @@ const styles = StyleSheet.create({
   searchTypeText: { fontSize: 12, fontWeight: '600', color: T.text3 },
   searchTypeTextActive: { color: T.orange },
   
+  emptyContainer: {
+    alignItems: 'center',
+    marginTop: 60,
+    paddingHorizontal: 32,
+  },
+  emptyIconCircle: {
+    width: 72,
+    height: 72,
+    borderRadius: 36,
+    backgroundColor: T.orangeLt,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 16,
+  },
+  emptyIcon: { fontSize: 30 },
+  emptyTitle: { fontSize: 18, fontWeight: '700', color: T.text1, marginBottom: 8 },
+  emptySubtitle: { fontSize: 13, color: T.text3, textAlign: 'center', lineHeight: 20 },
   row: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', padding: 16, marginHorizontal: 18, borderBottomWidth: 0.5, borderColor: T.border },
   left: { gap: 4, flex: 1 },
   right: { alignItems: 'flex-end', gap: 4 },
