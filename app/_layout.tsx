@@ -121,9 +121,6 @@ function RootLayoutNav() {
               console.warn("Chargement mocks échoué:", e);
             }
           } else {
-            useClientStore.getState().clearAll();
-            useTransactionStore.getState().clearAll();
-            useAgentStore.getState().clearAll();
           }
         }
       } catch (e) {
@@ -137,9 +134,6 @@ function RootLayoutNav() {
             console.warn("Chargement mocks échoué:", e);
           }
         } else {
-          useClientStore.getState().clearAll();
-          useTransactionStore.getState().clearAll();
-          useAgentStore.getState().clearAll();
         }
       }
     };
