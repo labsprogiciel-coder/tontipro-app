@@ -503,7 +503,7 @@ export default function OnboardingScreen() {
             name={name}
             phone={phone}
             role={role}
-            onGoToDashboard={() => router.replace("/dashboard")}
+            onGoToDashboard={() => router.push("/(auth)/bind-device")}
           />
         )}
       </KeyboardAvoidingView>

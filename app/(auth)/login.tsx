@@ -2,6 +2,7 @@ import { useRouter } from "expo-router";
 import { useState } from "react";
 import { Pressable, StyleSheet, Text, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
+import { Smartphone } from "lucide-react-native";
 import { useAuthStore } from "@/stores/auth-store";
 import { Numpad } from "@/app/components/ui/numpad";
 
@@ -55,7 +56,10 @@ export default function LoginScreen() {
   const greeting = user?.name ?? (registeredPhone ? `+226 ${registeredPhone.replace("+226", "")}` : null);
 
   return (
-    <SafeAreaView style={styles.container}>
+    <SafeAreaView style={styles.container} edges={["top"]}>
+      <Pressable style={styles.bindBtn} onPress={() => router.push("/(auth)/bind-device")}>
+        <Smartphone size={20} color={T.textTertiary} />
+      </Pressable>
       <View style={styles.screen}>
         {/* Header */}
         <View style={styles.header}>
@@ -97,6 +101,7 @@ export default function LoginScreen() {
           <Text style={styles.newAccountText}>Nouveau sur cet appareil ? S'inscrire</Text>
         </Pressable>
 
+
       </View>
     </SafeAreaView>
   );
@@ -128,6 +133,17 @@ const styles = StyleSheet.create({
   pinDotFilled: { backgroundColor: T.orange, borderColor: T.orange },
   pinHint: { fontSize: 12, color: T.textTertiary, marginBottom: 32, textAlign: "center" },
   errorText: { fontSize: 12, color: T.orangeDark, marginBottom: 32, textAlign: "center" },
+
+  // Bind device icon (top-right)
+  bindBtn: {
+    position: "absolute",
+    top: 16,
+    right: 16,
+    zIndex: 10,
+    padding: 8,
+    borderRadius: 10,
+    backgroundColor: T.bgSecondary,
+  },
 
   // New account
   newAccountLink: { marginTop: 36 },

@@ -1,7 +1,7 @@
 import React, { useMemo, useState, useCallback } from 'react';
 import { FlatList, View, Text, StyleSheet, TouchableOpacity } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { useFocusEffect } from '@react-navigation/native';
+import { useFocusEffect } from 'expo-router';
 import { useClientStore } from '@/stores/client-store';
 import { useRouter } from 'expo-router';
 import { ArrowUp, ArrowDown, ChevronLeft } from 'lucide-react-native';
@@ -59,15 +59,11 @@ export const ClientsScreen: React.FC = () => {
           <Text style={styles.name}>{item.name}</Text>
           <Text style={styles.balance}>{item.balance.toLocaleString('fr-FR')} F</Text>
         </View>
-        <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
-          <Text style={styles.phone}>{item.phone}</Text>
-          <StatusBadge status={item.status} />
-        </View>
-        {item.accountNumber && (
-          <View style={{ marginTop: 8 }}>
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+          {item.accountNumber && (
             <Text style={styles.code}>{item.accountNumber}</Text>
-          </View>
-        )}
+          )}
+        </View>
       </View>
     </TouchableOpacity>
   );

@@ -36,13 +36,10 @@ export const HistoryScreen: React.FC = () => {
         if (t.type !== "withdrawal") return false;
       }
 
-      // Search filtering
       const q = search.toLowerCase();
       if (searchType === 'client') {
-        // Search by client name or phone
         return (t.clientName?.toLowerCase().includes(q) || false);
       } else if (searchType === 'code') {
-        // Search by client code
         const client = clients.find((c) => c.id === t.clientId);
         return client?.accountNumber?.toLowerCase().includes(q) || false;
       }
@@ -54,6 +51,20 @@ export const HistoryScreen: React.FC = () => {
     });
     return result;
   }, [mergedTransactions, filter, sortOrder, search, searchType, clients]);
+
+  const groupedList = useMemo(() => {
+    const items: ({ type: 'header'; dateKey: string } | { type: 'item'; data: (typeof filteredTransactions)[0] })[] = [];
+    let lastKey = '';
+    for (const t of filteredTransactions) {
+      const key = new Date(t.date).toLocaleDateString('fr-FR', { day: '2-digit', month: 'long', year: 'numeric' });
+      if (key !== lastKey) {
+        items.push({ type: 'header', dateKey: key });
+        lastKey = key;
+      }
+      items.push({ type: 'item', data: t });
+    }
+    return items;
+  }, [filteredTransactions]);
 
   const getMultiplier = (clientId: string, amount: number): number | undefined => {
     const commitment = clients.find((c) => c.id === clientId)?.commitmentAmount;
@@ -69,9 +80,7 @@ export const HistoryScreen: React.FC = () => {
       <View style={styles.row}>
         <View style={styles.left}>
           <Text style={styles.name}>{item.clientName ?? '—'}</Text>
-          {client?.accountNumber && (
-            <Text style={styles.code}>{client.accountNumber}</Text>
-          )}
+         
           <Text style={styles.sub}>{new Date(item.date).toLocaleDateString('fr-FR', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' })}</Text>
         </View>
         <View style={styles.right}>

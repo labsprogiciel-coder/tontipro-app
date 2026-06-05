@@ -7,7 +7,14 @@
     "start-web": "expo start --web --tunnel",
     "start-web-dev": "DEBUG=expo* expo start --web --tunnel",
     "android": "expo run:android",
-    "ios": "expo run:ios"
+    "ios": "expo run:ios",
+    "build:web": "expo export --platform web",
+    "build:local:preview:apk": "eas build -p android --profile preview --local",
+    "build:local:production:apk": "eas build -p android --profile production --local",
+    "build:preview:apk": "eas build -p android --profile preview",
+    "build:production": "eas build --profile production",
+    "lint": "expo lint",
+    "type-check": "tsc --noEmit"
   },
   "dependencies": {
     "@ai-sdk/react": "^2.0.89",
