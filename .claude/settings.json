@@ -12,7 +12,25 @@
       "Bash(eas --version)",
       "Bash(expo --version)",
       "Bash(eas build *)",
-      "Bash(git remote *)"
+      "Bash(git remote *)",
+      "Bash(./gradlew bundleRelease)",
+      "Bash(gh repo *)",
+      "Bash(gh api *)",
+      "Bash(gh issue create --title '[Setup] Initialize Convex project and Clerk auth provider' --milestone 'Supabase → Convex Migration' --label migration,backend --body ' *)",
+      "Bash(gh issue create --title '[Auth] Migrate phone OTP login and session management to Clerk + Convex' --milestone 'Supabase → Convex Migration' --label migration,auth --body ' *)",
+      "Bash(gh issue create --title '[Customers] Migrate client management to Convex customers table' --milestone 'Supabase → Convex Migration' --label migration,backend --body ' *)",
+      "Bash(gh issue create --title '[Transactions] Migrate deposits/withdrawals to Convex transactions table' --milestone 'Supabase → Convex Migration' --label migration,backend --body ' *)",
+      "Bash(gh issue create --title '[Agents] Migrate agent management to Convex users table' --milestone 'Supabase → Convex Migration' --label migration,backend --body ' *)",
+      "Bash(gh issue create --title '[Dashboard] Wire dashboard to Convex queries' --milestone 'Supabase → Convex Migration' --label migration --body ' *)",
+      "Bash(gh issue create --title '[Reports] Update reports screen to use Convex-sourced store data' --milestone 'Supabase → Convex Migration' --label migration --body ' *)",
+      "Bash(gh issue create --title '[Data] Update CSV import/export to use Convex mutations' --milestone 'Supabase → Convex Migration' --label migration --body ' *)",
+      "Bash(gh issue create --title '[Offline] Preserve offline-first sync with Convex as the sync target' --milestone 'Supabase → Convex Migration' --label migration,offline --body ' *)",
+      "Bash(gh issue create --title '[Cleanup] Remove Supabase dependency after full migration' --milestone 'Supabase → Convex Migration' --label migration,cleanup --body ' *)",
+      "Bash(gh issue edit 43 --title '[Setup] Initialize Convex project with convex-auth' --body ' *)",
+      "Bash(gh issue edit 44 --title '[Auth] Migrate authentication to Convex Auth \\(email + password + invite token\\)' --body ' *)",
+      "Bash(gh issue edit 47 --title '[Agents] Migrate agent management to Convex users table \\(role-based\\)' --body ' *)",
+      "Bash(gh issue create --title '[Devices] Wire device binding screen to Convex \\(QR scan + PIN entry\\)' --milestone 'Supabase → Convex Migration' --label migration,backend --body ' *)",
+      "Bash(bun add *)"
     ]
   }
 }

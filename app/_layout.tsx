@@ -5,6 +5,9 @@ import { Stack, useRouter, useSegments } from "expo-router";
 import * as SplashScreen from "expo-splash-screen";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
 import { SafeAreaProvider } from "react-native-safe-area-context";
+import { ConvexProvider } from "convex/react";
+import { ConvexAuthProvider } from "@convex-dev/auth/react";
+import { convex } from "@/lib/convex";
 
 import { colors } from "@/constants/colors";
 import ErrorBoundary from "@/app/error-boundary";
@@ -60,18 +63,22 @@ export default function RootLayout() {
   }
 
   return (
-    <ErrorBoundary onError={clearNavigationState}>
-      <SafeAreaProvider>
-        <GestureHandlerRootView style={{ flex: 1 }}>
-          <StatusBar
-            barStyle="dark-content"
-            backgroundColor={colors.background}
-            translucent={Platform.OS === "android"}
-          />
-          <RootLayoutNav />
-        </GestureHandlerRootView>
-      </SafeAreaProvider>
-    </ErrorBoundary>
+    <ConvexProvider client={convex}>
+      <ConvexAuthProvider>
+        <ErrorBoundary onError={clearNavigationState}>
+          <SafeAreaProvider>
+            <GestureHandlerRootView style={{ flex: 1 }}>
+              <StatusBar
+                barStyle="dark-content"
+                backgroundColor={colors.background}
+                translucent={Platform.OS === "android"}
+              />
+              <RootLayoutNav />
+            </GestureHandlerRootView>
+          </SafeAreaProvider>
+        </ErrorBoundary>
+      </ConvexAuthProvider>
+    </ConvexProvider>
   );
 }
 

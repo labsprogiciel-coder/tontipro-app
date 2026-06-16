@@ -48,3 +48,4 @@ core
 # Build directories
 ios/
 android/
+app-upload.keystore

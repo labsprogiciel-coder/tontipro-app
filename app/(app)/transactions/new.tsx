@@ -785,3 +785,4 @@ const s = StyleSheet.create({
 
   export default TransactionEntryScreen;
   
+
