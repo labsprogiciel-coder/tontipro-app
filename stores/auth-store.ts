@@ -1,7 +1,9 @@
+// stores/auth-store.ts
 import { create } from "zustand";
 import { createJSONStorage, persist } from "zustand/middleware";
 import AsyncStorage from "@react-native-async-storage/async-storage";
-import { supabase } from "@/lib/supabase";
+import { convex } from "@/lib/convex";
+import { api } from "@/convex/_generated/api";
 import { useClientStore } from "@/stores/client-store";
 import { useTransactionStore } from "@/stores/transaction-store";
 import { useAgentStore } from "@/stores/agent-store";
@@ -18,13 +20,27 @@ async function addToPhoneRegistry(phone: string) {
   }
 }
 
+// ── Types ────────────────────────────────────────────────────────────────────
+
+/** Convex role values from the backend */
+export type ConvexRole =
+  | "field_agent"
+  | "supervisor"
+  | "accountant"
+  | "admin"
+  | "it_admin";
+
 export interface User {
   id: string;
   name: string;
   email?: string;
   phone?: string;
-  role: "agent";
-  permissions?: AgentPermissions; // undefined = admin (all permissions)
+  role: ConvexRole | "agent"; // "agent" = legacy / offline
+  branchId?: string;
+  currency?: string; // e.g. "XOF"
+  device?: any | null; // null = unbound → triggers binding flow
+  status?: string;
+  permissions?: AgentPermissions;
 }
 
 interface AuthState {
@@ -33,85 +49,94 @@ interface AuthState {
   isLoadingClients: boolean;
   user: User | null;
   registeredPhone: string | null;
-  sendOtp: (phone: string) => Promise<void>;
-  verifyOtp: (phone: string, token: string) => Promise<void>;
+
+  // Convex profile sync
+  setConvexUser: (convexUser: any) => void;
+  fetchCurrentUser: () => Promise<void>;
+
+  // PIN offline login (unchanged)
   verifyPin: (pin: string) => Promise<void>;
   savePin: (phone: string, pin: string) => Promise<void>;
   registerOffline: (phone: string, name: string, role: "agent", pin: string) => Promise<void>;
+
   updateUser: (fields: Partial<Pick<User, "name" | "email" | "phone">>) => Promise<void>;
-  logout: () => Promise<void>;
+  logout: () => void;
 }
 
-export const MOCK_USER: User = {
-  id: "dev-mock-user",
-  name: "Dev Agent",
-  email: "dev@kauridorr.test",
-  phone: "+22600000000",
-  role: "agent",
-};
-
-export const getUserDisplayName = (profile: any, supabaseUser: any): string => {
-  if (!profile && !supabaseUser) return "Agent";
-  if (profile?.name) return profile.name;
-  if (supabaseUser?.user_metadata?.name) return supabaseUser.user_metadata.name;
-  if (supabaseUser?.email) return supabaseUser.email.split("@")[0];
-  if (supabaseUser?.phone) return supabaseUser.phone;
-  return "Agent";
-};
+// ── Store ────────────────────────────────────────────────────────────────────
 
 export const useAuthStore = create<AuthState>()(
   persist(
-    (set) => ({
+    (set, get) => ({
       isAuthenticated: false,
       isInitialized: false,
       isLoadingClients: false,
       user: null,
       registeredPhone: null,
 
-      sendOtp: async (phone: string) => {
-        const { error } = await supabase.auth.signInWithOtp({ phone });
-        if (error) throw new Error(error.message);
-      },
+      /**
+       * Called from RootLayoutNav when `useQuery(api.users.currentUser)` returns data.
+       * Syncs the Convex user profile into the Zustand store.
+       */
+      setConvexUser: (convexUser: any) => {
+        if (!convexUser) return;
 
-      verifyOtp: async (phone: string, token: string) => {
-        const { data, error } = await supabase.auth.verifyOtp({
-          phone,
-          token,
-          type: "sms",
-        });
-        if (error) throw new Error(error.message);
+        const user: User = {
+          id: convexUser._id,
+          name: convexUser.fullName ?? "Agent",
+          email: convexUser.email,
+          phone: convexUser.phoneNumber,
+          role: convexUser.role ?? "agent",
+          branchId: convexUser.branchId ?? convexUser.tenantId,
+          currency: convexUser.organization?.currency ?? "XOF",
+          device: convexUser.device ?? null,
+          status: convexUser.status,
+        };
 
-        const supabaseUser = data.user;
-        if (!supabaseUser) throw new Error("Utilisateur introuvable");
-
-        const { data: profile } = await supabase
-          .from("profiles")
-          .select("id, name, agent_code, role, phone")
-          .eq("id", supabaseUser.id)
-          .single();
-
-        const otpAgentRecord = useAgentStore.getState().agents.find((a) => a.phone === phone);
         set({
           isAuthenticated: true,
-          isLoadingClients: true,
-          user: {
-            id: supabaseUser.id,
-            name: getUserDisplayName(profile, supabaseUser),
-            email: supabaseUser.email,
-            phone: profile?.phone ?? supabaseUser.phone,
-            role: profile?.role ?? "agent",
-            permissions: otpAgentRecord?.permissions,
-          },
+          user,
         });
 
+        // Load data from Supabase (data layer still uses Supabase)
+        const loadData = async () => {
+          set({ isLoadingClients: true });
+          try {
+            await useClientStore.getState().loadClientsFromSupabase();
+            await useTransactionStore.getState().loadTransactionsFromSupabase();
+            await useAgentStore.getState().loadAgentsFromSupabase();
+          } catch (error) {
+            console.error("Failed to load data after Convex auth:", error);
+          }
+          set({ isLoadingClients: false });
+        };
+        loadData();
+      },
+
+      /**
+       * Directly query Convex for the current user profile.
+       * Used after signIn() from login/register screens.
+       */
+      fetchCurrentUser: async () => {
         try {
-          await useClientStore.getState().loadClientsFromSupabase();
-          await useTransactionStore.getState().loadTransactionsFromSupabase();
-          await useAgentStore.getState().loadAgentsFromSupabase();
-          set({ isLoadingClients: false });
-        } catch (error) {
-          console.error("Failed to load data after login:", error);
-          set({ isLoadingClients: false });
+          const convexUser = await convex.query(api.users.currentUser);
+          if (!convexUser) return;
+
+          const user: User = {
+            id: convexUser._id,
+            name: convexUser.fullName ?? "Agent",
+            email: convexUser.email,
+            phone: convexUser.phoneNumber,
+            role: convexUser.role ?? "agent",
+            branchId: convexUser.branchId ?? convexUser.tenantId,
+            currency: convexUser.organization?.currency ?? "XOF",
+            device: convexUser.device ?? null,
+            status: convexUser.status,
+          };
+
+          set({ isAuthenticated: true, user });
+        } catch (e) {
+          console.error("[Auth] fetchCurrentUser failed:", e);
         }
       },
 
@@ -121,7 +146,7 @@ export const useAuthStore = create<AuthState>()(
         set({ registeredPhone: phone });
       },
 
-      // Full offline registration — no OTP needed
+      // Full offline registration — no server call
       registerOffline: async (phone: string, name: string, role: "agent", pin: string) => {
         const id = generateId("USR");
         const user: User = { id, name, phone, role };
@@ -136,7 +161,6 @@ export const useAuthStore = create<AuthState>()(
           registeredPhone: phone,
           user,
         });
-
       },
 
       verifyPin: async (pin: string) => {
@@ -144,7 +168,7 @@ export const useAuthStore = create<AuthState>()(
         const phones: string[] = raw ? JSON.parse(raw) : [];
 
         // Include legacy registeredPhone for installs that predate the registry
-        const legacy = useAuthStore.getState().registeredPhone;
+        const legacy = get().registeredPhone;
         if (legacy && !phones.includes(legacy)) phones.unshift(legacy);
 
         if (phones.length === 0) throw new Error("Aucun compte enregistré sur cet appareil");
@@ -160,66 +184,44 @@ export const useAuthStore = create<AuthState>()(
         const localRaw = await AsyncStorage.getItem(`user_${matchedPhone}`);
         const localUser: User | null = localRaw ? JSON.parse(localRaw) : null;
 
-        // Try Supabase — fail gracefully when offline
-        let supabaseUser = null;
-        let profile = null;
-        try {
-          const { data: { session } } = await supabase.auth.getSession();
-          supabaseUser = session?.user ?? null;
-          const { data } = await supabase
-            .from("profiles")
-            .select("id, name, agent_code, role, phone")
-            .eq("phone", matchedPhone)
-            .single();
-          profile = data;
-        } catch {
-          // offline — use local data below
-        }
-
         const pinAgentRecord = useAgentStore.getState().agents.find((a) => a.phone === matchedPhone);
+
         set({
           isAuthenticated: true,
           isLoadingClients: true,
-          user: {
-            id: profile?.id ?? supabaseUser?.id ?? localUser?.id ?? matchedPhone,
-            name: profile?.name ?? localUser?.name ?? getUserDisplayName(null, supabaseUser),
-            email: supabaseUser?.email ?? localUser?.email,
-            phone: profile?.phone ?? localUser?.phone ?? matchedPhone,
-            role: profile?.role ?? localUser?.role ?? "agent",
+          user: localUser ?? {
+            id: matchedPhone,
+            name: "Agent",
+            phone: matchedPhone,
+            role: "agent",
             permissions: pinAgentRecord?.permissions,
           },
         });
 
+        // Try loading data from Supabase (works if online + Supabase session exists)
         try {
           await useClientStore.getState().loadClientsFromSupabase();
           await useTransactionStore.getState().loadTransactionsFromSupabase();
           await useAgentStore.getState().loadAgentsFromSupabase();
-          set({ isLoadingClients: false });
         } catch {
-          set({ isLoadingClients: false });
+          // offline — local data is enough
         }
+        set({ isLoadingClients: false });
       },
 
       updateUser: async (fields) => {
-        const current = useAuthStore.getState().user;
+        const current = get().user;
         if (!current) return;
         const updated = { ...current, ...fields };
         set({ user: updated });
         if (updated.phone) {
           await AsyncStorage.setItem(`user_${updated.phone}`, JSON.stringify(updated));
         }
-        try {
-          await supabase
-            .from("profiles")
-            .update({ name: updated.name, phone: updated.phone })
-            .eq("id", current.id);
-        } catch {
-          // offline — local update already applied
-        }
       },
 
-      logout: async () => {
-        try { await supabase.auth.signOut(); } catch { /* offline */ }
+      logout: () => {
+        // Convex signOut is handled by the component (useAuthActions().signOut())
+        // This just clears local state
         set({ isAuthenticated: false, isLoadingClients: false, user: null });
       },
     }),

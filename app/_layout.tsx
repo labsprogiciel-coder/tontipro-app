@@ -1,3 +1,4 @@
+// app/_layout.tsx
 import { useCallback, useEffect, useState } from "react";
 import { ActivityIndicator, Platform, StatusBar, StyleSheet, View } from "react-native";
 import { useFonts } from "expo-font";
@@ -5,19 +6,46 @@ import { Stack, useRouter, useSegments } from "expo-router";
 import * as SplashScreen from "expo-splash-screen";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
 import { SafeAreaProvider } from "react-native-safe-area-context";
-import { ConvexProvider } from "convex/react";
-import { ConvexAuthProvider } from "@convex-dev/auth/react";
-import { convex } from "@/lib/convex";
+import AsyncStorage from "@react-native-async-storage/async-storage";
+import { ConvexAuthProvider, useConvexAuth } from "@convex-dev/auth/react";
+import { useQuery } from "convex/react";
 
+import { convex } from "@/lib/convex";
 import { colors } from "@/constants/colors";
 import ErrorBoundary from "@/app/error-boundary";
 import { useNavigationStore } from "@/stores/navigation-store";
-import { supabase } from "@/lib/supabase";
-import { useAuthStore, getUserDisplayName } from "@/stores/auth-store";
-import { useClientStore } from "@/stores/client-store";
-import { useAgentStore } from "@/stores/agent-store";
-import { useTransactionStore } from "@/stores/transaction-store";
-import { DEV_MOCKS_ENABLED } from "@/__dev__/config";
+import { useAuthStore } from "@/stores/auth-store";
+import { api } from "@/convex/_generated/api";
+
+/**
+ * Adapter to make AsyncStorage compatible with ConvexAuthProvider's `storage` prop.
+ * Convex expects a Web Storage-like interface (synchronous getItem/setItem).
+ * Since AsyncStorage is async, we use a synchronous cache that hydrates on init.
+ */
+const storageAdapter = {
+  getItem: (key: string) => {
+    // Sync read from cache (Convex calls this synchronously)
+    return _storageCache.get(key) ?? null;
+  },
+  setItem: (key: string, value: string) => {
+    _storageCache.set(key, value);
+    AsyncStorage.setItem(key, value);
+  },
+  removeItem: (key: string) => {
+    _storageCache.delete(key);
+    AsyncStorage.removeItem(key);
+  },
+};
+
+const _storageCache = new Map<string, string>();
+
+// Hydrate cache on module load
+AsyncStorage.getAllKeys().then((keys) => {
+  const convexKeys = keys.filter((k) => k.startsWith("convex"));
+  return Promise.all(
+    convexKeys.map((k) => AsyncStorage.getItem(k).then((v) => { if (v) _storageCache.set(k, v); }))
+  );
+});
 
 export const unstable_settings = {
   initialRouteName: "(auth)",
@@ -63,125 +91,87 @@ export default function RootLayout() {
   }
 
   return (
-    <ConvexProvider client={convex}>
-      <ConvexAuthProvider>
-        <ErrorBoundary onError={clearNavigationState}>
-          <SafeAreaProvider>
-            <GestureHandlerRootView style={{ flex: 1 }}>
-              <StatusBar
-                barStyle="dark-content"
-                backgroundColor={colors.background}
-                translucent={Platform.OS === "android"}
-              />
-              <RootLayoutNav />
-            </GestureHandlerRootView>
-          </SafeAreaProvider>
-        </ErrorBoundary>
-      </ConvexAuthProvider>
-    </ConvexProvider>
+    <ConvexAuthProvider client={convex} storage={storageAdapter}>
+      <ErrorBoundary onError={clearNavigationState}>
+        <SafeAreaProvider>
+          <GestureHandlerRootView style={{ flex: 1 }}>
+            <StatusBar
+              barStyle="dark-content"
+              backgroundColor={colors.background}
+              translucent={Platform.OS === "android"}
+            />
+            <RootLayoutNav />
+          </GestureHandlerRootView>
+        </SafeAreaProvider>
+      </ErrorBoundary>
+    </ConvexAuthProvider>
   );
 }
 
 function RootLayoutNav() {
   const router = useRouter();
   const segments = useSegments();
-  const isAuthenticated = useAuthStore((state) => state.isAuthenticated);
-  const isInitialized = useAuthStore((state) => state.isInitialized);
+  const { isAuthenticated: convexAuthed, isLoading: convexLoading } = useConvexAuth();
+  const convexUser = useQuery(api.users.currentUser);
 
-  // ✅ Tâche 4 : Restaurer la session au démarrage une seule fois
+  const isAuthenticated = useAuthStore((s) => s.isAuthenticated);
+  const isInitialized = useAuthStore((s) => s.isInitialized);
+  const setConvexUser = useAuthStore((s) => s.setConvexUser);
+
+  // Sync Convex auth state → Zustand store
   useEffect(() => {
-    const restoreSession = async () => {
-      try {
-        const { data: { session } } = await supabase.auth.getSession();
+    if (convexLoading) return; // still checking
 
-        if (session?.user) {
-          const { data: profile } = await supabase
-            .from("profiles")
-            .select("id, name, agent_code, role, phone")
-            .eq("id", session.user.id)
-            .single();
-
-          (useAuthStore as any).setState({
-            isAuthenticated: true,
-            isInitialized: true,
-            user: {
-              id: session.user.id,
-              name: getUserDisplayName(profile, session.user),
-              phone: profile?.phone ?? session.user.phone,
-              role: profile?.role ?? "agent",
-            },
-          });
-
-          try {
-            await useClientStore.getState().loadClientsFromSupabase();
-            await useTransactionStore.getState().loadTransactionsFromSupabase();
-          } catch (e) {
-            console.error("Chargement données après restauration session:", e);
-          }
-        } else {
-          (useAuthStore as any).setState({ isAuthenticated: false, isInitialized: true, user: null });
-          // ✅ Charger les mocks en mode développement si pas de session
-          if (DEV_MOCKS_ENABLED) {
-            try {
-              await useClientStore.getState().loadDevMocks();
-            } catch (e) {
-              console.warn("Chargement mocks échoué:", e);
-            }
-          } else {
-          }
-        }
-      } catch (e) {
-        console.error("Erreur restauration session:", e);
-        (useAuthStore as any).setState({ isAuthenticated: false, isInitialized: true, user: null });
-        // ✅ Charger les mocks en mode développement en cas d'erreur
-        if (DEV_MOCKS_ENABLED) {
-          try {
-            await useClientStore.getState().loadDevMocks();
-          } catch (e) {
-            console.warn("Chargement mocks échoué:", e);
-          }
-        } else {
-        }
+    if (convexAuthed && convexUser) {
+      // Convex session active → populate store
+      setConvexUser(convexUser);
+    } else if (convexAuthed && convexUser === undefined) {
+      // Authenticated but currentUser hasn't resolved yet — wait
+    } else if (convexAuthed && convexUser === null) {
+      // Authenticated via Convex but no matching user profile (e.g. record
+      // deleted server-side). Don't leave the app in limbo — mark
+      // initialized so the navigation guard can route to login.
+      useAuthStore.setState({ isAuthenticated: false, user: null, isInitialized: true });
+    } else if (!convexAuthed) {
+      // Not authenticated via Convex — check local PIN for offline fallback
+      // Keep existing state if already authenticated via PIN
+      if (!isAuthenticated) {
+        useAuthStore.setState({ isInitialized: true });
       }
-    };
+    }
+  }, [convexAuthed, convexLoading, convexUser]);
 
-    restoreSession();
-
-    // ✅ Tâche 5 : Écouter uniquement SIGNED_OUT pour forcer le retour au login
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((event) => {
-      if (event === "SIGNED_OUT") {
-        (useAuthStore as any).setState({ isAuthenticated: false, isInitialized: true, user: null });
-      }
-    });
-
-    return () => subscription.unsubscribe();
-  }, []);
-
-  // ✅ Tâche 8 : Redirection basée sur isInitialized + isAuthenticated
+  // Mark initialized when Convex finishes checking
   useEffect(() => {
-    if (!isInitialized) return; // Attend que la session soit vérifiée
+    if (!convexLoading && !isInitialized) {
+      useAuthStore.setState({ isInitialized: true });
+    }
+  }, [convexLoading, isInitialized]);
+
+  // Navigation guard — only runs after Stack is mounted
+  useEffect(() => {
+    if (!isInitialized) return;
 
     const inAuthGroup = segments[0] === "(auth)";
 
     if (isAuthenticated && inAuthGroup) {
-      // Connecté mais sur une page auth → dashboard
-      // @ts-ignore
-      router.replace("/dashboard");
+      // Check if device binding is needed
+      const user = useAuthStore.getState().user;
+      if (user && user.device === null && user.branchId) {
+        // @ts-ignore
+        router.replace("/(auth)/bind-device");
+      } else {
+        // @ts-ignore
+        router.replace("/dashboard");
+      }
     } else if (!isAuthenticated && !inAuthGroup) {
-      // Non connecté mais sur une page protégée → login
+
       // @ts-ignore
       router.replace("/login");
     }
   }, [isAuthenticated, isInitialized, segments]);
 
-  // Loader pendant la vérification de session
-  if (!isInitialized) {
-    return (
-      <View style={styles.loadingContainer}>
-        <ActivityIndicator size="large" color={colors.primary} />
-      </View>
-    );
-  }
+  
 
   return (
     <Stack screenOptions={{ headerShown: false }}>

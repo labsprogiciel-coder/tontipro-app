@@ -1,5 +1,8 @@
 export type AgentRole = "admin" | "agent" | "blocked";
 
+/** Convex backend role values */
+export type ConvexRole = "field_agent" | "supervisor" | "accountant" | "admin" | "it_admin";
+
 export interface AgentPermissions {
   addClient: boolean;
   editClient: boolean;

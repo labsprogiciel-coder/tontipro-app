@@ -1,3 +1,4 @@
+// app/(auth)/bind-device.tsx
 import { useCallback, useEffect, useRef, useState } from "react";
 import {
   ActivityIndicator,

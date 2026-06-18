@@ -96,8 +96,8 @@ export const onboard = mutation({
 // Links their convex-auth identity to the pre-created users row (invited|uuid)
 // and transfers their role to the new tokenIdentifier.
 export const linkAgentAccount = mutation({
-  args: {},
-  handler: async (ctx) => {
+  args: { inviteToken: v.optional(v.string()) },
+  handler: async (ctx, args) => {
     const identity = await ctx.auth.getUserIdentity()
     if (!identity) throw new Error('Non authentifié')
 
@@ -111,14 +111,26 @@ export const linkAgentAccount = mutation({
     const email = identity.email?.toLowerCase()
     if (!email) throw new Error('Email introuvable dans le token agent')
 
-    // Find the pre-created invited record for this email
-    const byEmail = await ctx.db
-      .query('users')
-      .withIndex('by_email', (q) => q.eq('email', email))
-      .collect()
-    const invitedUser = byEmail.find((u) => u.tokenIdentifier.startsWith('invited|'))
+    let invitedUser = null;
 
-    if (!invitedUser) throw new Error('Aucun agent invité trouvé pour cet email')
+    if (args.inviteToken) {
+      // Find by specific token if provided
+      invitedUser = await ctx.db
+        .query('users')
+        .withIndex('by_token', (q) => q.eq('tokenIdentifier', `invited|${args.inviteToken}`))
+        .unique();
+    }
+
+    if (!invitedUser) {
+      // Fallback: Find the pre-created invited record for this email
+      const byEmail = await ctx.db
+        .query('users')
+        .withIndex('by_email', (q) => q.eq('email', email))
+        .collect()
+      invitedUser = byEmail.find((u) => u.tokenIdentifier.startsWith('invited|'))
+    }
+
+    if (!invitedUser) throw new Error('Aucun agent invité trouvé pour cet email ou token')
 
     // Swap placeholder tokenIdentifier for the real convex-auth subject
     await ctx.db.patch(invitedUser._id, { tokenIdentifier: identity.subject })

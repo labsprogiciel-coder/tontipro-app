@@ -116,7 +116,7 @@ function WelcomeScreen({ onRegister, onLogin }: { onRegister: () => void; onLogi
           onPress={onRegister}
           style={({ pressed }) => [styles.btnWhite, pressed && styles.btnPressed]}
         >
-          <Text style={styles.btnWhiteText}>Créer mon compte</Text>
+          <Text style={styles.btnWhiteText}>Créer mon compte (hors ligne)</Text>
         </Pressable>
         <Pressable
           onPress={onLogin}
@@ -124,7 +124,9 @@ function WelcomeScreen({ onRegister, onLogin }: { onRegister: () => void; onLogi
         >
           <Text style={styles.btnGhostText}>J'ai déjà un compte</Text>
         </Pressable>
-        <Text style={styles.welcomeFootnote}>Disponible hors ligne · 100% en français</Text>
+        <Text style={styles.welcomeFootnote}>
+          Mode hors ligne · Pour le mode en ligne, utilisez le lien d'invitation de votre gérant
+        </Text>
       </View>
     </View>
   );
@@ -319,7 +321,6 @@ function PinScreen({
       <Numpad
         onPress={(digit) => { if (pin.length < 4) setPin(pin + digit); }}
         onDelete={() => setPin(pin.slice(0, -1))}
-        showLetters
         accentColor={T.orange}
       />
     </View>
