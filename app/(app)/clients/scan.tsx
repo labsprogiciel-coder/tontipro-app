@@ -1,3 +1,4 @@
+// app/(app)/clients/scan.tsx
 import { useCallback, useEffect, useRef, useState } from "react";
 import {
   Alert,

@@ -8,6 +8,13 @@ export const authz = {
       getUserRoles: async (_ctx: any, _subject: string) => [] as any[],
       assignRole: async (_ctx: any, _subject: string, _role: string) => {},
       removeRole: async (_ctx: any, _subject: string, _role: string) => {},
+      require: async (_ctx: any, _subject: string, _permission: string) => {
+        // Stub: always allows — real authz lives in Kauri backend
+      },
+      can: async (_ctx: any, _subject: string, _permission: string) => {
+        // Stub: always allows — real authz lives in Kauri backend
+        return true
+      },
     };
   },
 };

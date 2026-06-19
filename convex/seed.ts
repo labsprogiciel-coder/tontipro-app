@@ -73,6 +73,7 @@ export const seedDatabase = mutation({
     const tpe1 = await ctx.db.insert('devices', {
       serialNumber: 'TPE-BF-0041',
       model: 'Ingenico iWL250',
+      branchId: branchOuaga,
       assignedTo: agent1,
       status: 'active',
       lastSync: Date.now() - 1000 * 60 * 30, // 30 min ago
@@ -80,6 +81,7 @@ export const seedDatabase = mutation({
     const tpe2 = await ctx.db.insert('devices', {
       serialNumber: 'TPE-BF-0042',
       model: 'Ingenico iWL250',
+      branchId: branchOuaga,
       assignedTo: agent2,
       status: 'active',
       lastSync: Date.now() - 1000 * 60 * 45,
@@ -87,6 +89,7 @@ export const seedDatabase = mutation({
     await ctx.db.insert('devices', {
       serialNumber: 'TPE-BF-0043',
       model: 'PAX A920',
+      branchId: branchBobo,
       assignedTo: agentBobo,
       status: 'active',
       lastSync: Date.now() - 1000 * 60 * 60,
@@ -94,6 +97,7 @@ export const seedDatabase = mutation({
     await ctx.db.insert('devices', {
       serialNumber: 'TPE-BF-0099',
       model: 'Ingenico iWL250',
+      branchId: branchOuaga,
       status: 'maintenance',
       lastSync: Date.now() - 1000 * 60 * 60 * 72,
     })
@@ -103,41 +107,51 @@ export const seedDatabase = mutation({
       fullName: 'Adama Kaboré',
       phoneNumber: '+22677001122',
       idNumber: 'BF-CNI-192837',
+      organizationId: org,
       branchId: branchOuaga,
       onboardedBy: agent1,
       status: 'verified',
+      createdAt: Date.now(),
     })
     const customer2 = await ctx.db.insert('customers', {
       fullName: 'Salimata Zongo',
       phoneNumber: '+22670334455',
       idNumber: 'BF-CNI-556677',
+      organizationId: org,
       branchId: branchOuaga,
       onboardedBy: agent1,
       status: 'verified',
+      createdAt: Date.now(),
     })
     const customer3 = await ctx.db.insert('customers', {
       fullName: 'Moussa Diallo',
       phoneNumber: '+22676778899',
       idNumber: 'BF-CNI-910112',
+      organizationId: org,
       branchId: branchOuaga,
       onboardedBy: agent2,
       status: 'verified',
+      createdAt: Date.now(),
     })
     const customer4 = await ctx.db.insert('customers', {
       fullName: 'Rasmata Kinda',
       phoneNumber: '+22678123456',
       idNumber: 'BF-CNI-131415',
+      organizationId: org,
       branchId: branchOuaga,
       onboardedBy: agent2,
       status: 'prospect',
+      createdAt: Date.now(),
     })
     const customer5 = await ctx.db.insert('customers', {
       fullName: 'Boureima Ouattara',
       phoneNumber: '+22671654321',
       idNumber: 'BF-CNI-161718',
+      organizationId: org,
       branchId: branchBobo,
       onboardedBy: agentBobo,
       status: 'verified',
+      createdAt: Date.now(),
     })
 
     // ── Transactions ─────────────────────────────────────────────────────────
@@ -151,6 +165,7 @@ export const seedDatabase = mutation({
       agentId: agent1,
       branchId: branchOuaga,
       tpeId: 'TPE-BF-0041',
+      type: 'deposit',
       status: 'completed',
       timestamp: daysAgo(0) - 1000 * 60 * 120,
     })
@@ -161,6 +176,7 @@ export const seedDatabase = mutation({
       agentId: agent1,
       branchId: branchOuaga,
       tpeId: 'TPE-BF-0041',
+      type: 'deposit',
       status: 'completed',
       timestamp: daysAgo(0) - 1000 * 60 * 90,
     })
@@ -171,6 +187,7 @@ export const seedDatabase = mutation({
       agentId: agent1,
       branchId: branchOuaga,
       tpeId: 'TPE-BF-0041',
+      type: 'deposit',
       status: 'reversed',
       reversalReason: 'Erreur de montant saisi',
       reversedBy: supervisor,
@@ -183,6 +200,7 @@ export const seedDatabase = mutation({
       agentId: agent2,
       branchId: branchOuaga,
       tpeId: 'TPE-BF-0042',
+      type: 'deposit',
       status: 'completed',
       timestamp: daysAgo(0) - 1000 * 60 * 150,
     })
@@ -194,6 +212,7 @@ export const seedDatabase = mutation({
       agentId: agent2,
       branchId: branchOuaga,
       tpeId: 'TPE-BF-0042',
+      type: 'deposit',
       status: 'pending',
       timestamp: daysAgo(0) - 1000 * 60 * 45,
     })
@@ -204,6 +223,7 @@ export const seedDatabase = mutation({
       agentId: agentBobo,
       branchId: branchBobo,
       tpeId: 'TPE-BF-0043',
+      type: 'deposit',
       status: 'completed',
       timestamp: daysAgo(1) - 1000 * 60 * 200,
     })

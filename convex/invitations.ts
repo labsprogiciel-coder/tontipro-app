@@ -339,8 +339,8 @@ export const inviteMember = mutation({
       inviteeIdentifier: normalizedIdentifier,
       identifierType: args.identifierType,
       role: args.role,
-      teamId: args.teamId ? (args.teamId as Id<'teams'>) : null,
-      inviterId: args.userId,
+      teamId: args.teamId ? (args.teamId as Id<'teams'>) : undefined,
+      inviterId: args.userId as Id<'users'>,
       inviterName: args.inviterName,
       message: args.message,
       status: 'pending',
@@ -405,7 +405,7 @@ export const acceptInvitation = mutation({
     const existingMember = await ctx.db
       .query('members')
       .withIndex('by_organization_and_user', (q) =>
-        q.eq('organizationId', invitation.organizationId).eq('userId', args.acceptingUserId)
+        q.eq('organizationId', invitation.organizationId).eq('userId', args.acceptingUserId as Id<'users'>)
       )
       .unique()
     if (existingMember) {
@@ -433,7 +433,7 @@ export const acceptInvitation = mutation({
     }
     await ctx.db.insert('members', {
       organizationId: invitation.organizationId,
-      userId: args.acceptingUserId,
+      userId: args.acceptingUserId as Id<'users'>,
       role: invitation.role,
       status: 'active',
       joinedAt: Date.now(),
@@ -449,13 +449,14 @@ export const acceptInvitation = mutation({
       const existingTm = await ctx.db
         .query('teamMembers')
         .withIndex('by_team_and_user', (q) =>
-          q.eq('teamId', invitation.teamId as Id<'teams'>).eq('userId', args.acceptingUserId)
+          q.eq('teamId', invitation.teamId as Id<'teams'>).eq('userId', args.acceptingUserId as Id<'users'>)
         )
         .unique()
       if (!existingTm) {
         await ctx.db.insert('teamMembers', {
           teamId: invitation.teamId,
-          userId: args.acceptingUserId,
+          userId: args.acceptingUserId as Id<'users'>,
+          role: invitation.role,
         })
       }
     }
@@ -475,7 +476,7 @@ export const resendInvitation = mutation({
     const callerMember = await ctx.db
       .query('members')
       .withIndex('by_organization_and_user', (q) =>
-        q.eq('organizationId', invitation.organizationId).eq('userId', args.userId)
+        q.eq('organizationId', invitation.organizationId).eq('userId', args.userId as Id<'users'>)
       )
       .unique()
     if (!callerMember || callerMember.status === 'suspended') {
@@ -517,7 +518,7 @@ export const cancelInvitation = mutation({
     const callerMember = await ctx.db
       .query('members')
       .withIndex('by_organization_and_user', (q) =>
-        q.eq('organizationId', invitation.organizationId).eq('userId', args.userId)
+        q.eq('organizationId', invitation.organizationId).eq('userId', args.userId as Id<'users'>)
       )
       .unique()
     if (!callerMember || callerMember.status === 'suspended') {
@@ -639,8 +640,8 @@ export const bulkInviteMembers = mutation({
           inviteeIdentifier: normalizedIdentifier,
           identifierType: inv.identifierType,
           role: inv.role,
-          teamId: inv.teamId ? (inv.teamId as Id<'teams'>) : null,
-          inviterId: args.userId,
+          teamId: inv.teamId ? (inv.teamId as Id<'teams'>) : undefined,
+          inviterId: args.userId as Id<'users'>,
           inviterName: args.inviterName,
           message: inv.message,
           status: 'pending',

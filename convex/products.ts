@@ -12,7 +12,8 @@ export const list = query({
       .withIndex('by_token', (q) => q.eq('tokenIdentifier', identity.subject))
       .unique()
     if (!caller) throw new Error('User not found')
-    if (caller.organizationId !== args.organizationId) throw new Error('Unauthorized')
+    const branch = await ctx.db.get(caller.branchId)
+    if (!branch || branch.organizationId !== args.organizationId) throw new Error('Unauthorized')
     return ctx.db
       .query('products')
       .withIndex('by_org', (q) => q.eq('organizationId', args.organizationId))

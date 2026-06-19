@@ -8,7 +8,23 @@
  * @module
  */
 
+import type * as agents from "../agents.js";
+import type * as auth from "../auth.js";
 import type * as authz from "../authz.js";
+import type * as crons from "../crons.js";
+import type * as customers from "../customers.js";
+import type * as dashboard from "../dashboard.js";
+import type * as devices from "../devices.js";
+import type * as disbursements from "../disbursements.js";
+import type * as goals from "../goals.js";
+import type * as helpers from "../helpers.js";
+import type * as http from "../http.js";
+import type * as invitations from "../invitations.js";
+import type * as products from "../products.js";
+import type * as reconciliation from "../reconciliation.js";
+import type * as seed from "../seed.js";
+import type * as seedDevices from "../seedDevices.js";
+import type * as transactions from "../transactions.js";
 import type * as users from "../users.js";
 
 import type {
@@ -18,7 +34,23 @@ import type {
 } from "convex/server";
 
 declare const fullApi: ApiFromModules<{
+  agents: typeof agents;
+  auth: typeof auth;
   authz: typeof authz;
+  crons: typeof crons;
+  customers: typeof customers;
+  dashboard: typeof dashboard;
+  devices: typeof devices;
+  disbursements: typeof disbursements;
+  goals: typeof goals;
+  helpers: typeof helpers;
+  http: typeof http;
+  invitations: typeof invitations;
+  products: typeof products;
+  reconciliation: typeof reconciliation;
+  seed: typeof seed;
+  seedDevices: typeof seedDevices;
+  transactions: typeof transactions;
   users: typeof users;
 }>;
 

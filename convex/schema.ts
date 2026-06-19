@@ -12,7 +12,10 @@ export default defineSchema({
     licenseNumber: v.string(),
     status: v.union(v.literal('active'), v.literal('suspended')),
     logoUrl: v.optional(v.string()),
-  }).index('by_country', ['country']),
+    slug: v.optional(v.string()),
+  })
+    .index('by_country', ['country'])
+    .index('by_slug', ['slug']),
 
   branches: defineTable({
     organizationId: v.id('organizations'),
@@ -22,6 +25,62 @@ export default defineSchema({
   })
     .index('by_code', ['code'])
     .index('by_organization', ['organizationId']),
+
+  teams: defineTable({
+    organizationId: v.id('organizations'),
+    name: v.string(),
+    slug: v.string(),
+    description: v.optional(v.string()),
+    parentTeamId: v.optional(v.id('teams')),
+  })
+    .index('by_organization', ['organizationId'])
+    .index('by_organization_and_slug', ['organizationId', 'slug'])
+    .index('by_parent', ['parentTeamId']),
+
+  invitations: defineTable({
+    organizationId: v.id('organizations'),
+    inviteeIdentifier: v.string(),
+    identifierType: v.optional(v.string()),
+    role: v.string(),
+    teamId: v.optional(v.id('teams')),
+    inviterId: v.id('users'),
+    inviterName: v.optional(v.string()),
+    message: v.optional(v.string()),
+    status: v.union(
+      v.literal('pending'),
+      v.literal('accepted'),
+      v.literal('declined'),
+      v.literal('cancelled'),
+      v.literal('expired')
+    ),
+    expiresAt: v.number(),
+  })
+    .index('by_organization', ['organizationId'])
+    .index('by_organization_and_status', ['organizationId', 'status'])
+    .index('by_invitee_identifier_and_status', ['inviteeIdentifier', 'status'])
+    .index('by_org_invitee_and_status', ['organizationId', 'inviteeIdentifier', 'status'])
+    .index('by_organization_and_user', ['organizationId', 'inviterId'])
+    .index('by_team_and_user', ['teamId', 'inviterId']),
+
+  members: defineTable({
+    organizationId: v.id('organizations'),
+    userId: v.id('users'),
+    role: v.string(),
+    status: v.optional(v.union(v.literal('active'), v.literal('suspended'))),
+    joinedAt: v.optional(v.number()),
+  })
+    .index('by_organization', ['organizationId'])
+    .index('by_user', ['userId'])
+    .index('by_organization_and_user', ['organizationId', 'userId']),
+
+  teamMembers: defineTable({
+    teamId: v.id('teams'),
+    userId: v.id('users'),
+    role: v.string(),
+  })
+    .index('by_team', ['teamId'])
+    .index('by_user', ['userId'])
+    .index('by_team_and_user', ['teamId', 'userId']),
 
   users: defineTable({
     fullName: v.string(),
@@ -38,7 +97,7 @@ export default defineSchema({
   customers: defineTable({
     fullName: v.string(),
     phoneNumber: v.string(),
-    idNumber: v.string(),
+    idNumber: v.optional(v.string()),
     organizationId: v.id('organizations'), // ← ajouté
     branchId: v.id('branches'),
     onboardedBy: v.id('users'),
