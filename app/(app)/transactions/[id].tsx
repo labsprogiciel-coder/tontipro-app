@@ -1,3 +1,11 @@
+// app/(app)/transactions/[id].tsx
+//
+// Field changes vs. old Supabase version:
+//   • transaction.id  — now a Convex Id string (same shape, no UI change)
+//   • transaction.date — still an ISO string (the store normalises timestamp→date)
+//   • clientName is gone from the Convex row; resolved via clientId from the
+//     client store (already done by convexRowToTransaction in the store).
+//   • All other field names are identical.
 import { useEffect, useState } from "react";
 import {
   ActivityIndicator,
@@ -18,7 +26,6 @@ import {
   ChevronLeft,
   Share2,
 } from "lucide-react-native";
-
 import { Shadow } from "react-native-shadow-2";
 
 import { KAURIDORR_THEME as K } from "@/constants/colors";
@@ -28,7 +35,7 @@ import { useAuthStore } from "@/stores/auth-store";
 import { Transaction } from "@/types/transaction";
 import { Client } from "@/types/client";
 
-// ─── helpers ────────────────────────────────────────────────────────────────
+// ─── helpers ─────────────────────────────────────────────────────────────────
 
 function initials(name: string): string {
   return name
@@ -38,28 +45,20 @@ function initials(name: string): string {
     .join("")
     .toUpperCase();
 }
-
-function fmtAmount(n: number): string {
-  return n.toLocaleString("fr-FR");
-}
-
-function fmtDate(iso: string): string {
-  return new Date(iso).toLocaleDateString("fr-FR", {
+const fmtAmount = (n: number) => n.toLocaleString("fr-FR");
+const fmtDate = (iso: string) =>
+  new Date(iso).toLocaleDateString("fr-FR", {
     day: "numeric",
     month: "short",
     year: "numeric",
   });
-}
-
-function fmtTime(iso: string): string {
-  return new Date(iso).toLocaleTimeString("fr-FR", {
+const fmtTime = (iso: string) =>
+  new Date(iso).toLocaleTimeString("fr-FR", {
     hour: "2-digit",
     minute: "2-digit",
     second: "2-digit",
   });
-}
-
-function fmtDateTime(iso: string): string {
+const fmtDateTime = (iso: string) => {
   const d = new Date(iso);
   return (
     d.toLocaleDateString("fr-FR", {
@@ -70,9 +69,9 @@ function fmtDateTime(iso: string): string {
     " · " +
     d.toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit" })
   );
-}
+};
 
-// ─── sub-components ──────────────────────────────────────────────────────────
+// ─── sub-components ───────────────────────────────────────────────────────────
 
 function SectionTitle({ label }: { label: string }) {
   return <Text style={styles.sectionTitle}>{label}</Text>;
@@ -95,21 +94,24 @@ function InfoRow({
   );
 }
 
-type StatusKey = "completed" | "pending";
+type StatusKey = "completed" | "pending" | "reversed";
 const STATUS_LABEL: Record<StatusKey, string> = {
   completed: "Validé",
   pending: "En attente",
+  reversed: "Annulé",
 };
 const STATUS_BG: Record<StatusKey, string> = {
   completed: K.bgSuccess,
   pending: "#faeeda",
+  reversed: "#fce8e8",
 };
 const STATUS_COLOR: Record<StatusKey, string> = {
   completed: K.textSuccess,
   pending: K.textWarning,
+  reversed: "#c0392b",
 };
 
-// ─── screen ──────────────────────────────────────────────────────────────────
+// ─── screen ───────────────────────────────────────────────────────────────────
 
 export default function TransactionDetailScreen() {
   const router = useRouter();
@@ -117,6 +119,8 @@ export default function TransactionDetailScreen() {
   const { getTransactionById, syncPendingTransactions } = useTransactionStore();
   const { getClientById } = useClientStore();
   const { user } = useAuthStore();
+  const branchId = useAuthStore((s) => s.sessionContext?.branchId ?? "");
+
   const [isLoading, setIsLoading] = useState(true);
   const [transaction, setTransaction] = useState<Transaction | null>(null);
   const [client, setClient] = useState<Client | null>(null);
@@ -142,7 +146,6 @@ export default function TransactionDetailScreen() {
       </SafeAreaView>
     );
   }
-
   if (!transaction) return null;
 
   const isDeposit = transaction.type === "deposit";
@@ -150,13 +153,15 @@ export default function TransactionDetailScreen() {
   const typeLabel = isDeposit ? "Dépôt" : "Retrait";
   const signPrefix = isDeposit ? "+" : "−";
 
-  // Derive balances from current client balance
+  // Derive balances from the client's current balance.
   const balanceAfter = client?.balance ?? 0;
   const balanceBefore = isDeposit
     ? balanceAfter - transaction.amount
     : balanceAfter + transaction.amount;
 
   const commission = Math.round(transaction.amount * 0.01);
+
+  // Build a human-readable reference from the Convex id.
   const reference = `TXN-${new Date(transaction.date)
     .toISOString()
     .slice(0, 10)
@@ -166,8 +171,18 @@ export default function TransactionDetailScreen() {
   const agentInitials = initials(agentName);
 
   const timeline = [
-    { label: "Transaction initiée", time: fmtTime(transaction.date), note: `Agent ${agentInitials}`, done: true },
-    { label: "PIN confirmé", time: fmtTime(transaction.date), note: "", done: true },
+    {
+      label: "Transaction initiée",
+      time: fmtTime(transaction.date),
+      note: `Agent ${agentInitials}`,
+      done: true,
+    },
+    {
+      label: "PIN confirmé",
+      time: fmtTime(transaction.date),
+      note: "",
+      done: true,
+    },
     {
       label: isDeposit ? "Solde mis à jour" : "Solde débité",
       time: fmtTime(transaction.date),
@@ -180,7 +195,9 @@ export default function TransactionDetailScreen() {
   async function handleShare() {
     try {
       await Share.share({
-        message: `Reçu ${typeLabel} — ${fmtAmount(transaction!.amount)} FCFA\nClient : ${client?.name ?? transaction!.clientName}\nRéf. : ${reference}\nDate : ${fmtDateTime(transaction!.date)}`,
+        message: `Reçu ${typeLabel} — ${fmtAmount(transaction!.amount)} FCFA\nClient : ${
+          client?.name ?? transaction!.clientName
+        }\nRéf. : ${reference}\nDate : ${fmtDateTime(transaction!.date)}`,
       });
     } catch {
       // user dismissed share sheet
@@ -194,12 +211,15 @@ export default function TransactionDetailScreen() {
         contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}
       >
-        {/* ── Colored hero block ── */}
+        {/* ── Hero block ── */}
         <View style={[styles.heroBlock, { backgroundColor: heroColor }]}>
-          {/* Back row */}
           <View style={styles.backRow}>
             <Pressable style={styles.backBtn} onPress={() => router.back()}>
-              <ChevronLeft size={16} color="rgba(255,255,255,0.75)" strokeWidth={2} />
+              <ChevronLeft
+                size={16}
+                color="rgba(255,255,255,0.75)"
+                strokeWidth={2}
+              />
               <Text style={styles.backLabel}>Historique</Text>
             </Pressable>
             <Pressable style={styles.iconBtn} onPress={handleShare}>
@@ -207,7 +227,6 @@ export default function TransactionDetailScreen() {
             </Pressable>
           </View>
 
-          {/* Hero content */}
           <View style={styles.heroContent}>
             <View style={styles.typeBadge}>
               {isDeposit ? (
@@ -219,7 +238,8 @@ export default function TransactionDetailScreen() {
             </View>
             <View style={styles.heroAmountRow}>
               <Text style={styles.heroAmount}>
-                {signPrefix}{fmtAmount(transaction.amount)}
+                {signPrefix}
+                {fmtAmount(transaction.amount)}
               </Text>
               <Text style={styles.heroCurrency}>FCFA</Text>
             </View>
@@ -235,61 +255,89 @@ export default function TransactionDetailScreen() {
           offset={[0, 2]}
           containerStyle={styles.balanceBridgeShadow}
         >
-        <View style={styles.balanceBridge}>
-          <View style={styles.balCol}>
-            <Text style={styles.balLbl}>AVANT</Text>
-            <Text style={styles.balVal}>{fmtAmount(balanceBefore)}</Text>
-            <Text style={styles.balUnit}>FCFA</Text>
+          <View style={styles.balanceBridge}>
+            <View style={styles.balCol}>
+              <Text style={styles.balLbl}>AVANT</Text>
+              <Text style={styles.balVal}>{fmtAmount(balanceBefore)}</Text>
+              <Text style={styles.balUnit}>FCFA</Text>
+            </View>
+            <View
+              style={[
+                styles.balArrow,
+                { backgroundColor: isDeposit ? K.orangeLt : K.greenLt },
+              ]}
+            >
+              <ArrowRight
+                size={16}
+                color={isDeposit ? K.orange : K.green}
+                strokeWidth={1.8}
+              />
+            </View>
+            <View style={[styles.balCol, styles.balColRight]}>
+              <Text style={styles.balLbl}>APRÈS</Text>
+              <Text
+                style={[
+                  styles.balVal,
+                  { color: isDeposit ? K.textSuccess : K.orange },
+                ]}
+              >
+                {fmtAmount(balanceAfter)}
+              </Text>
+              <Text style={styles.balUnit}>FCFA</Text>
+            </View>
           </View>
-          <View style={[styles.balArrow, { backgroundColor: isDeposit ? K.orangeLt : K.greenLt }]}>
-            <ArrowRight
-              size={16}
-              color={isDeposit ? K.orange : K.green}
-              strokeWidth={1.8}
-            />
-          </View>
-          <View style={[styles.balCol, styles.balColRight]}>
-            <Text style={styles.balLbl}>APRÈS</Text>
-            <Text style={[styles.balVal, { color: isDeposit ? K.textSuccess : K.orange }]}>
-              {fmtAmount(balanceAfter)}
-            </Text>
-            <Text style={styles.balUnit}>FCFA</Text>
-          </View>
-        </View>
         </Shadow>
 
         {/* ── Transaction details ── */}
         <View style={styles.section}>
           <SectionTitle label="Détails de la transaction" />
           <Shadow stretch distance={3} startColor="rgba(0,0,0,0.07)" offset={[0, 1]}>
-          <View style={styles.infoCard}>
-            <InfoRow label="Référence" value={reference} valueStyle={styles.monoValue} />
-            <InfoRow
-              label="Type"
-              value={typeLabel}
-              valueStyle={{ color: isDeposit ? K.orange : K.textSuccess }}
-            />
-            <InfoRow
-              label="Montant"
-              value={`${signPrefix}${fmtAmount(transaction.amount)} FCFA`}
-              valueStyle={{ color: isDeposit ? K.textSuccess : K.orange }}
-            />
-            <InfoRow label="Date" value={fmtDate(transaction.date)} />
-            <InfoRow label="Heure" value={fmtTime(transaction.date)} />
-            <View style={[styles.infoRow, { borderBottomWidth: 0 }]}>
-              <Text style={styles.infoLabel}>Statut</Text>
-              <View
-                style={[
-                  styles.statusBadge,
-                  { backgroundColor: STATUS_BG[transaction.status] },
-                ]}
-              >
-                <Text style={[styles.statusText, { color: STATUS_COLOR[transaction.status] }]}>
-                  {STATUS_LABEL[transaction.status]}
-                </Text>
+            <View style={styles.infoCard}>
+              <InfoRow
+                label="Référence"
+                value={reference}
+                valueStyle={styles.monoValue}
+              />
+              <InfoRow
+                label="Type"
+                value={typeLabel}
+                valueStyle={{ color: isDeposit ? K.orange : K.textSuccess }}
+              />
+              <InfoRow
+                label="Montant"
+                value={`${signPrefix}${fmtAmount(transaction.amount)} FCFA`}
+                valueStyle={{ color: isDeposit ? K.textSuccess : K.orange }}
+              />
+              <InfoRow label="Date" value={fmtDate(transaction.date)} />
+              <InfoRow label="Heure" value={fmtTime(transaction.date)} />
+              <View style={[styles.infoRow, { borderBottomWidth: 0 }]}>
+                <Text style={styles.infoLabel}>Statut</Text>
+                <View
+                  style={[
+                    styles.statusBadge,
+                    {
+                      backgroundColor:
+                        STATUS_BG[transaction.status as StatusKey] ??
+                        STATUS_BG.pending,
+                    },
+                  ]}
+                >
+                  <Text
+                    style={[
+                      styles.statusText,
+                      {
+                        color:
+                          STATUS_COLOR[transaction.status as StatusKey] ??
+                          STATUS_COLOR.pending,
+                      },
+                    ]}
+                  >
+                    {STATUS_LABEL[transaction.status as StatusKey] ??
+                      transaction.status}
+                  </Text>
+                </View>
               </View>
             </View>
-          </View>
           </Shadow>
         </View>
 
@@ -331,8 +379,12 @@ export default function TransactionDetailScreen() {
                   <Text style={styles.clientPhone}>{client.phone}</Text>
                 </View>
                 <View style={styles.clientRight}>
-                  <Text style={styles.clientBal}>{fmtAmount(client.balance)} F</Text>
-                  <Text style={[styles.clientLink, { color: heroColor }]}>Voir profil →</Text>
+                  <Text style={styles.clientBal}>
+                    {fmtAmount(client.balance)} F
+                  </Text>
+                  <Text style={[styles.clientLink, { color: heroColor }]}>
+                    Voir profil →
+                  </Text>
                 </View>
               </Pressable>
             </Shadow>
@@ -358,7 +410,9 @@ export default function TransactionDetailScreen() {
                     minute: "2-digit",
                   })}
                 </Text>
-                <Text style={styles.agentDate}>{fmtDate(transaction.date)}</Text>
+                <Text style={styles.agentDate}>
+                  {fmtDate(transaction.date)}
+                </Text>
               </View>
             </View>
           </Shadow>
@@ -385,13 +439,17 @@ export default function TransactionDetailScreen() {
                           },
                         ]}
                       />
-                      {i < timeline.length - 1 && <View style={styles.tlLine} />}
+                      {i < timeline.length - 1 && (
+                        <View style={styles.tlLine} />
+                      )}
                     </View>
                     <View style={styles.tlContent}>
                       <Text
                         style={[
                           styles.tlEvent,
-                          item.green && item.done ? { color: K.textSuccess } : undefined,
+                          item.green && item.done
+                            ? { color: K.textSuccess }
+                            : undefined,
                         ]}
                       >
                         {item.label}
@@ -413,11 +471,12 @@ export default function TransactionDetailScreen() {
           <View style={styles.section}>
             <View style={styles.pendingCard}>
               <Text style={styles.pendingText}>
-                Transaction en attente de synchronisation. Elle sera envoyée automatiquement à la prochaine connexion.
+                Transaction en attente de synchronisation. Elle sera envoyée
+                automatiquement à la prochaine connexion.
               </Text>
               <Pressable
                 style={styles.syncBtn}
-                onPress={() => syncPendingTransactions()}
+                onPress={() => syncPendingTransactions(branchId)}
               >
                 <Text style={styles.syncBtnText}>Synchroniser maintenant</Text>
               </Pressable>
@@ -450,10 +509,7 @@ export default function TransactionDetailScreen() {
 // ─── styles ──────────────────────────────────────────────────────────────────
 
 const styles = StyleSheet.create({
-  root: {
-    flex: 1,
-    backgroundColor: K.bg3,
-  },
+  root: { flex: 1, backgroundColor: K.bg3 },
   loadingContainer: {
     flex: 1,
     justifyContent: "center",
@@ -463,27 +519,16 @@ const styles = StyleSheet.create({
   scroll: { flex: 1 },
   scrollContent: { paddingBottom: 0 },
 
-  // Hero
-  heroBlock: {
-    paddingBottom: 36,
-  },
+  heroBlock: { paddingBottom: 36 },
   backRow: {
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
     paddingHorizontal: 18,
     paddingTop: 14,
-    paddingBottom: 0,
   },
-  backBtn: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 4,
-  },
-  backLabel: {
-    fontSize: 13,
-    color: "rgba(255,255,255,0.75)",
-  },
+  backBtn: { flexDirection: "row", alignItems: "center", gap: 4 },
+  backLabel: { fontSize: 13, color: "rgba(255,255,255,0.75)" },
   iconBtn: {
     width: 32,
     height: 32,
@@ -492,11 +537,7 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
   },
-  heroContent: {
-    alignItems: "center",
-    paddingTop: 16,
-    gap: 6,
-  },
+  heroContent: { alignItems: "center", paddingTop: 16, gap: 6 },
   typeBadge: {
     flexDirection: "row",
     alignItems: "center",
@@ -506,16 +547,8 @@ const styles = StyleSheet.create({
     paddingVertical: 4,
     borderRadius: 20,
   },
-  typeBadgeText: {
-    fontSize: 11,
-    fontWeight: "500",
-    color: "white",
-  },
-  heroAmountRow: {
-    flexDirection: "row",
-    alignItems: "flex-end",
-    gap: 4,
-  },
+  typeBadgeText: { fontSize: 11, fontWeight: "500", color: "white" },
+  heroAmountRow: { flexDirection: "row", alignItems: "flex-end", gap: 4 },
   heroAmount: {
     fontSize: 46,
     fontWeight: "700",
@@ -529,17 +562,9 @@ const styles = StyleSheet.create({
     color: "rgba(255,255,255,0.65)",
     marginBottom: 6,
   },
-  heroDate: {
-    fontSize: 12,
-    color: "rgba(255,255,255,0.55)",
-  },
+  heroDate: { fontSize: 12, color: "rgba(255,255,255,0.55)" },
 
-  // Balance bridge
-  balanceBridgeShadow: {
-    marginHorizontal: 18,
-    marginTop: -16,
-    zIndex: 2,
-  },
+  balanceBridgeShadow: { marginHorizontal: 18, marginTop: -16, zIndex: 2 },
   balanceBridge: {
     backgroundColor: K.bg,
     borderWidth: 0.5,
@@ -550,12 +575,8 @@ const styles = StyleSheet.create({
     alignItems: "center",
     gap: 8,
   },
-  balCol: {
-    flex: 1,
-  },
-  balColRight: {
-    alignItems: "flex-end",
-  },
+  balCol: { flex: 1 },
+  balColRight: { alignItems: "flex-end" },
   balLbl: {
     fontSize: 10,
     color: K.text3,
@@ -563,15 +584,8 @@ const styles = StyleSheet.create({
     letterSpacing: 0.5,
     marginBottom: 2,
   },
-  balVal: {
-    fontSize: 15,
-    fontWeight: "600",
-    color: K.text1,
-  },
-  balUnit: {
-    fontSize: 10,
-    color: K.text3,
-  },
+  balVal: { fontSize: 15, fontWeight: "600", color: K.text1 },
+  balUnit: { fontSize: 10, color: K.text3 },
   balArrow: {
     width: 32,
     height: 32,
@@ -580,11 +594,7 @@ const styles = StyleSheet.create({
     justifyContent: "center",
   },
 
-  // Sections
-  section: {
-    paddingHorizontal: 18,
-    paddingTop: 16,
-  },
+  section: { paddingHorizontal: 18, paddingTop: 16 },
   sectionTitle: {
     fontSize: 11,
     fontWeight: "500",
@@ -594,7 +604,6 @@ const styles = StyleSheet.create({
     marginBottom: 8,
   },
 
-  // Info card
   infoCard: {
     backgroundColor: K.bg,
     borderWidth: 0.5,
@@ -611,31 +620,16 @@ const styles = StyleSheet.create({
     borderBottomWidth: 0.5,
     borderBottomColor: K.border,
   },
-  infoLabel: {
-    fontSize: 12,
-    color: K.text2,
-  },
-  infoValue: {
-    fontSize: 13,
-    fontWeight: "500",
-    color: K.text1,
-  },
+  infoLabel: { fontSize: 12, color: K.text2 },
+  infoValue: { fontSize: 13, fontWeight: "500", color: K.text1 },
   monoValue: {
     fontSize: 11,
     color: K.text3,
     fontVariant: ["tabular-nums"],
   },
-  statusBadge: {
-    paddingHorizontal: 9,
-    paddingVertical: 3,
-    borderRadius: 6,
-  },
-  statusText: {
-    fontSize: 11,
-    fontWeight: "500",
-  },
+  statusBadge: { paddingHorizontal: 9, paddingVertical: 3, borderRadius: 6 },
+  statusText: { fontSize: 11, fontWeight: "500" },
 
-  // Commission
   commRow: {
     flexDirection: "row",
     alignItems: "center",
@@ -647,11 +641,7 @@ const styles = StyleSheet.create({
     padding: 11,
     paddingHorizontal: 14,
   },
-  commLeft: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 8,
-  },
+  commLeft: { flexDirection: "row", alignItems: "center", gap: 8 },
   commIcon: {
     width: 28,
     height: 28,
@@ -660,27 +650,11 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
   },
-  commIconText: {
-    fontSize: 13,
-    fontWeight: "700",
-    color: K.orange,
-  },
-  commLabel: {
-    fontSize: 13,
-    fontWeight: "500",
-    color: K.text1,
-  },
-  commSub: {
-    fontSize: 10,
-    color: K.text3,
-  },
-  commVal: {
-    fontSize: 14,
-    fontWeight: "600",
-    color: K.orange,
-  },
+  commIconText: { fontSize: 13, fontWeight: "700", color: K.orange },
+  commLabel: { fontSize: 13, fontWeight: "500", color: K.text1 },
+  commSub: { fontSize: 10, color: K.text3 },
+  commVal: { fontSize: 14, fontWeight: "600", color: K.orange },
 
-  // Client mini
   clientMini: {
     flexDirection: "row",
     alignItems: "center",
@@ -699,37 +673,14 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
   },
-  avatarText: {
-    fontSize: 13,
-    fontWeight: "600",
-  },
-  clientInfo: {
-    flex: 1,
-  },
-  clientName: {
-    fontSize: 14,
-    fontWeight: "500",
-    color: K.text1,
-  },
-  clientPhone: {
-    fontSize: 11,
-    color: K.text3,
-    marginTop: 1,
-  },
-  clientRight: {
-    alignItems: "flex-end",
-  },
-  clientBal: {
-    fontSize: 12,
-    fontWeight: "500",
-    color: K.text1,
-  },
-  clientLink: {
-    fontSize: 11,
-    marginTop: 2,
-  },
+  avatarText: { fontSize: 13, fontWeight: "600" },
+  clientInfo: { flex: 1 },
+  clientName: { fontSize: 14, fontWeight: "500", color: K.text1 },
+  clientPhone: { fontSize: 11, color: K.text3, marginTop: 1 },
+  clientRight: { alignItems: "flex-end" },
+  clientBal: { fontSize: 12, fontWeight: "500", color: K.text1 },
+  clientLink: { fontSize: 11, marginTop: 2 },
 
-  // Agent mini
   agentMini: {
     flexDirection: "row",
     alignItems: "center",
@@ -749,52 +700,16 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
   },
-  agentAvatarText: {
-    fontSize: 12,
-    fontWeight: "600",
-    color: K.orangeDk,
-  },
-  agentName: {
-    fontSize: 13,
-    fontWeight: "500",
-    color: K.text1,
-  },
-  agentRole: {
-    fontSize: 11,
-    color: K.text3,
-    marginTop: 1,
-  },
-  agentTime: {
-    marginLeft: "auto",
-    alignItems: "flex-end",
-  },
-  agentTimeText: {
-    fontSize: 11,
-    color: K.text3,
-  },
-  agentDate: {
-    fontSize: 10,
-    color: K.text3,
-    marginTop: 1,
-  },
+  agentAvatarText: { fontSize: 12, fontWeight: "600", color: K.orangeDk },
+  agentName: { fontSize: 13, fontWeight: "500", color: K.text1 },
+  agentRole: { fontSize: 11, color: K.text3, marginTop: 1 },
+  agentTime: { marginLeft: "auto", alignItems: "flex-end" },
+  agentTimeText: { fontSize: 11, color: K.text3 },
+  agentDate: { fontSize: 10, color: K.text3, marginTop: 1 },
 
-  // Timeline
-  tlItem: {
-    flexDirection: "row",
-    gap: 12,
-    alignItems: "flex-start",
-  },
-  tlLeft: {
-    width: 28,
-    alignItems: "center",
-    flexShrink: 0,
-  },
-  tlDot: {
-    width: 10,
-    height: 10,
-    borderRadius: 5,
-    flexShrink: 0,
-  },
+  tlItem: { flexDirection: "row", gap: 12, alignItems: "flex-start" },
+  tlLeft: { width: 28, alignItems: "center", flexShrink: 0 },
+  tlDot: { width: 10, height: 10, borderRadius: 5, flexShrink: 0 },
   tlLine: {
     width: 1.5,
     flex: 1,
@@ -802,22 +717,10 @@ const styles = StyleSheet.create({
     minHeight: 22,
     marginTop: 2,
   },
-  tlContent: {
-    paddingBottom: 16,
-    flex: 1,
-  },
-  tlEvent: {
-    fontSize: 13,
-    fontWeight: "500",
-    color: K.text1,
-  },
-  tlTime: {
-    fontSize: 11,
-    color: K.text3,
-    marginTop: 2,
-  },
+  tlContent: { paddingBottom: 16, flex: 1 },
+  tlEvent: { fontSize: 13, fontWeight: "500", color: K.text1 },
+  tlTime: { fontSize: 11, color: K.text3, marginTop: 2 },
 
-  // Pending
   pendingCard: {
     backgroundColor: "#faeeda",
     borderRadius: 12,
@@ -837,13 +740,8 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
     borderRadius: 8,
   },
-  syncBtnText: {
-    color: "white",
-    fontSize: 13,
-    fontWeight: "600",
-  },
+  syncBtnText: { color: "white", fontSize: 13, fontWeight: "600" },
 
-  // Action row
   actionRow: {
     flexDirection: "row",
     gap: 8,
@@ -862,11 +760,7 @@ const styles = StyleSheet.create({
     borderColor: K.border2,
     backgroundColor: K.bg,
   },
-  btnShareText: {
-    fontSize: 12,
-    fontWeight: "500",
-    color: K.text1,
-  },
+  btnShareText: { fontSize: 12, fontWeight: "500", color: K.text1 },
   btnClient: {
     flex: 1,
     alignItems: "center",
@@ -874,9 +768,5 @@ const styles = StyleSheet.create({
     paddingVertical: 12,
     borderRadius: 12,
   },
-  btnClientText: {
-    fontSize: 12,
-    fontWeight: "500",
-    color: "white",
-  },
+  btnClientText: { fontSize: 12, fontWeight: "500", color: "white" },
 });

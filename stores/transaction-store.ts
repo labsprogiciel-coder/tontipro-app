@@ -1,45 +1,76 @@
+// stores/transaction-store.ts
 import { create } from "zustand";
 import { createJSONStorage, persist } from "zustand/middleware";
 import AsyncStorage from "@react-native-async-storage/async-storage";
-import type { RealtimeChannel } from "@supabase/supabase-js";
 import { generateId } from "@/utils/id-generator";
 import { isConnected } from "@/utils/network";
-import { supabase } from "@/lib/supabase";
-import { rowToTransaction, transactionToInsertRow } from "@/lib/transaction-supabase";
+import { convex } from "@/lib/convex";
+import { api } from "@/convex/_generated/api";
+import { Id } from "@/convex/_generated/dataModel";
 import { Transaction } from "@/types/transaction";
 import { useClientStore } from "./client-store";
+import { useAuthStore } from "./auth-store";
 import { DEV_MOCKS_ENABLED } from "@/__dev__/config";
 
+// ─── helpers ─────────────────────────────────────────────────────────────────
 
 function sortByDateDesc(a: Transaction, b: Transaction): number {
   return new Date(b.date).getTime() - new Date(a.date).getTime();
 }
 
+/**
+ * Merge server-synced and locally-pending transactions into a single sorted
+ * list, deduplicating by id. Pending items that already appear in the synced
+ * list are dropped (the server version wins).
+ */
 export function mergeTransactionsSorted(
   synced: Transaction[],
   pending: Transaction[]
 ): Transaction[] {
   const byId = new Map<string, Transaction>();
-  for (const t of synced) {
-    byId.set(t.id, t);
-  }
+  for (const t of synced) byId.set(t.id, t);
   for (const p of pending) {
-    if (!byId.has(p.id)) {
-      byId.set(p.id, p);
-    }
+    if (!byId.has(p.id)) byId.set(p.id, p);
   }
   return [...byId.values()].sort(sortByDateDesc);
 }
+
+// ─── Convex row → Transaction ─────────────────────────────────────────────────
+
+/**
+ * Map a raw Convex document to the app-level Transaction type.
+ * `clientName` is resolved from the client store when available; it falls back
+ * to the id string so the UI always has something to display.
+ */
+function convexRowToTransaction(
+  row: any,
+  clientNameResolver?: (id: string) => string | undefined
+): Transaction {
+  const clientName =
+    clientNameResolver?.(row.customerId) ?? row.customerId ?? "—";
+  return {
+    id: row._id as string,
+    clientId: row.customerId as string,
+    clientName,
+    amount: row.amount,
+    type: row.type as "deposit" | "withdrawal",
+    date: new Date(row.timestamp).toISOString(),
+    status: row.status as "completed" | "pending",
+    notes: row.notes,
+  };
+}
+
+// ─── Store types ──────────────────────────────────────────────────────────────
 
 interface TransactionStoreState {
   transactions: Transaction[];
   pendingTransactions: Transaction[];
   isLoading: boolean;
   error: string | null;
-  /** Nombre d’éléments de `pendingTransactions` dont la dernière sync a échoué */
+  /** Number of pending transactions whose last sync attempt failed. */
   transactionSyncFailures: number;
 
-  loadTransactionsFromSupabase: () => Promise<void>;
+  loadTransactions: (branchId: string) => Promise<void>;
   addTransaction: (transactionData: {
     clientId: string;
     amount: number;
@@ -49,12 +80,13 @@ interface TransactionStoreState {
   importTransactions: (txList: Transaction[]) => void;
   getTransactionById: (id: string) => Transaction | undefined;
   getTransactionsByClientId: (clientId: string) => Transaction[];
-  syncPendingTransactions: () => Promise<void>;
-  subscribeToTransactionsRealtime: (userId: string) => () => void;
+  syncPendingTransactions: (branchId: string) => Promise<void>;
   loadDevMocks: () => Promise<void>;
   clearAll: () => void;
 }
-let activeChannel: RealtimeChannel | null = null;
+
+// ─── Store ────────────────────────────────────────────────────────────────────
+
 export const useTransactionStore = create<TransactionStoreState>()(
   persist(
     (set, get) => ({
@@ -64,12 +96,16 @@ export const useTransactionStore = create<TransactionStoreState>()(
       error: null,
       transactionSyncFailures: 0,
 
+      // ── Dev mocks ────────────────────────────────────────────────────────
+
       loadDevMocks: async () => {
         if (!DEV_MOCKS_ENABLED) return;
         if (get().transactions.length > 0) return;
         const { mockTransactions } = await import("@/__dev__/mocks/transactions");
         set({ transactions: mockTransactions, pendingTransactions: [] });
       },
+
+      // ── Import (CSV / bulk) ───────────────────────────────────────────────
 
       importTransactions: (txList) => {
         set((state) => {
@@ -84,39 +120,34 @@ export const useTransactionStore = create<TransactionStoreState>()(
         });
       },
 
-      loadTransactionsFromSupabase: async () => {
+      // ── Load from Convex ──────────────────────────────────────────────────
+
+      loadTransactions: async (branchId) => {
         set({ isLoading: true, error: null });
         try {
-          const {
-            data: { user },
-          } = await supabase.auth.getUser();
-
-          if (!user) {
-            if (DEV_MOCKS_ENABLED) {
-              await get().loadDevMocks();
-              set({ isLoading: false, error: null });
-              return;
-            }
-            // Offline-first fallback: keep persisted local data when no auth is available.
-            set({ isLoading: false, error: null });
+          if (DEV_MOCKS_ENABLED) {
+            await get().loadDevMocks();
+            set({ isLoading: false });
             return;
           }
 
-          const { data: rows, error } = await supabase
-            .from("transactions")
-            .select("*")
-            .eq("agent_id", user.id)
-            .order("date", { ascending: false });
+          const rows = await convex.query(api.transactions.list, {
+            branchId: branchId as Id<"branches">,
+          });
 
-          if (error) {
-            throw new Error(error.message);
-          }
+          const clientStore = useClientStore.getState();
+          const clientNameResolver = (id: string) =>
+            clientStore.getClientById(id)?.name;
 
-          const fromServer: Transaction[] = (rows || []).map((row: any) => rowToTransaction(row));
+          const fromServer: Transaction[] = rows.map((row: any) =>
+            convexRowToTransaction(row, clientNameResolver)
+          );
 
           set((state) => {
             const serverIds = new Set(fromServer.map((t) => t.id));
-            const stillPending = state.pendingTransactions.filter((p) => !serverIds.has(p.id));
+            const stillPending = state.pendingTransactions.filter(
+              (p) => !serverIds.has(p.id)
+            );
             return {
               transactions: fromServer,
               pendingTransactions: stillPending,
@@ -126,18 +157,22 @@ export const useTransactionStore = create<TransactionStoreState>()(
         } catch (error) {
           set({
             isLoading: false,
-            error: error instanceof Error ? error.message : "Failed to load transactions",
+            error:
+              error instanceof Error
+                ? error.message
+                : "Failed to load transactions",
           });
           throw error;
         }
       },
+
+      // ── Add transaction ───────────────────────────────────────────────────
 
       addTransaction: async (transactionData) => {
         set({ isLoading: true, error: null });
         try {
           const clientStore = useClientStore.getState();
           const client = clientStore.getClientById(transactionData.clientId);
-
           if (!client) throw new Error("Client not found");
 
           if (
@@ -148,60 +183,84 @@ export const useTransactionStore = create<TransactionStoreState>()(
           }
 
           const online = await isConnected();
+          const now = Date.now();
 
+          // Build a local Transaction for immediate UI feedback and offline queue.
+          const localId = generateId("TR");
           const newTransaction: Transaction = {
-            id: generateId("TR"),
+            id: localId,
             clientId: transactionData.clientId,
             clientName: client.name,
             amount: transactionData.amount,
             type: transactionData.type,
-            date: new Date().toISOString(),
+            date: new Date(now).toISOString(),
             status: online ? "completed" : "pending",
             notes: transactionData.notes,
           };
 
-          const balanceChange =
+          const balanceDelta =
             transactionData.type === "deposit"
               ? transactionData.amount
               : -transactionData.amount;
 
           if (online) {
-            const {
-              data: { user },
-            } = await supabase.auth.getUser();
+            const authStore = useAuthStore.getState();
+            const { branchId, tpeId, currency } = authStore.sessionContext ?? {};
 
-            let synced = false;
+            let serverIdStr: string | null = null;
 
-            if (user) {
-              const row = transactionToInsertRow(
-                { ...newTransaction, status: "completed" },
-                user.id
-              );
-              const { error: insertError } = await supabase.from("transactions").insert(row);
-              if (insertError) {
-                // Client not yet synced to Supabase (e.g. locally imported) — queue as pending
-                console.warn("Transaction sync deferred:", insertError.message);
-              } else {
-                synced = true;
+            if (branchId && authStore.user?.convexId) {
+              try {
+                const serverId = await convex.mutation(api.transactions.create, {
+                  amount: transactionData.amount,
+                  currency: currency ?? "FCFA",
+                  customerId: transactionData.clientId as Id<"customers">,
+                  agentId: authStore.user.convexId as Id<"users">,
+                  branchId: branchId as Id<"branches">,
+                  tpeId: tpeId ?? "web",
+                  type: transactionData.type,
+                  timestamp: now,
+                  notes: transactionData.notes,
+                });
+                serverIdStr = serverId as string;
+              } catch (mutErr) {
+                // Customer not yet synced or other transient error — fall
+                // through to the pending queue.
+                console.warn("Transaction sync deferred:", mutErr);
               }
             }
 
-            await clientStore.updateClientBalance(transactionData.clientId, balanceChange);
+            // Balance is updated atomically on the server; mirror locally.
+            await clientStore.updateClientBalance(
+              transactionData.clientId,
+              balanceDelta
+            );
 
-            if (synced) {
+            if (serverIdStr) {
+              // Use the server-assigned id so the local record matches Convex.
+              const syncedTransaction: Transaction = {
+                ...newTransaction,
+                id: serverIdStr,
+                status: "completed",
+              };
               set((state) => ({
-                transactions: [{ ...newTransaction, status: "completed" }, ...state.transactions],
+                transactions: [syncedTransaction, ...state.transactions],
                 isLoading: false,
               }));
+              return syncedTransaction;
             } else {
+              // Queued as pending — keep local id for reconciliation.
               set((state) => ({
                 pendingTransactions: [newTransaction, ...state.pendingTransactions],
                 isLoading: false,
               }));
             }
           } else {
-            await clientStore.updateClientBalance(transactionData.clientId, balanceChange);
-
+            // Offline path — update local balance, queue for later sync.
+            await clientStore.updateClientBalance(
+              transactionData.clientId,
+              balanceDelta
+            );
             set((state) => ({
               pendingTransactions: [newTransaction, ...state.pendingTransactions],
               isLoading: false,
@@ -212,11 +271,16 @@ export const useTransactionStore = create<TransactionStoreState>()(
         } catch (error) {
           set({
             isLoading: false,
-            error: error instanceof Error ? error.message : "Failed to add transaction",
+            error:
+              error instanceof Error
+                ? error.message
+                : "Failed to add transaction",
           });
           throw error;
         }
       },
+
+      // ── Getters ───────────────────────────────────────────────────────────
 
       getTransactionById: (id) => {
         const { transactions, pendingTransactions } = get();
@@ -233,7 +297,9 @@ export const useTransactionStore = create<TransactionStoreState>()(
           .sort(sortByDateDesc);
       },
 
-      syncPendingTransactions: async () => {
+      // ── Sync pending queue ────────────────────────────────────────────────
+
+      syncPendingTransactions: async (branchId) => {
         const pending = get().pendingTransactions;
         if (pending.length === 0) {
           set({ transactionSyncFailures: 0 });
@@ -242,44 +308,39 @@ export const useTransactionStore = create<TransactionStoreState>()(
 
         set({ isLoading: true, error: null, transactionSyncFailures: 0 });
         try {
-          const {
-            data: { user },
-          } = await supabase.auth.getUser();
+          const authStore = useAuthStore.getState();
+          const { tpeId, currency } = authStore.sessionContext ?? {};
+          const agentConvexId = authStore.user?.convexId;
 
-          if (!user) {
-            throw new Error("No authenticated user");
-          }
+          if (!agentConvexId) throw new Error("No authenticated user");
 
           let failures = 0;
           const toMove: Transaction[] = [];
           const stillPending: Transaction[] = [];
 
           for (const tx of pending) {
-            const completed: Transaction = { ...tx, status: "completed" };
-            const row = transactionToInsertRow(completed, user.id);
+            try {
+              const serverId = await convex.mutation(api.transactions.create, {
+                amount: tx.amount,
+                currency: currency ?? "FCFA",
+                customerId: tx.clientId as Id<"customers">,
+                agentId: agentConvexId as Id<"users">,
+                branchId: branchId as Id<"branches">,
+                tpeId: tpeId ?? "web",
+                type: tx.type,
+                timestamp: new Date(tx.date).getTime(),
+                notes: tx.notes,
+              });
 
-            const { error: insertError } = await supabase.from("transactions").insert(row);
-
-            if (insertError) {
+              toMove.push({
+                ...tx,
+                id: serverId as string,
+                status: "completed",
+              });
+            } catch (err) {
               failures++;
               stillPending.push(tx);
-              console.error("Sync transaction failed:", insertError.message, tx.id);
-              continue;
-            }
-
-            toMove.push(completed);
-
-            const client = useClientStore.getState().getClientById(tx.clientId);
-            if (client) {
-              const { error: balErr } = await supabase
-                .from("clients")
-                .update({ balance: client.balance })
-                .eq("id", tx.clientId)
-                .eq("agent_id", user.id);
-
-              if (balErr) {
-                console.error("Sync client balance after transaction:", balErr.message);
-              }
+              console.error("Sync transaction failed:", err, tx.id);
             }
           }
 
@@ -290,7 +351,7 @@ export const useTransactionStore = create<TransactionStoreState>()(
             transactionSyncFailures: failures,
             error:
               failures > 0
-                ? `${failures} transaction(s) n’ont pas pu être synchronisée(s)`
+                ? `${failures} transaction(s) n'ont pas pu être synchronisée(s)`
                 : null,
           }));
         } catch (error) {
@@ -303,51 +364,7 @@ export const useTransactionStore = create<TransactionStoreState>()(
         }
       },
 
-      subscribeToTransactionsRealtime: (userId: string) => {
-         // ✅ Nettoie l'ancien channel s'il existe déjà
-        if (activeChannel) {
-          supabase.removeChannel(activeChannel);
-          activeChannel = null;
-        }
-        
-        const channel: RealtimeChannel = supabase
-          .channel(`agent-transactions-${userId}`)
-          .on(
-            "postgres_changes",
-            {
-              event: "INSERT",
-              schema: "public",
-              table: "transactions",
-              filter: `agent_id=eq.${userId}`,
-            },
-            (payload) => {
-              const row = payload.new;
-              if (!row || typeof row !== "object" || !("id" in row)) return;
-              const incoming = rowToTransaction(row as any);
-
-              set((state) => {
-                if (state.transactions.some((t) => t.id === incoming.id)) {
-                  return state;
-                }
-                const wasPending = state.pendingTransactions.some((p) => p.id === incoming.id);
-                return {
-                  transactions: [incoming, ...state.transactions].sort(sortByDateDesc),
-                  pendingTransactions: wasPending
-                    ? state.pendingTransactions.filter((p) => p.id !== incoming.id)
-                    : state.pendingTransactions,
-                };
-              });
-            }
-          )
-          .subscribe();
-
-          activeChannel = channel;
-
-        return () => {
-          supabase.removeChannel(channel);
-          activeChannel = null;
-        };
-      },
+      // ── Reset ─────────────────────────────────────────────────────────────
 
       clearAll: () => {
         set({
