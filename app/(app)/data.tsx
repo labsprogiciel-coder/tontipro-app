@@ -1,3 +1,4 @@
+//app/(app)/data.tsx
 /**
  * Kauridorr — Données (Import / Export hub)
  *
@@ -43,6 +44,7 @@ import { File as FSFile, Paths } from 'expo-file-system';
 import * as Sharing from 'expo-sharing';
 import { useClientStore } from '@/stores/client-store';
 import { useTransactionStore } from '@/stores/transaction-store';
+import { useAuthStore } from '@/stores/auth-store';
 import { usePermissions } from '@/hooks/usePermissions';
 
 // ─── Design tokens ────────────────────────────────────────────────────────────
@@ -145,18 +147,21 @@ function parseCsv(content: string): { headers: string[]; rows: string[][] } {
 const HEADER_MAP: Record<string, keyof ParsedRow> = {
   id: 'externalId',
   nom: 'name', nom_complet: 'name', name: 'name', prenom: 'name', prénom: 'name',
-  nom_client: 'name',
+  nom_client: 'name', fullname: 'name', full_name: 'name',
   tel: 'phone', telephone: 'phone', téléphone: 'phone', phone: 'phone',
-  mobile: 'phone', portable: 'phone',
+  mobile: 'phone', portable: 'phone', phonenumber: 'phone', phone_number: 'phone',
   // backup format: "Numéro de compte" normalises to this key
   numero_de_compte: 'accountNumber', account_number: 'accountNumber', compte: 'accountNumber',
+  accountnumber: 'accountNumber', idnumber: 'accountNumber',
   montant: 'commitmentAmount', montant_engagement: 'commitmentAmount',
   engagement: 'commitmentAmount', commitment: 'commitmentAmount',
+  commitmentamount: 'commitmentAmount',
   // backup format: "Engagement d'épargne" normalises to this key
   "engagement_d'epargne": 'commitmentAmount',
   localite: 'address', localité: 'address', adresse: 'address',
   address: 'address', quartier: 'address', ville: 'address',
   groupe: 'groupName', groupe_tontine: 'groupName', group: 'groupName', tontine: 'groupName',
+  groupname: 'groupName',
 };
 
 function normaliseKey(h: string): string {
@@ -561,12 +566,12 @@ async function shareOrSaveCsv(filename: string, content: string, title: string) 
 }
 
 const ERROR_REPORT_CSV =
-  'nom_complet,telephone,erreur\n' +
+  'fullName,phoneNumber,erreur\n' +
   'Binta Diallo,,Téléphone manquant\n' +
   'Roukia Traoré,70 44 55 66,Doublon détecté\n';
 
 const EXPORT_CSV =
-  'nom_complet,telephone,solde,groupe_tontine\n' +
+  'fullName,phoneNumber,balance,groupName\n' +
   'Aïssata Zongo,70445566,25000,Groupe A\n' +
   'Koné Seydou,76112233,18500,Groupe B\n' +
   'Hamidou Kaboré,62889900,31200,Groupe A\n';
@@ -591,11 +596,11 @@ function ImportUploadScreen({
   };
 
   const required = [
-    { col: 'nom_complet',          req: true  },
-    { col: 'telephone',            req: true  },
-    { col: 'montant_engagement',   req: true  },
-    { col: 'localite',             req: false },
-    { col: 'groupe_tontine',       req: false },
+    { col: 'fullName',             req: true  },
+    { col: 'phoneNumber',          req: true  },
+    { col: 'commitmentAmount',     req: true  },
+    { col: 'address',              req: false },
+    { col: 'groupName',            req: false },
   ];
 
   return (
@@ -719,8 +724,9 @@ function ImportMapScreen({
   }, [file?.uri]);
 
   const FIELD_LABELS: Partial<Record<keyof ParsedRow | 'skip', string>> = {
-    name: 'nom_complet', phone: 'telephone', commitmentAmount: 'montant_engagement',
-    address: 'localite', groupName: 'groupe_tontine', skip: 'Ignoré',
+    name: 'fullName', phone: 'phoneNumber', commitmentAmount: 'commitmentAmount',
+    address: 'address', groupName: 'groupName', accountNumber: 'accountNumber',
+    skip: 'Ignoré',
   };
 
   const fieldColor = (f: keyof ParsedRow | 'skip') =>
@@ -829,7 +835,7 @@ function ImportPreviewScreen({
   const errCount   = rows.filter((r) => r.status === 'err').length;
 
   const errorCsv =
-    'nom_complet,telephone,ligne,erreur\n' +
+    'fullName,phoneNumber,ligne,erreur\n' +
     rows
       .filter((r) => r.status !== 'ok')
       .map((r) => `"${r.name}","${r.phone}",${r.rawLine},"${r.errorReason ?? ''}"`)
@@ -1102,6 +1108,7 @@ function ImportTxPreviewScreen({
   const importTransactions  = useTransactionStore((s) => s.importTransactions);
   const existingTxs         = useTransactionStore((s) => s.transactions);
   const reconcileBalances   = useClientStore((s) => s.reconcileBalances);
+  const agentId             = useAuthStore((s) => s.user?.id);
 
   const [rows, setRows]         = useState<ParsedTx[]>([]);
   const [loading, setLoading]   = useState(false);
@@ -1146,6 +1153,7 @@ function ImportTxPreviewScreen({
         type:       r.type,
         date:       r.date,
         status:     'completed' as const,
+        agentId:    agentId ?? undefined,
         notes:      r.notes ?? (r.agentName ? `Agent: ${r.agentName}` : undefined),
       }));
       importTransactions(toImport);
