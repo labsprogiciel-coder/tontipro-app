@@ -14,6 +14,8 @@ import { useRouter } from "expo-router";
 
 import { colors } from "@/constants/colors";
 import { useAuthStore } from "@/stores/auth-store";
+import { useClientStore } from "@/stores/client-store";
+import { useTransactionStore } from "@/stores/transaction-store";
 
 
 import {
@@ -97,6 +99,30 @@ const SettingsScreen = () => {
         router.push('/(app)/data' as never);
     };
 
+    const [isSyncing, setIsSyncing] = useState(false);
+    const [lastSyncLabel, setLastSyncLabel] = useState("Sync à 14:10");
+
+    const handleForceSync = async () => {
+      if (isSyncing) return;
+      setIsSyncing(true);
+      try {
+        const branchId = useAuthStore.getState().user?.branchId;
+        await useClientStore.getState().syncPendingClients();
+        if (branchId) {
+          await useTransactionStore.getState().syncPendingTransactions(branchId);
+        }
+        const now = new Date();
+        setLastSyncLabel(
+          `Sync à ${now.getHours().toString().padStart(2, "0")}:${now.getMinutes().toString().padStart(2, "0")}`
+        );
+        Alert.alert("Synchronisation terminée", "Toutes les données en attente ont été envoyées.");
+      } catch (err) {
+        Alert.alert("Erreur de synchronisation", err instanceof Error ? err.message : "Impossible de synchroniser.");
+      } finally {
+        setIsSyncing(false);
+      }
+    };
+
     return (
       <SafeAreaView style={styles.container} edges={["top"]}>
             {/* Page Header */}
@@ -155,7 +181,7 @@ const SettingsScreen = () => {
                         />
                     </View>
                     <View style={styles.divider} />
-                    <SettingItem icon={CloudSunIcon} label="Forcer la Synchronisation" value="Sync à 14:10" onPress={() => { }} />
+                    <SettingItem icon={CloudSunIcon} label={isSyncing ? "Synchronisation…" : "Forcer la Synchronisation"} value={lastSyncLabel} onPress={handleForceSync} />
                     <View style={styles.divider} />
                     <SettingItem icon={Info} label="Espace de stockage" value="12.4 MB" onPress={() => { }} />
                 </View>
