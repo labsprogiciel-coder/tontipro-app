@@ -6,5 +6,6 @@ export interface Transaction {
   type: "deposit" | "withdrawal";
   date: string;
   status: "completed" | "pending" | "reversed";
+  agentId?: string;
   notes?: string;
 }

@@ -56,6 +56,7 @@ function convexRowToTransaction(
     type: row.type as "deposit" | "withdrawal",
     date: new Date(row.timestamp).toISOString(),
     status: row.status as "completed" | "pending" | "reversed",
+    agentId: row.agentId as string | undefined,
     notes: row.notes,
   };
 }
@@ -195,6 +196,7 @@ export const useTransactionStore = create<TransactionStoreState>()(
             type: transactionData.type,
             date: new Date(now).toISOString(),
             status: online ? "completed" : "pending",
+            agentId: useAuthStore.getState().user?.id,
           };
 
           const balanceDelta =

@@ -1,3 +1,4 @@
+// app/(app)/reports.tsx
 import { useMemo, useState } from "react";
 import {
   ScrollView,
@@ -524,7 +525,7 @@ function AgentView() {
   const totalDep    = deposits.reduce((s, t) => s + t.amount, 0);
   const totalRet    = withdrawals.reduce((s, t) => s + t.amount, 0);
   const net         = totalDep - totalRet;
-  const commission  = Math.round(net * 0.01);
+  const commission  = Math.round((totalDep + totalRet) * 0.01);
 
   const prevNet = prevDeposits.reduce((s, t) => s + t.amount, 0)
                 - prevWithd.reduce((s, t) => s + t.amount, 0);
@@ -931,26 +932,28 @@ function AdminView() {
   const periodLabel = PERIOD_STAT_LABEL[period];
   const chartBars   = useMemo(() => buildBars(filtered, period), [filtered, period]);
 
-  // Agent leaderboard: compute stats dynamically from transactions
-  const sortedAgents = useMemo(() => {
-    // Build a map of agentId → { collected, clients, transactions }
-    const agentStats = new Map<string, { collected: number; clients: Set<string>; transactions: number }>();
+  // Agent leaderboard: compute per-agent stats from transactions
+  const agentStatsMap = useMemo(() => {
+    const map = new Map<string, { collected: number; clientSet: Set<string>; ops: number }>();
     for (const t of filtered) {
-      // Transactions don't carry agentId in the local type; skip leaderboard if unavailable
-      // Use clientId as a proxy for "clients served"
-      const entry = agentStats.get(t.clientId) ?? { collected: 0, clients: new Set<string>(), transactions: 0 };
-      if (t.type === 'deposit') entry.collected += t.amount;
-      entry.clients.add(t.clientId);
-      entry.transactions++;
-      agentStats.set(t.clientId, entry);
+      const agentId = t.agentId;
+      if (!agentId) continue;
+      const entry = map.get(agentId) ?? { collected: 0, clientSet: new Set<string>(), ops: 0 };
+      entry.collected += t.amount;
+      entry.clientSet.add(t.clientId);
+      entry.ops++;
+      map.set(agentId, entry);
     }
+    return map;
+  }, [filtered]);
 
+  const sortedAgents = useMemo(() => {
     return [...agents].sort((a, b) => {
-      // Sort by fullName alphabetically as a stable fallback since agent-level
-      // transaction stats require server-side aggregation.
-      return a.fullName.localeCompare(b.fullName);
+      const aCollected = agentStatsMap.get(a._id)?.collected ?? 0;
+      const bCollected = agentStatsMap.get(b._id)?.collected ?? 0;
+      return bCollected - aCollected;
     });
-  }, [agents, filtered]);
+  }, [agents, agentStatsMap]);
 
   // Group breakdown
   const groupStats = useMemo(() => {
@@ -970,7 +973,9 @@ function AdminView() {
     { id: "commissions", label: "Commissions" },
   ];
 
-  const maxAgentCollected = 1; // Stats computed server-side; placeholder for bar scaling
+  const maxAgentCollected = sortedAgents.length > 0
+    ? Math.max(...sortedAgents.map((a) => agentStatsMap.get(a._id)?.collected ?? 0), 1)
+    : 1;
 
   const AGENT_BAR_COLORS = [T.orange, T.blue, T.greenMid, T.orange, T.text3];
 
@@ -1040,19 +1045,22 @@ function AdminView() {
             <View style={s.section}>
               <SectionHeader title="Performance agents" link="Voir tous →" />
               <View style={s.card}>
-                {sortedAgents.slice(0, 3).map((agent, i) => (
-                  <AgentLeaderItem
-                    key={agent._id}
-                    rank={i + 1}
-                    name={agent.fullName}
-                    clients={0}
-                    ops={0}
-                    amount={0}
-                    trendPct={null}
-                    avatarBg={AVATAR_COLORS[i % 5].bg}
-                    avatarColor={AVATAR_COLORS[i % 5].fg}
-                  />
-                ))}
+                {sortedAgents.slice(0, 3).map((agent, i) => {
+                  const stats = agentStatsMap.get(agent._id);
+                  return (
+                    <AgentLeaderItem
+                      key={agent._id}
+                      rank={i + 1}
+                      name={agent.fullName}
+                      clients={stats?.clientSet.size ?? 0}
+                      ops={stats?.ops ?? 0}
+                      amount={stats?.collected ?? 0}
+                      trendPct={null}
+                      avatarBg={AVATAR_COLORS[i % 5].bg}
+                      avatarColor={AVATAR_COLORS[i % 5].fg}
+                    />
+                  );
+                })}
                 {sortedAgents.length === 0 && (
                   <View style={{ padding: 16 }}>
                     <Text style={{ fontSize: 13, color: T.text3 }}>Aucun agent</Text>
@@ -1094,18 +1102,21 @@ function AdminView() {
               <SectionHeader title={`Collecte par agent — ${periodLabel}`} />
               <View style={s.card}>
                 <View style={{ padding: 12, gap: 10 }}>
-                  {sortedAgents.map((agent, i) => (
-                    <AgentCompBar
-                      key={agent._id}
-                      name={agent.fullName}
-                      amount={0}
-                      maxAmount={maxAgentCollected}
-                      avatarBg={AVATAR_COLORS[i % 5].bg}
-                      avatarColor={AVATAR_COLORS[i % 5].fg}
-                      barColor={AGENT_BAR_COLORS[i % 5]}
-                      blocked={agent.status === "suspended"}
-                    />
-                  ))}
+                  {sortedAgents.map((agent, i) => {
+                    const stats = agentStatsMap.get(agent._id);
+                    return (
+                      <AgentCompBar
+                        key={agent._id}
+                        name={agent.fullName}
+                        amount={stats?.collected ?? 0}
+                        maxAmount={maxAgentCollected}
+                        avatarBg={AVATAR_COLORS[i % 5].bg}
+                        avatarColor={AVATAR_COLORS[i % 5].fg}
+                        barColor={AGENT_BAR_COLORS[i % 5]}
+                        blocked={agent.status === "suspended"}
+                      />
+                    );
+                  })}
                   {sortedAgents.length === 0 && (
                     <Text style={{ fontSize: 13, color: T.text3 }}>Aucun agent</Text>
                   )}
@@ -1123,17 +1134,18 @@ function AdminView() {
                   <Text style={[s.agentTableCell, { minWidth: 64, textAlign: "right" }]}>Comm.</Text>
                 </View>
                 {sortedAgents.map((agent, i) => {
-                  const collected = 0; // Server-side aggregation needed
-                  const comm = 0;
+                  const stats = agentStatsMap.get(agent._id);
+                  const collected = stats?.collected ?? 0;
+                  const comm = Math.round(collected * 0.01);
                   const isLast = i === sortedAgents.length - 1;
                   return (
                     <View key={agent._id} style={[s.agentTableRow, isLast ? { borderBottomWidth: 0 } : undefined]}>
                       <Text style={[s.agentTableVal, { flex: 1 }]}>{agent.fullName}</Text>
                       <Text style={[s.agentTableSub, { minWidth: 44, textAlign: "right" }]}>
-                        —
+                        {stats?.clientSet.size ?? 0}
                       </Text>
                       <Text style={[s.agentTableSub, { minWidth: 50, textAlign: "right" }]}>
-                        —
+                        {stats?.ops ?? 0}
                       </Text>
                       <Text style={[s.agentTableComm, { minWidth: 64, textAlign: "right" }]}>
                         —
@@ -1253,8 +1265,9 @@ function AdminView() {
                 <SectionHeader title="Par agent" />
                 <View style={s.card}>
                   {sortedAgents.map((agent, i) => {
-                    const collected = 0; // Server-side aggregation needed
-                    const comm = 0;
+                    const stats = agentStatsMap.get(agent._id);
+                    const collected = stats?.collected ?? 0;
+                    const comm = Math.round(collected * 0.01);
                     const isLast = i === sortedAgents.length - 1;
                     return (
                       <View key={agent._id} style={[s.cRow, isLast ? { borderBottomWidth: 0 } : undefined]}>
@@ -1280,7 +1293,8 @@ function AdminView() {
 // ─── Root screen — role switch ─────────────────────────────────────────────────
 export default function ReportsScreen() {
   const user = useAuthStore((s) => s.user);
-  const isAdmin = user?.permissions === undefined;
+  const role = user?.role;
+  const isAdmin = role === "admin" || role === "supervisor" || role === "it_admin" || role === "accountant";
   return isAdmin ? <AdminView /> : <AgentView />;
 }
 
