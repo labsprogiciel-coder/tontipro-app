@@ -83,12 +83,12 @@ const AgentDashboard: React.FC = () => {
   // Clients
   const clients = useClientStore((s) => s.clients);
   const isLoadingClients = useClientStore((s) => s.isLoadingClients);
-  const loadClientsFromSupabase = useClientStore((s) => s.loadClientsFromSupabase);
+  const loadClients = useClientStore((s) => s.loadClients);
 
   // Transactions
   const transactions = useTransactionStore((s) => s.transactions);
   const pendingTxList = useTransactionStore((s) => s.pendingTransactions);
-  const loadTransactionsFromSupabase = useTransactionStore((s) => s.loadTransactionsFromSupabase);
+  const loadTransactions = useTransactionStore((s) => s.loadTransactions);
 
   // Local UI state
   const perms = usePermissions();
@@ -108,8 +108,10 @@ const AgentDashboard: React.FC = () => {
     const init = async () => {
       if (user && !isLoadingClients) {
         try {
-          await loadClientsFromSupabase();
-          await loadTransactionsFromSupabase();
+          await loadClients();
+          if (user?.branchId) {
+            await loadTransactions(user.branchId);
+          }
         } catch (err) {
           console.error('Dashboard data load failed:', err);
         }

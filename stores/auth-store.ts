@@ -8,7 +8,7 @@ import { useClientStore } from "@/stores/client-store";
 import { useTransactionStore } from "@/stores/transaction-store";
 import { useAgentStore } from "@/stores/agent-store";
 import { generateId } from "@/utils/id-generator";
-import { AgentPermissions } from "@/types/agent";
+import { AgentPermissions, AgentRole, permissionsForRole } from "@/types/agent";
 
 const PHONES_KEY = "kauridorr_registered_phones";
 
@@ -22,13 +22,7 @@ async function addToPhoneRegistry(phone: string) {
 
 // ── Types ────────────────────────────────────────────────────────────────────
 
-/** Convex role values from the backend */
-export type ConvexRole =
-  | "field_agent"
-  | "supervisor"
-  | "accountant"
-  | "admin"
-  | "it_admin";
+export type ConvexRole = AgentRole;
 
 export interface User {
   id: string;
@@ -37,7 +31,7 @@ export interface User {
   phone?: string;
   role: ConvexRole | "agent"; // "agent" = legacy / offline
   branchId?: string;
-  currency?: string; // e.g. "XOF"
+  currency?: string; // e.g. "FCFA"
   device?: any | null; // null = unbound → triggers binding flow
   status?: string;
   permissions?: AgentPermissions;
@@ -88,9 +82,10 @@ export const useAuthStore = create<AuthState>()(
           phone: convexUser.phoneNumber,
           role: convexUser.role ?? "agent",
           branchId: convexUser.branchId ?? convexUser.tenantId,
-          currency: convexUser.organization?.currency ?? "XOF",
+          currency: convexUser.organization?.currency ?? "FCFA",
           device: convexUser.device ?? null,
           status: convexUser.status,
+          permissions: convexUser.role ? permissionsForRole(convexUser.role as AgentRole) : undefined,
         };
 
         set({
@@ -98,13 +93,15 @@ export const useAuthStore = create<AuthState>()(
           user,
         });
 
-        // Load data from Supabase (data layer still uses Supabase)
+        // Load data from Convex
         const loadData = async () => {
           set({ isLoadingClients: true });
           try {
-            await useClientStore.getState().loadClientsFromSupabase();
-            await useTransactionStore.getState().loadTransactionsFromSupabase();
-            await useAgentStore.getState().loadAgentsFromSupabase();
+            await useClientStore.getState().loadClientsFromConvex();
+            if (user.branchId) {
+              await useTransactionStore.getState().loadTransactions(user.branchId);
+              await useAgentStore.getState().loadAgents(user.branchId as any);
+            }
           } catch (error) {
             console.error("Failed to load data after Convex auth:", error);
           }
@@ -129,9 +126,10 @@ export const useAuthStore = create<AuthState>()(
             phone: convexUser.phoneNumber,
             role: convexUser.role ?? "agent",
             branchId: convexUser.branchId ?? convexUser.tenantId,
-            currency: convexUser.organization?.currency ?? "XOF",
+            currency: convexUser.organization?.currency ?? "FCFA",
             device: convexUser.device ?? null,
             status: convexUser.status,
+            permissions: convexUser.role ? permissionsForRole(convexUser.role as AgentRole) : undefined,
           };
 
           set({ isAuthenticated: true, user });
@@ -184,7 +182,7 @@ export const useAuthStore = create<AuthState>()(
         const localRaw = await AsyncStorage.getItem(`user_${matchedPhone}`);
         const localUser: User | null = localRaw ? JSON.parse(localRaw) : null;
 
-        const pinAgentRecord = useAgentStore.getState().agents.find((a) => a.phone === matchedPhone);
+        const pinAgentRecord = useAgentStore.getState().agents.find((a) => a.phoneNumber === matchedPhone);
 
         set({
           isAuthenticated: true,
@@ -194,15 +192,13 @@ export const useAuthStore = create<AuthState>()(
             name: "Agent",
             phone: matchedPhone,
             role: "agent",
-            permissions: pinAgentRecord?.permissions,
+            permissions: pinAgentRecord ? permissionsForRole(pinAgentRecord.role) : undefined,
           },
         });
 
-        // Try loading data from Supabase (works if online + Supabase session exists)
+        // Try loading data from Convex (works if online)
         try {
-          await useClientStore.getState().loadClientsFromSupabase();
-          await useTransactionStore.getState().loadTransactionsFromSupabase();
-          await useAgentStore.getState().loadAgentsFromSupabase();
+          await useClientStore.getState().loadClientsFromConvex();
         } catch {
           // offline — local data is enough
         }

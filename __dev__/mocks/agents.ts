@@ -1,3 +1,4 @@
+// __dev__/mocks/agents.ts
 export type AgentRole = "admin" | "agent" | "blocked";
 
 export interface MockAgent {

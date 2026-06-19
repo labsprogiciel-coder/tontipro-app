@@ -2,6 +2,7 @@ import { useEffect, useRef } from "react";
 import { subscribeToNetworkChanges } from "@/utils/network";
 import { useTransactionStore } from "@/stores/transaction-store";
 import { useClientStore } from "@/stores/client-store";
+import { useAuthStore } from "@/stores/auth-store";
 
 /**
  * Hook qui écoute les changements réseau et déclenche la sync
@@ -38,10 +39,13 @@ export function useNetworkSync() {
           try {
             const syncTransactions = useTransactionStore.getState().syncPendingTransactions;
             const syncClients = useClientStore.getState().syncPendingClients;
-
-            // Clients d’abord (FK `transactions.client_id`), puis transactions + soldes serveur
+            const branchId = useAuthStore.getState().user?.branchId;
+            
+            // Clients d'abord (FK `transactions.client_id`), puis transactions + soldes serveur
             await syncClients();
-            await syncTransactions();
+            if (branchId) {
+              await syncTransactions(branchId);
+            }
           } catch (error) {
             // ✅ Erreur silencieuse — l'app ne plante pas
             console.error("Network sync error:", error);

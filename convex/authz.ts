@@ -1,3 +1,4 @@
+// convex/authz.ts
 // Stub — the real implementation lives in the Kauri backend repo.
 // This file exists only so that convex/users.ts compiles locally
 // and `npx convex codegen` can produce the _generated/ API types.

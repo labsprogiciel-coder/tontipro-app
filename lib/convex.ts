@@ -1,3 +1,4 @@
+// lib/convex.ts
 import { ConvexReactClient } from "convex/react";
 
 const convexUrl = process.env.EXPO_PUBLIC_CONVEX_URL!;

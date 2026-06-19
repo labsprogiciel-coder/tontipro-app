@@ -14,7 +14,7 @@ import { DEV_MOCKS_ENABLED } from "@/__dev__/config";
 
 // ─── helpers ─────────────────────────────────────────────────────────────────
 
-function sortByDateDesc(a: Transaction, b: Transaction): number {
+function sortByTimestampDesc(a: Transaction, b: Transaction): number {
   return new Date(b.date).getTime() - new Date(a.date).getTime();
 }
 
@@ -32,7 +32,7 @@ export function mergeTransactionsSorted(
   for (const p of pending) {
     if (!byId.has(p.id)) byId.set(p.id, p);
   }
-  return [...byId.values()].sort(sortByDateDesc);
+  return [...byId.values()].sort(sortByTimestampDesc);
 }
 
 // ─── Convex row → Transaction ─────────────────────────────────────────────────
@@ -55,7 +55,7 @@ function convexRowToTransaction(
     amount: row.amount,
     type: row.type as "deposit" | "withdrawal",
     date: new Date(row.timestamp).toISOString(),
-    status: row.status as "completed" | "pending",
+    status: row.status as "completed" | "pending" | "reversed",
     notes: row.notes,
   };
 }
@@ -115,7 +115,7 @@ export const useTransactionStore = create<TransactionStoreState>()(
           const newTxs = txList.filter((t) => !existingIds.has(t.id));
           if (newTxs.length === 0) return state;
           return {
-            transactions: [...newTxs, ...state.transactions].sort(sortByDateDesc),
+            transactions: [...newTxs, ...state.transactions].sort(sortByTimestampDesc),
           };
         });
       },
@@ -195,7 +195,6 @@ export const useTransactionStore = create<TransactionStoreState>()(
             type: transactionData.type,
             date: new Date(now).toISOString(),
             status: online ? "completed" : "pending",
-            notes: transactionData.notes,
           };
 
           const balanceDelta =
@@ -205,22 +204,23 @@ export const useTransactionStore = create<TransactionStoreState>()(
 
           if (online) {
             const authStore = useAuthStore.getState();
-            const { branchId, tpeId, currency } = authStore.sessionContext ?? {};
+            const branchId = authStore.user?.branchId;
+            const currency = authStore.user?.currency ?? "FCFA";
+            const tpeId = authStore.user?.device?.serialNumber ?? "web";
 
             let serverIdStr: string | null = null;
 
-            if (branchId && authStore.user?.convexId) {
+            if (branchId && authStore.user?.id) {
               try {
                 const serverId = await convex.mutation(api.transactions.create, {
                   amount: transactionData.amount,
-                  currency: currency ?? "FCFA",
+                  currency,
                   customerId: transactionData.clientId as Id<"customers">,
-                  agentId: authStore.user.convexId as Id<"users">,
+                  agentId: authStore.user!.id as Id<"users">,
                   branchId: branchId as Id<"branches">,
-                  tpeId: tpeId ?? "web",
+                  tpeId,
                   type: transactionData.type,
                   timestamp: now,
-                  notes: transactionData.notes,
                 });
                 serverIdStr = serverId as string;
               } catch (mutErr) {
@@ -294,7 +294,7 @@ export const useTransactionStore = create<TransactionStoreState>()(
         const { transactions, pendingTransactions } = get();
         return [...transactions, ...pendingTransactions]
           .filter((t) => t.clientId === clientId)
-          .sort(sortByDateDesc);
+          .sort(sortByTimestampDesc);
       },
 
       // ── Sync pending queue ────────────────────────────────────────────────
@@ -309,8 +309,9 @@ export const useTransactionStore = create<TransactionStoreState>()(
         set({ isLoading: true, error: null, transactionSyncFailures: 0 });
         try {
           const authStore = useAuthStore.getState();
-          const { tpeId, currency } = authStore.sessionContext ?? {};
-          const agentConvexId = authStore.user?.convexId;
+          const currency = authStore.user?.currency ?? "FCFA";
+          const tpeId = authStore.user?.device?.serialNumber ?? "web";
+          const agentConvexId = authStore.user?.id;
 
           if (!agentConvexId) throw new Error("No authenticated user");
 
@@ -329,7 +330,6 @@ export const useTransactionStore = create<TransactionStoreState>()(
                 tpeId: tpeId ?? "web",
                 type: tx.type,
                 timestamp: new Date(tx.date).getTime(),
-                notes: tx.notes,
               });
 
               toMove.push({
@@ -345,7 +345,7 @@ export const useTransactionStore = create<TransactionStoreState>()(
           }
 
           set((state) => ({
-            transactions: [...toMove, ...state.transactions].sort(sortByDateDesc),
+            transactions: [...toMove, ...state.transactions].sort(sortByTimestampDesc),
             pendingTransactions: stillPending,
             isLoading: false,
             transactionSyncFailures: failures,

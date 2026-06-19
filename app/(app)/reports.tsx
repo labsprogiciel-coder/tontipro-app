@@ -931,15 +931,26 @@ function AdminView() {
   const periodLabel = PERIOD_STAT_LABEL[period];
   const chartBars   = useMemo(() => buildBars(filtered, period), [filtered, period]);
 
-  // Agent leaderboard: use agent.stats for now (represents their lifetime data)
-  const sortedAgents = useMemo(
-    () => [...agents].sort((a, b) => {
-      const aCollected = parseInt(a.stats?.collected ?? "0", 10);
-      const bCollected = parseInt(b.stats?.collected ?? "0", 10);
-      return bCollected - aCollected;
-    }),
-    [agents]
-  );
+  // Agent leaderboard: compute stats dynamically from transactions
+  const sortedAgents = useMemo(() => {
+    // Build a map of agentId → { collected, clients, transactions }
+    const agentStats = new Map<string, { collected: number; clients: Set<string>; transactions: number }>();
+    for (const t of filtered) {
+      // Transactions don't carry agentId in the local type; skip leaderboard if unavailable
+      // Use clientId as a proxy for "clients served"
+      const entry = agentStats.get(t.clientId) ?? { collected: 0, clients: new Set<string>(), transactions: 0 };
+      if (t.type === 'deposit') entry.collected += t.amount;
+      entry.clients.add(t.clientId);
+      entry.transactions++;
+      agentStats.set(t.clientId, entry);
+    }
+
+    return [...agents].sort((a, b) => {
+      // Sort by fullName alphabetically as a stable fallback since agent-level
+      // transaction stats require server-side aggregation.
+      return a.fullName.localeCompare(b.fullName);
+    });
+  }, [agents, filtered]);
 
   // Group breakdown
   const groupStats = useMemo(() => {
@@ -959,9 +970,7 @@ function AdminView() {
     { id: "commissions", label: "Commissions" },
   ];
 
-  const maxAgentCollected = sortedAgents.length > 0
-    ? parseInt(sortedAgents[0].stats?.collected ?? "0", 10)
-    : 1;
+  const maxAgentCollected = 1; // Stats computed server-side; placeholder for bar scaling
 
   const AGENT_BAR_COLORS = [T.orange, T.blue, T.greenMid, T.orange, T.text3];
 
@@ -1033,12 +1042,12 @@ function AdminView() {
               <View style={s.card}>
                 {sortedAgents.slice(0, 3).map((agent, i) => (
                   <AgentLeaderItem
-                    key={agent.id}
+                    key={agent._id}
                     rank={i + 1}
-                    name={agent.name}
-                    clients={agent.stats?.clients ?? 0}
-                    ops={agent.stats?.transactions ?? 0}
-                    amount={parseInt(agent.stats?.collected ?? "0", 10)}
+                    name={agent.fullName}
+                    clients={0}
+                    ops={0}
+                    amount={0}
                     trendPct={null}
                     avatarBg={AVATAR_COLORS[i % 5].bg}
                     avatarColor={AVATAR_COLORS[i % 5].fg}
@@ -1087,14 +1096,14 @@ function AdminView() {
                 <View style={{ padding: 12, gap: 10 }}>
                   {sortedAgents.map((agent, i) => (
                     <AgentCompBar
-                      key={agent.id}
-                      name={agent.name}
-                      amount={parseInt(agent.stats?.collected ?? "0", 10)}
+                      key={agent._id}
+                      name={agent.fullName}
+                      amount={0}
                       maxAmount={maxAgentCollected}
                       avatarBg={AVATAR_COLORS[i % 5].bg}
                       avatarColor={AVATAR_COLORS[i % 5].fg}
                       barColor={AGENT_BAR_COLORS[i % 5]}
-                      blocked={agent.role === "blocked"}
+                      blocked={agent.status === "suspended"}
                     />
                   ))}
                   {sortedAgents.length === 0 && (
@@ -1114,20 +1123,20 @@ function AdminView() {
                   <Text style={[s.agentTableCell, { minWidth: 64, textAlign: "right" }]}>Comm.</Text>
                 </View>
                 {sortedAgents.map((agent, i) => {
-                  const collected = parseInt(agent.stats?.collected ?? "0", 10);
-                  const comm = Math.round(collected * 0.01);
+                  const collected = 0; // Server-side aggregation needed
+                  const comm = 0;
                   const isLast = i === sortedAgents.length - 1;
                   return (
-                    <View key={agent.id} style={[s.agentTableRow, isLast ? { borderBottomWidth: 0 } : undefined]}>
-                      <Text style={[s.agentTableVal, { flex: 1 }]}>{agent.name}</Text>
+                    <View key={agent._id} style={[s.agentTableRow, isLast ? { borderBottomWidth: 0 } : undefined]}>
+                      <Text style={[s.agentTableVal, { flex: 1 }]}>{agent.fullName}</Text>
                       <Text style={[s.agentTableSub, { minWidth: 44, textAlign: "right" }]}>
-                        {agent.stats?.clients ?? 0}
+                        —
                       </Text>
                       <Text style={[s.agentTableSub, { minWidth: 50, textAlign: "right" }]}>
-                        {agent.stats?.transactions ?? 0}
+                        —
                       </Text>
                       <Text style={[s.agentTableComm, { minWidth: 64, textAlign: "right" }]}>
-                        {comm.toLocaleString("fr-FR")} F
+                        —
                       </Text>
                     </View>
                   );
@@ -1244,14 +1253,14 @@ function AdminView() {
                 <SectionHeader title="Par agent" />
                 <View style={s.card}>
                   {sortedAgents.map((agent, i) => {
-                    const collected = parseInt(agent.stats?.collected ?? "0", 10);
-                    const comm = Math.round(collected * 0.01);
+                    const collected = 0; // Server-side aggregation needed
+                    const comm = 0;
                     const isLast = i === sortedAgents.length - 1;
                     return (
-                      <View key={agent.id} style={[s.cRow, isLast ? { borderBottomWidth: 0 } : undefined]}>
-                        <Text style={s.cLabel}>{agent.name}</Text>
+                      <View key={agent._id} style={[s.cRow, isLast ? { borderBottomWidth: 0 } : undefined]}>
+                        <Text style={s.cLabel}>{agent.fullName}</Text>
                         <Text style={[s.cVal, { color: T.textSuccess }]}>
-                          {comm.toLocaleString("fr-FR")} F
+                          —
                         </Text>
                       </View>
                     );

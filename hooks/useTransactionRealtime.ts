@@ -1,16 +1,8 @@
-import { useEffect } from "react";
-import { useTransactionStore } from "@/stores/transaction-store";
+// hooks/useTransactionRealtime.ts
+// Convex handles real-time subscriptions automatically via useQuery().
+// This file is kept as a no-op stub for backward compatibility.
+// No manual Supabase channel subscriptions needed.
 
-/**
- * Abonnement Realtime aux INSERT sur `transactions` pour l’agent connecté.
- * Déduplication avec l’état local gérée dans le store.
- */
-export function useTransactionRealtimeSubscribe(userId: string | undefined) {
-  useEffect(() => {
-    if (!userId) return;
-    const unsubscribe = useTransactionStore
-      .getState()
-      .subscribeToTransactionsRealtime(userId);
-    return unsubscribe;
-  }, [userId]);
+export function useTransactionRealtimeSubscribe(_userId: string | undefined) {
+  // No-op: Convex queries are reactive by default.
 }

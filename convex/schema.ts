@@ -88,7 +88,7 @@ export default defineSchema({
     phoneNumber: v.string(),
     tokenIdentifier: v.string(),
     branchId: v.id('branches'),
-    status: v.union(v.literal('active'), v.literal('suspended')),
+    status: v.union(v.literal('active'), v.literal('suspended'), v.literal('invited')),
   })
     .index('by_token', ['tokenIdentifier'])
     .index('by_email', ['email'])

@@ -119,7 +119,7 @@ export default function TransactionDetailScreen() {
   const { getTransactionById, syncPendingTransactions } = useTransactionStore();
   const { getClientById } = useClientStore();
   const { user } = useAuthStore();
-  const branchId = useAuthStore((s) => s.sessionContext?.branchId ?? "");
+  const branchId = useAuthStore((s) => s.user?.branchId ?? "");
 
   const [isLoading, setIsLoading] = useState(true);
   const [transaction, setTransaction] = useState<Transaction | null>(null);

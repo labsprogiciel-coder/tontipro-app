@@ -5,6 +5,6 @@ export interface Transaction {
   amount: number;
   type: "deposit" | "withdrawal";
   date: string;
-  status: "completed" | "pending";
+  status: "completed" | "pending" | "reversed";
   notes?: string;
 }

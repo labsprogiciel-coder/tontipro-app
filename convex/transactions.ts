@@ -14,7 +14,7 @@ export const list = query({
   handler: async (ctx, { branchId }) => {
     return await ctx.db
       .query("transactions")
-      .withIndex("by_branch", (q) => q.eq("branchId", branchId))
+      .withIndex("by_branch_timestamp", (q) => q.eq("branchId", branchId))
       .order("desc")
       .collect();
   },
@@ -61,13 +61,12 @@ export const create = mutation({
     tpeId: v.string(),
     type: v.union(v.literal("deposit"), v.literal("withdrawal")),
     timestamp: v.number(),
-    notes: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
     const customer = await ctx.db.get(args.customerId);
     if (!customer) throw new Error("Customer not found");
 
-    if (args.type === "withdrawal" && customer.balance < args.amount) {
+    if (args.type === "withdrawal" && (customer.balance ?? 0) < args.amount) {
       throw new Error("Insufficient balance");
     }
 
@@ -82,13 +81,12 @@ export const create = mutation({
       type: args.type,
       timestamp: args.timestamp,
       status: "completed",
-      notes: args.notes,
     });
 
     // Update customer balance atomically in the same mutation.
     const balanceDelta = args.type === "deposit" ? args.amount : -args.amount;
     await ctx.db.patch(args.customerId, {
-      balance: customer.balance + balanceDelta,
+      balance: (customer.balance ?? 0) + balanceDelta,
     });
 
     return transactionId;
@@ -118,14 +116,13 @@ export const reverse = mutation({
     // Roll back the balance change.
     const rollbackDelta = tx.type === "deposit" ? -tx.amount : tx.amount;
     await ctx.db.patch(tx.customerId, {
-      balance: customer.balance + rollbackDelta,
+      balance: (customer.balance ?? 0) + rollbackDelta,
     });
 
     await ctx.db.patch(id, {
       status: "reversed",
       reversalReason,
       reversedBy,
-      reversedAt: Date.now(),
     });
   },
 });

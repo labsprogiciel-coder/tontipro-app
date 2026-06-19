@@ -17,27 +17,26 @@ import { useRouter } from "expo-router";
 import { CameraView, useCameraPermissions, BarcodeScanningResult } from "expo-camera";
 import { Camera, Check, ChevronLeft, QrCode, Hash } from "lucide-react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { useMutation, useQuery } from "convex/react";
+import { api } from "@/convex/_generated/api";
+import { Id } from "@/convex/_generated/dataModel";
+import { convex } from "@/lib/convex";
 import { KAURIDORR_THEME as T } from "@/constants/colors";
 
-// ── API stubs (replace with your real api layer) ───────────────────────────────
+// ── Types & helpers ──────────────────────────────────────────────────────────────
 
-type ClaimResult = { deviceSerial: string; deviceModel: string };
+/** Shape returned by Convex claim mutations */
+type ClaimMutationResult = { deviceId: Id<"devices"> };
 
-async function claimByToken(token: string): Promise<ClaimResult> {
-  // TODO: replace with api.agents.claimDeviceByToken({ token })
-  throw new Error("not-implemented");
-}
-
-async function claimByPin(pin: string): Promise<ClaimResult> {
-  // TODO: replace with api.agents.claimDeviceByPin({ pin })
-  throw new Error("not-implemented");
-}
+/** Full device info fetched after a successful claim */
+type ClaimResult = { deviceId: Id<"devices">; deviceSerial: string; deviceModel: string };
 
 function mapError(e: unknown): string {
   const msg = (e as Error)?.message ?? "";
-  if (msg.includes("expired"))      return "Code expiré — demandez un nouveau code à votre responsable";
-  if (msg.includes("already"))      return "Cet appareil est déjà attribué";
-  if (msg.includes("not-found"))    return "Code non reconnu — vérifiez puis réessayez";
+  if (msg.includes("expired"))   return "Code expiré — demandez un nouveau code à votre responsable";
+  if (msg.includes("already"))   return "Cet appareil est déjà attribué";
+  if (msg.includes("Invalid"))   return "Code non reconnu — vérifiez puis réessayez";
+  if (msg.includes("branch"))    return "Appareil hors agence — ce QR code appartient à une autre agence";
   return "Une erreur est survenue — réessayez";
 }
 
@@ -99,6 +98,9 @@ function QrTab({
   const hasScanned = useRef(false);
   const insets = useSafeAreaInsets();
 
+  const me = useQuery(api.users.currentUser);
+  const claimByTokenMutation = useMutation(api.devices.claimDeviceByToken);
+
   const scanLineAnim = useRef(new Animated.Value(0)).current;
 
   useEffect(() => {
@@ -138,16 +140,29 @@ function QrTab({
       return;
     }
 
+    // Branch isolation: validate before claiming (per mobile-integration.md)
+    if (payload.branchId && me?.branchId && payload.branchId !== me.branchId) {
+      setError("Ce QR code appartient à une autre agence.");
+      hasScanned.current = false;
+      return;
+    }
+
     setPhase("loading");
     try {
-      const res = await claimByToken(payload.token);
-      onSuccess(res);
+      const { deviceId } = await claimByTokenMutation({ token: payload.token });
+      // Fetch the full device record to display serial + model
+      const device = await convex.query(api.devices.getById, { id: deviceId });
+      onSuccess({
+        deviceId,
+        deviceSerial: device?.serialNumber ?? payload.deviceSerial ?? "—",
+        deviceModel: device?.model ?? "—",
+      });
     } catch (e) {
       setError(mapError(e));
       setPhase("idle");
       hasScanned.current = false;
     }
-  }, [phase, onSuccess]);
+  }, [phase, onSuccess, me, claimByTokenMutation]);
 
   const scanLineTranslate = scanLineAnim.interpolate({
     inputRange: [0, 1],
@@ -238,6 +253,8 @@ function PinTab({ onSuccess }: { onSuccess: (r: ClaimResult) => void }) {
   const inputRefs = useRef<(TextInput | null)[]>([]);
   const hasSubmitted = useRef(false);
 
+  const claimByPinMutation = useMutation(api.devices.claimDeviceByPin);
+
   const pin = digits.join("");
 
   const submit = useCallback(async (code: string) => {
@@ -247,8 +264,14 @@ function PinTab({ onSuccess }: { onSuccess: (r: ClaimResult) => void }) {
     setError(null);
     setPhase("loading");
     try {
-      const res = await claimByPin(code);
-      onSuccess(res);
+      const { deviceId } = await claimByPinMutation({ pin: code });
+      // Fetch the full device record to display serial + model
+      const device = await convex.query(api.devices.getById, { id: deviceId });
+      onSuccess({
+        deviceId,
+        deviceSerial: device?.serialNumber ?? "—",
+        deviceModel: device?.model ?? "—",
+      });
     } catch (e) {
       setError(mapError(e));
       setPhase("idle");
@@ -256,7 +279,7 @@ function PinTab({ onSuccess }: { onSuccess: (r: ClaimResult) => void }) {
       hasSubmitted.current = false;
       setTimeout(() => inputRefs.current[0]?.focus(), 80);
     }
-  }, [onSuccess]);
+  }, [onSuccess, claimByPinMutation]);
 
   const handleChange = useCallback((text: string, index: number) => {
     const cleaned = text.replace(/\D/g, "");

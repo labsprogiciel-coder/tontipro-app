@@ -124,7 +124,7 @@ const TransactionEntryScreen = () => {
   }>();
 
   const allClients = useClientStore((s) => s.clients);
-  const loadClients = useClientStore((s) => s.loadClientsFromSupabase);
+  const loadClients = useClientStore((s) => s.loadClients);
   const selectedClient = useClientStore((s) =>
     clientId ? s.clients.find((c) => c.id === clientId) ?? null : null
   );

@@ -18,6 +18,18 @@ function randomUUID(): string {
 
 const TTL = 10 * 60 * 1000 // 10 minutes in ms
 
+// ─── getById ──────────────────────────────────────────────────────────────────
+
+export const getById = query({
+  args: { id: v.id('devices') },
+  handler: async (ctx, args) => {
+    const identity = await ctx.auth.getUserIdentity()
+    if (!identity) throw new Error('Unauthenticated')
+
+    return await ctx.db.get(args.id)
+  },
+})
+
 // ─── generateBindingCredentials ─────────────────────────────────────────────
 
 export const generateBindingCredentials = mutation({
