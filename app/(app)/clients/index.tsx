@@ -20,7 +20,7 @@ export const ClientsScreen: React.FC = () => {
   const [sortOrder, setSortOrder] = useState<SortOrder>('desc');
   const [searchType, setSearchType] = useState<SearchType>('name');
   const clients = useClientStore((state) => state.clients);
-  // ← was loadClientsFromSupabase, now points to Convex equivalent
+  // Clients list — loads from Convex via useClientStore
   const loadClients = useClientStore((state) => state.loadClientsFromConvex);
 
   // Reload clients when page comes into focus

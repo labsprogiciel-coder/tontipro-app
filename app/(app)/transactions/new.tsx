@@ -1,6 +1,6 @@
 // app/(app)/transactions/new.tsx
 //
-// Field mapping vs. old Supabase version:
+// Field mapping for the transaction entry screen:
 //   client_id  → clientId  (unchanged — store maps to customerId internally)
 //   type 'withdraw' is kept as the UI internal value; the store receives
 //   'deposit' | 'withdrawal', so we translate at the call-site (unchanged).

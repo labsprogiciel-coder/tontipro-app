@@ -1,10 +1,9 @@
 // app/(app)/transactions/[id].tsx
 //
-// Field changes vs. old Supabase version:
-//   • transaction.id  — now a Convex Id string (same shape, no UI change)
-//   • transaction.date — still an ISO string (the store normalises timestamp→date)
-//   • clientName is gone from the Convex row; resolved via clientId from the
-//     client store (already done by convexRowToTransaction in the store).
+// Field references for the transaction detail screen:
+//   • transaction.id  — Convex Id string (same shape, no UI change)
+//   • transaction.date — ISO string (the store normalises timestamp→date)
+//   • clientName is resolved from the client store via convexRowToTransaction.
 //   • All other field names are identical.
 import { useEffect, useState } from "react";
 import {
