@@ -8,17 +8,17 @@ import BottomNavBar, { TabKey } from "@/app/components/ui/BottomNavBar";
 
 // Routes that have a corresponding tab key
 const ROUTE_TO_TAB: Record<string, TabKey> = {
-  dashboard:    "home",
-  clients:      "clients",
+  dashboard: "home",
+  clients: "clients",
   transactions: "history",
-  reports:     "reports",
+  reports: "reports",
 };
 
 const TAB_TO_ROUTE: Record<TabKey, string> = {
-  home:     "dashboard",
-  clients:  "clients",
-  history:  "transactions",
-  reports:  "reports",
+  home: "dashboard",
+  clients: "clients",
+  history: "transactions",
+  reports: "reports",
 };
 
 function AppTabBar({ state, navigation }: BottomTabBarProps) {
@@ -39,7 +39,7 @@ function AppTabBar({ state, navigation }: BottomTabBarProps) {
           CommonActions.reset({
             index: 0,
             routes: [{ name: route }],
-          })
+          }),
         );
       }}
       onAddPress={() => router.push("/(app)/transactions/new")}

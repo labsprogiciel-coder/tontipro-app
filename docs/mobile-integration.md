@@ -48,11 +48,11 @@ after login via `users.currentUser` and must be used to filter all subsequent qu
 Install the Convex SDK for your mobile platform and create a client pointed at the deployment URL.
 
 ```typescript
-import { ConvexReactClient } from 'convex/react'   // React Native
+import { ConvexReactClient } from "convex/react"; // React Native
 // or
-import { ConvexClient } from 'convex/browser'       // Plain JS / other
+import { ConvexClient } from "convex/browser"; // Plain JS / other
 
-const convex = new ConvexReactClient(process.env.CONVEX_URL)
+const convex = new ConvexReactClient(process.env.CONVEX_URL);
 // CONVEX_URL = value from the Kauri backend deployment (ask your admin)
 ```
 
@@ -84,29 +84,30 @@ https://<app-url>/connexion?token=<invite-token>
 **Step 1 — Sign up with email + password**
 
 ```typescript
-import { useAuthActions } from '@convex-dev/auth/react'
+import { useAuthActions } from "@convex-dev/auth/react";
 
-const { signIn } = useAuthActions()
+const { signIn } = useAuthActions();
 
-await signIn('password', {
-  flow: 'signUp',
-  email: 'agent@example.com',
-  password: 'chosen-password',
-})
+await signIn("password", {
+  flow: "signUp",
+  email: "agent@example.com",
+  password: "chosen-password",
+});
 ```
 
 **Step 2 — Link the invite token** (call immediately after `signIn` resolves)
 
 ```typescript
-import { useMutation } from 'convex/react'
-import { api } from '../convex/_generated/api'
+import { useMutation } from "convex/react";
+import { api } from "../convex/_generated/api";
 
-const linkAccount = useMutation(api.users.linkAgentAccount)
+const linkAccount = useMutation(api.users.linkAgentAccount);
 
-await linkAccount({ inviteToken: '<raw-token-from-url>' })
+await linkAccount({ inviteToken: "<raw-token-from-url>" });
 ```
 
 This call:
+
 - Hashes the raw token and matches it against the stored hash in the database
 - Transfers the agent's pre-assigned role to the new auth session
 - Burns the invite token (one-time use; subsequent calls with the same token fail)
@@ -117,14 +118,14 @@ their manager.
 ### Returning Agent Sign-in
 
 ```typescript
-await signIn('password', {
-  flow: 'signIn',
-  email: 'agent@example.com',
-  password: 'password',
-})
+await signIn("password", {
+  flow: "signIn",
+  email: "agent@example.com",
+  password: "password",
+});
 
 // No invite token needed; call without args
-await linkAccount({})
+await linkAccount({});
 ```
 
 `linkAgentAccount` with no `inviteToken` is a no-op for already-linked accounts — it's safe to
@@ -135,9 +136,9 @@ always call it post-login.
 After auth resolves, fetch the full profile once and cache it for the session:
 
 ```typescript
-import { useQuery } from 'convex/react'
+import { useQuery } from "convex/react";
 
-const me = useQuery(api.users.currentUser)
+const me = useQuery(api.users.currentUser);
 ```
 
 **Response shape:**
@@ -192,19 +193,19 @@ The QR code encodes a JSON payload:
 **Validate before claiming:**
 
 ```typescript
-const payload = JSON.parse(qrValue)
+const payload = JSON.parse(qrValue);
 
 if (payload.branchId !== me.tenantId) {
-  throw new Error('Ce QR code appartient à une autre agence.')
+  throw new Error("Ce QR code appartient à une autre agence.");
 }
 ```
 
 **Claim the device:**
 
 ```typescript
-const claimByToken = useMutation(api.devices.claimDeviceByToken)
+const claimByToken = useMutation(api.devices.claimDeviceByToken);
 
-const { deviceId } = await claimByToken({ token: payload.token })
+const { deviceId } = await claimByToken({ token: payload.token });
 ```
 
 ### PIN Entry
@@ -212,10 +213,10 @@ const { deviceId } = await claimByToken({ token: payload.token })
 Display a 6-digit numeric input. Strip any formatting (dashes, spaces) before sending.
 
 ```typescript
-const claimByPin = useMutation(api.devices.claimDeviceByPin)
+const claimByPin = useMutation(api.devices.claimDeviceByPin);
 
 // pin must be exactly 6 numeric characters, e.g. "042817"
-const { deviceId } = await claimByPin({ pin: pin.replace(/\D/g, '') })
+const { deviceId } = await claimByPin({ pin: pin.replace(/\D/g, "") });
 ```
 
 ### After a Successful Claim
@@ -241,13 +242,13 @@ should surface a clear call-to-action:
 
 Roles control which actions an agent can take. Check `me.role` from `currentUser`.
 
-| Role | Can collect transactions | Can register customers | Can approve disbursements | Can bind devices |
-|------|:---:|:---:|:---:|:---:|
-| `field_agent` | ✓ | ✓ (prospect) | — | — |
-| `supervisor` | ✓ | ✓ | ✓ | ✓ |
-| `accountant` | — | — | ✓ (execute) | — |
-| `admin` | ✓ | ✓ | ✓ | ✓ |
-| `it_admin` | — | — | — | ✓ |
+| Role          | Can collect transactions | Can register customers | Can approve disbursements | Can bind devices |
+| ------------- | :----------------------: | :--------------------: | :-----------------------: | :--------------: |
+| `field_agent` |            ✓             |      ✓ (prospect)      |             —             |        —         |
+| `supervisor`  |            ✓             |           ✓            |             ✓             |        ✓         |
+| `accountant`  |            —             |           —            |        ✓ (execute)        |        —         |
+| `admin`       |            ✓             |           ✓            |             ✓             |        ✓         |
+| `it_admin`    |            —             |           —            |             —             |        ✓         |
 
 Hide or disable UI elements based on role. The server enforces the same rules — the mobile app
 check is only for UX, not security.
@@ -258,30 +259,30 @@ check is only for UX, not security.
 
 ### `users` table
 
-| Field | Type | Notes |
-|-------|------|-------|
-| `_id` | `Id<'users'>` | Convex document ID |
-| `fullName` | `string` | Display name |
-| `email` | `string` | Unique within branch |
-| `phoneNumber` | `string` | Unique within branch |
-| `tokenIdentifier` | `string` | Auth subject (internal, don't display) |
-| `branchId` | `Id<'branches'>` | Tenant scope key |
-| `status` | `'active' \| 'suspended'` | Account state |
+| Field             | Type                      | Notes                                  |
+| ----------------- | ------------------------- | -------------------------------------- |
+| `_id`             | `Id<'users'>`             | Convex document ID                     |
+| `fullName`        | `string`                  | Display name                           |
+| `email`           | `string`                  | Unique within branch                   |
+| `phoneNumber`     | `string`                  | Unique within branch                   |
+| `tokenIdentifier` | `string`                  | Auth subject (internal, don't display) |
+| `branchId`        | `Id<'branches'>`          | Tenant scope key                       |
+| `status`          | `'active' \| 'suspended'` | Account state                          |
 
 ### `devices` table
 
-| Field | Type | Notes |
-|-------|------|-------|
-| `_id` | `Id<'devices'>` | Convex document ID |
-| `serialNumber` | `string` | Physical TPE serial |
-| `model` | `string` | Device model name |
-| `branchId` | `Id<'branches'>` | Owning branch |
-| `assignedTo` | `Id<'users'> \| undefined` | Currently bound agent |
-| `status` | `'active' \| 'maintenance' \| 'lost'` | Device state |
-| `lastSync` | `number` | Unix ms, last sync timestamp |
-| `batteryPct` | `number \| undefined` | 0–100 |
-| `signalLevel` | `number \| undefined` | 0–5 bars |
-| `queuedCount` | `number \| undefined` | Pending offline transactions |
+| Field          | Type                                  | Notes                        |
+| -------------- | ------------------------------------- | ---------------------------- |
+| `_id`          | `Id<'devices'>`                       | Convex document ID           |
+| `serialNumber` | `string`                              | Physical TPE serial          |
+| `model`        | `string`                              | Device model name            |
+| `branchId`     | `Id<'branches'>`                      | Owning branch                |
+| `assignedTo`   | `Id<'users'> \| undefined`            | Currently bound agent        |
+| `status`       | `'active' \| 'maintenance' \| 'lost'` | Device state                 |
+| `lastSync`     | `number`                              | Unix ms, last sync timestamp |
+| `batteryPct`   | `number \| undefined`                 | 0–100                        |
+| `signalLevel`  | `number \| undefined`                 | 0–5 bars                     |
+| `queuedCount`  | `number \| undefined`                 | Pending offline transactions |
 
 ---
 
@@ -337,16 +338,16 @@ check is only for UX, not security.
 
 ## Error Reference
 
-| Server error message | User-facing message (FR) | Suggested action |
-|---|---|---|
-| `"Invalid PIN"` | Code invalide. Vérifiez les 6 chiffres. | Ask agent to re-enter |
-| `"PIN has expired"` | Code expiré. | Ask manager for new credentials |
-| `"Invalid token"` | QR code invalide. | Rescan or switch to PIN |
-| `"Token has expired"` | QR code expiré. | Ask manager for new credentials |
-| `"Device is already assigned"` | Cet appareil est déjà lié à un agent. | Contact IT admin |
-| `"Unauthorized: device does not belong to your branch"` | Appareil hors agence. | QR code from wrong branch |
-| `"User is suspended"` | Compte suspendu. Contactez votre responsable. | Block all access |
-| `ConvexError` (auth) | Session expirée. Veuillez vous reconnecter. | Redirect to login |
+| Server error message                                    | User-facing message (FR)                      | Suggested action                |
+| ------------------------------------------------------- | --------------------------------------------- | ------------------------------- |
+| `"Invalid PIN"`                                         | Code invalide. Vérifiez les 6 chiffres.       | Ask agent to re-enter           |
+| `"PIN has expired"`                                     | Code expiré.                                  | Ask manager for new credentials |
+| `"Invalid token"`                                       | QR code invalide.                             | Rescan or switch to PIN         |
+| `"Token has expired"`                                   | QR code expiré.                               | Ask manager for new credentials |
+| `"Device is already assigned"`                          | Cet appareil est déjà lié à un agent.         | Contact IT admin                |
+| `"Unauthorized: device does not belong to your branch"` | Appareil hors agence.                         | QR code from wrong branch       |
+| `"User is suspended"`                                   | Compte suspendu. Contactez votre responsable. | Block all access                |
+| `ConvexError` (auth)                                    | Session expirée. Veuillez vous reconnecter.   | Redirect to login               |
 
 Network errors (no connection) should display a persistent offline banner. Queue mutations locally
 and replay when the connection is restored — Convex's optimistic update system supports this

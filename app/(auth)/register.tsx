@@ -1,5 +1,5 @@
 // app/(auth)/register.tsx
-import { useRouter, useLocalSearchParams } from "expo-router";
+import { useRouter } from "expo-router";
 import { useState, useEffect } from "react";
 import {
   Pressable,
@@ -13,12 +13,22 @@ import {
   ScrollView,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { Mail, Lock, ArrowRight, UserPlus, Eye, EyeOff } from "lucide-react-native";
+import {
+  Phone,
+  Lock,
+  ArrowRight,
+  UserPlus,
+  Eye,
+  EyeOff,
+} from "lucide-react-native";
 import { useAuthActions } from "@convex-dev/auth/react";
 import { useMutation } from "convex/react";
 import { useConvexAuth } from "convex/react";
 import { api } from "@/convex/_generated/api";
 import { useAuthStore } from "@/stores/auth-store";
+import { useAppLockStore } from "@/stores/app-lock-store";
+import { convex } from "@/lib/convex";
+import { withAuthRetry } from "@/lib/withAuthRetry";
 
 const T = {
   orange: "#D85A30",
@@ -35,12 +45,11 @@ const T = {
 
 export default function RegisterScreen() {
   const router = useRouter();
-  const { token } = useLocalSearchParams<{ token?: string }>();
   const { signIn } = useAuthActions();
   const linkAccount = useMutation(api.users.linkAgentAccount);
   const { isAuthenticated: convexAuthed } = useConvexAuth();
 
-  const [email, setEmail] = useState("");
+  const [phoneNumber, setPhoneNumber] = useState("");
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
@@ -48,8 +57,36 @@ export default function RegisterScreen() {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState("");
   const [authComplete, setAuthComplete] = useState(false);
+  // signIn() résout avant que le token ne soit propagé au transport Convex
+  // (voir withAuthRetry.ts) — appeler linkAccount juste après produisait
+  // systématiquement un premier essai "Non authentifié" côté serveur (visible
+  // dans les logs Convex) avant que la retry loop ne finisse par réussir. On
+  // attend maintenant que `convexAuthed` (dérivé du token réellement propagé)
+  // passe à true avant d'appeler linkAccount, ce qui évite cet essai voué à
+  // l'échec dans l'immense majorité des cas.
+  const [pendingLink, setPendingLink] = useState(false);
 
   const user = useAuthStore((s) => s.user);
+
+  // Ne tente linkAccount qu'une fois le token réellement propagé au
+  // transport Convex (convexAuthed === true) — voir commentaire sur
+  // `pendingLink` plus haut.
+  useEffect(() => {
+    if (!pendingLink || !convexAuthed) return;
+    setPendingLink(false);
+    (async () => {
+      try {
+        await withAuthRetry(() => linkAccount({}));
+        setAuthComplete(true);
+      } catch (e: any) {
+        console.error("Link account error:", e);
+        setError(
+          e?.message || "Une erreur est survenue lors de la liaison du compte",
+        );
+        setIsLoading(false);
+      }
+    })();
+  }, [pendingLink, convexAuthed]);
 
   // Watch for Convex user to populate after signIn
   useEffect(() => {
@@ -67,23 +104,38 @@ export default function RegisterScreen() {
     // per the ticket, so we must not let an unlinked account through.
     if (!user.branchId) {
       setError(
-        "Ce compte n'est associé à aucune agence. Vérifiez votre lien d'invitation ou contactez votre gérant."
+        "Ce compte n'est associé à aucune agence. Vérifiez votre lien d'invitation ou contactez votre gérant.",
       );
       setIsLoading(false);
       setAuthComplete(false);
       return;
     }
 
-    if (user.device === null) {
+    // Identité confirmée pour cette ouverture de l'app — ferme la porte
+    // locale de app-lock-store (voir login.tsx pour le détail du flow).
+    useAppLockStore.getState().unlock();
+
+    if (user.mustChangePassword) {
+      router.replace({
+        pathname: "/(auth)/welcome",
+        params: {
+          orgName: user.organization?.name ?? "Kauri",
+          next: "change-password",
+        },
+      } as any);
+    } else if (user.device === null) {
       router.replace("/(auth)/bind-device");
     } else {
-      router.replace("/dashboard");
+      router.replace({
+        pathname: "/(auth)/welcome",
+        params: { orgName: user.organization?.name ?? "Kauri" },
+      } as any);
     }
     setIsLoading(false);
   }, [authComplete, convexAuthed, user, router]);
 
   const handleRegister = async () => {
-    if (!email || !password || !confirmPassword) {
+    if (!phoneNumber || !password || !confirmPassword) {
       setError("Veuillez remplir tous les champs");
       return;
     }
@@ -93,27 +145,59 @@ export default function RegisterScreen() {
       return;
     }
 
-    if (!token) {
-      setError("Lien d'invitation invalide ou manquant. Demandez un nouveau lien à votre gérant.");
-      return;
-    }
-
     setIsLoading(true);
     setError("");
 
+    const phone = phoneNumber.trim();
+
     try {
-      // Step 1: Sign up
-      await signIn("password", {
-        flow: "signUp",
-        email: email.toLowerCase().trim(),
-        password,
+      const eligibility = await convex.query(api.users.checkLoginEligibility, {
+        phoneNumber: phone,
       });
+      if (!eligibility.valid) {
+        setError(eligibility.message ?? "Erreur de vérification");
+        setIsLoading(false);
+        return;
+      }
+      if (eligibility.status !== "invited") {
+        setError("Ce compte est déjà activé. Utilisez l'écran de connexion.");
+        setIsLoading(false);
+        return;
+      }
 
-      // Step 2: Link invite token
-      await linkAccount({ inviteToken: token });
+      const check = await convex.action(api.otp.checkActivationCode, {
+        phoneNumber: phone,
+        code: password,
+      });
+      if (!check.valid) {
+        setError(check.message ?? "Code incorrect ou expiré.");
+        setIsLoading(false);
+        return;
+      }
 
-      // Signal that auth is done, useEffect will watch for user data
-      setAuthComplete(true);
+      try {
+        await signIn("password", {
+          flow: "signUp",
+          phoneNumber: phone,
+          password,
+        });
+      } catch (signUpError: any) {
+        // Reliquat d'une activation précédente restée bloquée (signUp
+        // réussi mais linkAccount jamais abouti) — on nettoie le compte
+        // orphelin et on retente une seule fois.
+        if (!String(signUpError?.message ?? "").includes("already exists")) {
+          throw signUpError;
+        }
+        await convex.mutation(api.users.clearStaleActivationAccount, {
+          phoneNumber: phone,
+        });
+        await signIn("password", {
+          flow: "signUp",
+          phoneNumber: phone,
+          password,
+        });
+      }
+      setPendingLink(true);
     } catch (e: any) {
       console.error("Registration error:", e);
       setError(e.message || "Une erreur est survenue lors de l'inscription");
@@ -127,7 +211,10 @@ export default function RegisterScreen() {
         behavior={Platform.OS === "ios" ? "padding" : "height"}
         style={{ flex: 1 }}
       >
-        <ScrollView contentContainerStyle={{ flexGrow: 1 }} keyboardShouldPersistTaps="handled">
+        <ScrollView
+          contentContainerStyle={{ flexGrow: 1 }}
+          keyboardShouldPersistTaps="handled"
+        >
           <View style={styles.screen}>
             {/* Header */}
             <View style={styles.header}>
@@ -144,26 +231,36 @@ export default function RegisterScreen() {
             {/* Form */}
             <View style={styles.form}>
               <View style={styles.fieldGroup}>
-                <Text style={styles.fieldLabel}>Email professionnel</Text>
+                <Text style={styles.fieldLabel}>Numéro de téléphone</Text>
                 <View style={styles.inputWrapper}>
-                  <Mail size={18} color={T.textTertiary} style={styles.inputIcon} />
+                  <Phone
+                    size={18}
+                    color={T.textTertiary}
+                    style={styles.inputIcon}
+                  />
                   <TextInput
                     style={styles.input}
-                    placeholder="agent@kauridorr.com"
+                    placeholder="+226 70 00 00 00"
                     placeholderTextColor={T.textTertiary}
-                    value={email}
-                    onChangeText={setEmail}
+                    value={phoneNumber}
+                    onChangeText={setPhoneNumber}
                     autoCapitalize="none"
-                    keyboardType="email-address"
-                    autoComplete="email"
+                    keyboardType="phone-pad"
+                    autoComplete="tel"
                   />
                 </View>
               </View>
 
               <View style={styles.fieldGroup}>
-                <Text style={styles.fieldLabel}>Mot de passe</Text>
+                <Text style={styles.fieldLabel}>
+                  Mot de passe temporaire (reçu par WhatsApp/SMS)
+                </Text>
                 <View style={styles.inputWrapper}>
-                  <Lock size={18} color={T.textTertiary} style={styles.inputIcon} />
+                  <Lock
+                    size={18}
+                    color={T.textTertiary}
+                    style={styles.inputIcon}
+                  />
                   <TextInput
                     style={styles.input}
                     placeholder="••••••••"
@@ -171,6 +268,7 @@ export default function RegisterScreen() {
                     value={password}
                     onChangeText={setPassword}
                     secureTextEntry={!showPassword}
+                    keyboardType="number-pad"
                     autoComplete="password-new"
                   />
                   <Pressable
@@ -190,7 +288,11 @@ export default function RegisterScreen() {
               <View style={styles.fieldGroup}>
                 <Text style={styles.fieldLabel}>Confirmer le mot de passe</Text>
                 <View style={styles.inputWrapper}>
-                  <Lock size={18} color={T.textTertiary} style={styles.inputIcon} />
+                  <Lock
+                    size={18}
+                    color={T.textTertiary}
+                    style={styles.inputIcon}
+                  />
                   <TextInput
                     style={styles.input}
                     placeholder="••••••••"
@@ -198,6 +300,7 @@ export default function RegisterScreen() {
                     value={confirmPassword}
                     onChangeText={setConfirmPassword}
                     secureTextEntry={!showConfirmPassword}
+                    keyboardType="number-pad"
                     autoComplete="password-new"
                   />
                   <Pressable
@@ -236,9 +339,13 @@ export default function RegisterScreen() {
               </Pressable>
             </View>
 
-            <Pressable onPress={() => router.push("/(auth)/login")} style={styles.footerLink}>
+            <Pressable
+              onPress={() => router.push("/(auth)/login")}
+              style={styles.footerLink}
+            >
               <Text style={styles.footerText}>
-                Déjà un compte ? <Text style={styles.footerLinkText}>Se connecter</Text>
+                Déjà un compte ?{" "}
+                <Text style={styles.footerLinkText}>Se connecter</Text>
               </Text>
             </Pressable>
           </View>
@@ -255,19 +362,44 @@ const styles = StyleSheet.create({
   // Header
   header: { alignItems: "center", marginBottom: 30, gap: 8 },
   logoCircle: {
-    width: 64, height: 64, borderRadius: 20,
+    width: 64,
+    height: 64,
+    borderRadius: 20,
     backgroundColor: T.orange,
-    justifyContent: "center", alignItems: "center",
+    justifyContent: "center",
+    alignItems: "center",
     marginBottom: 12,
   },
-  appName: { fontSize: 18, fontWeight: "600", color: T.textTertiary, letterSpacing: 1, textTransform: 'uppercase' },
-  title: { fontSize: 24, fontWeight: "700", color: T.textPrimary, letterSpacing: -0.5 },
-  subtitle: { fontSize: 14, color: T.textSecondary, textAlign: "center", lineHeight: 20, paddingHorizontal: 20 },
+  appName: {
+    fontSize: 18,
+    fontWeight: "600",
+    color: T.textTertiary,
+    letterSpacing: 1,
+    textTransform: "uppercase",
+  },
+  title: {
+    fontSize: 24,
+    fontWeight: "700",
+    color: T.textPrimary,
+    letterSpacing: -0.5,
+  },
+  subtitle: {
+    fontSize: 14,
+    color: T.textSecondary,
+    textAlign: "center",
+    lineHeight: 20,
+    paddingHorizontal: 20,
+  },
 
   // Form
   form: { gap: 16 },
   fieldGroup: { gap: 6 },
-  fieldLabel: { fontSize: 12, fontWeight: "600", color: T.textSecondary, marginLeft: 4 },
+  fieldLabel: {
+    fontSize: 12,
+    fontWeight: "600",
+    color: T.textSecondary,
+    marginLeft: 4,
+  },
   inputWrapper: {
     flexDirection: "row",
     alignItems: "center",
@@ -305,4 +437,3 @@ const styles = StyleSheet.create({
   footerText: { fontSize: 14, color: T.textSecondary },
   footerLinkText: { color: T.orange, fontWeight: "600" },
 });
-

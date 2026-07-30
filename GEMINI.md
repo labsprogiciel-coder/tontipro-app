@@ -1,6 +1,7 @@
 # GEMINI.md
 
 ## Project Overview
+
 **Yembi** (also known as **ÉpargneMobile** or **TontiPro**) is a mobile application designed for field agents in French-speaking Africa to manage informal savings (Tontines). It features an **offline-first** architecture to handle intermittent internet connectivity in remote areas.
 
 - **Main Technologies:** Expo SDK 54, React Native 0.81, TypeScript, Zustand (State Management), Supabase (Backend/Database).
@@ -8,6 +9,7 @@
 - **Language & Localization:** Interface in **French**, currency in **FCFA**.
 
 ## Project Structure
+
 - `app/`: Expo Router file-based navigation.
   - `(auth)/`: Authentication flows (Login, Register, Splash).
   - `(app)/`: Main application (Dashboard, Clients, Transactions, Reports, Settings).
@@ -23,6 +25,7 @@
 ## Development Workflow
 
 ### Installation & Commands
+
 ```bash
 # Install dependencies
 bun install
@@ -41,10 +44,13 @@ bun type-check
 ```
 
 ### Environment Configuration
+
 The project uses environment variables (see `.env.example`).
+
 - `EXPO_PUBLIC_DEV_LOAD_MOCKS`: Set to `true` to use mock data for development without a Supabase connection.
 
 ### Offline-First Architecture
+
 1.  **Persistence:** All Zustand stores are persisted to `AsyncStorage` using the `persist` middleware.
 2.  **Optimistic Updates:** When a client or transaction is added, it's immediately updated in the local store.
 3.  **Sync Logic:**
@@ -54,17 +60,20 @@ The project uses environment variables (see `.env.example`).
 4.  **Data Mapping:** `lib/transaction-supabase.ts` handles conversion between application-level camelCase and Supabase snake_case/French-labeled columns.
 
 ### Coding Conventions
+
 - **Naming:** Use camelCase for variables/functions and PascalCase for components.
 - **Types:** Strictly use TypeScript for all new code. Avoid `any`.
 - **UI:** Prefer standard components from `app/components/ui`.
 - **Translations:** Keep all user-facing text in French.
 
 ## Data Model (Supabase)
+
 - **profiles:** Extended user info (agent_code, role).
 - **clients:** Customer records. IDs start with `CL`.
 - **transactions:** Financial records. IDs start with `TR`.
 - **RLS:** Row Level Security is enabled. Agents can only access their own clients and transactions via `agent_id = auth.uid()`.
 
 ## Testing
+
 - **Manual Testing:** Use `EXPO_PUBLIC_DEV_LOAD_MOCKS=true` to test UI features with pre-populated data.
 - **Credentials:** Default test agent `AGT001` / `1234`.

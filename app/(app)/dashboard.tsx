@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useState } from "react";
 import {
   View,
   Text,
@@ -6,28 +6,48 @@ import {
   StyleSheet,
   StatusBar,
   ActivityIndicator,
-} from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+} from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
 import { useRouter } from "expo-router";
-import { TrendingUp, Users, FileText, ArrowDown, ArrowUp, PlusIcon, DownloadCloudIcon, BadgeDollarSign, ScanEye, LucideBedDouble, Camera, ImportIcon, DollarSignIcon } from "lucide-react-native";
+import { useQuery } from "convex/react";
+import { api } from "@/convex/_generated/api";
+import {
+  TrendingUp,
+  Users,
+  FileText,
+  ArrowDown,
+  ArrowUp,
+  PlusIcon,
+  DownloadCloudIcon,
+  BadgeDollarSign,
+  ScanEye,
+  LucideBedDouble,
+  Camera,
+  ImportIcon,
+  DollarSignIcon,
+} from "lucide-react-native";
 
 import { KAURIDORR_THEME } from "@/constants/colors";
 import { useAuthStore } from "@/stores/auth-store";
-import { useClientStore } from "@/stores/client-store";
-import { mergeTransactionsSorted, useTransactionStore } from "@/stores/transaction-store";
+import { customerToClient, useClientStore } from "@/stores/client-store";
+import {
+  convexRowToTransaction,
+  mergeTransactionsSorted,
+  useTransactionStore,
+} from "@/stores/transaction-store";
 import { isConnected, subscribeToNetworkChanges } from "@/utils/network";
 import { Client } from "@/types/client";
 
 import SectionHeader from "../components/ui/section-header";
-import OfflineIcon from '../components/header/offline-status';
-import MetricPill from '../components/stats/cards';
-import NotificationBell from '../components/header/bell';
-import HeaderAvatar from '../components/header/avatar';
-import ActionButton from '../components/quickactions/quick-action';
-import TransactionItem from '../components/transactions/transaction-items';
-import ClientCard from '../components/clients/clients';
-import SearchInput from '../components/quickactions/search-input';
-import { usePermissions } from '@/hooks/usePermissions';
+import OfflineIcon from "../components/header/offline-status";
+import MetricPill from "../components/stats/cards";
+import NotificationBell from "../components/header/bell";
+import HeaderAvatar from "../components/header/avatar";
+import ActionButton from "../components/quickactions/quick-action";
+import TransactionItem from "../components/transactions/transaction-items";
+import ClientCard from "../components/clients/clients";
+import SearchInput from "../components/quickactions/search-input";
+import { usePermissions } from "@/hooks/usePermissions";
 
 const T = KAURIDORR_THEME;
 
@@ -35,23 +55,23 @@ const T = KAURIDORR_THEME;
 
 function getInitials(name: string): string {
   return name
-    .split(' ')
-    .map((w) => w[0] ?? '')
-    .join('')
+    .split(" ")
+    .map((w) => w[0] ?? "")
+    .join("")
     .toUpperCase()
     .slice(0, 2);
 }
 
-function clientStatus(client: Client): 'Actif' | 'Retard' | 'Neutre' {
-  if (client.status === 'active') return 'Actif';
-  if (client.status === 'inactive') return 'Neutre';
-  return 'Retard';
+function clientStatus(client: Client): "Actif" | "Retard" | "Neutre" {
+  if (client.status === "active") return "Actif";
+  if (client.status === "inactive") return "Neutre";
+  return "Retard";
 }
 
-function clientVariant(client: Client): 'success' | 'warning' | 'info' {
-  if (client.status === 'active') return 'success';
-  if (client.status === 'inactive') return 'info';
-  return 'warning';
+function clientVariant(client: Client): "success" | "warning" | "info" {
+  if (client.status === "active") return "success";
+  if (client.status === "inactive") return "info";
+  return "warning";
 }
 
 function relativeTime(isoDate: string): string {
@@ -63,11 +83,12 @@ function relativeTime(isoDate: string): string {
 }
 
 function formatBalance(amount: number): string {
-  return amount.toLocaleString('fr-FR') + ' F';
+  return amount.toLocaleString("fr-FR") + " F";
 }
 
 function formatMetric(amount: number): string {
-  if (amount >= 1_000_000) return (amount / 1_000_000).toFixed(1).replace('.', ',') + ' M';
+  if (amount >= 1_000_000)
+    return (amount / 1_000_000).toFixed(1).replace(".", ",") + " M";
   if (amount >= 1_000) return new Intl.NumberFormat().format(amount);
   return String(amount);
 }
@@ -80,22 +101,52 @@ const AgentDashboard: React.FC = () => {
   // Auth
   const user = useAuthStore((s) => s.user);
 
-  // Clients
-  const clients = useClientStore((s) => s.clients);
-  const isLoadingClients = useClientStore((s) => s.isLoadingClients);
-  const loadClients = useClientStore((s) => s.loadClients);
+  // Clients / Transactions — read directly via useQuery rather than through
+  // an imperative convex.query() + manual retry. Convex's client caches
+  // *query results by (function, args)*, including error results — retrying
+  // the exact same imperative call after a failure just replays that cached
+  // error instead of hitting the server again (see ConvexReactClient.query()
+  // in node_modules/convex/dist/esm/react/client.js). Reactive `useQuery`
+  // hooks don't have that problem: they resubscribe correctly and update on
+  // their own once auth is ready, which is why `currentUser` in
+  // app/_layout.tsx already worked reliably while the imperative loads here
+  // kept failing forever after the first race.
+  const customersData = useQuery(api.customers.list);
+  const transactionsData = useQuery(api.transactions.list);
 
-  // Transactions
-  const transactions = useTransactionStore((s) => s.transactions);
+  // Clients ajoutés hors-ligne restent en local (syncStatus "pending") tant
+  // qu'ils n'ont pas été synchronisés — pas encore dans `customersData`, donc
+  // on les fusionne manuellement, comme pendingTxList pour les transactions.
+  const localClients = useClientStore((s) => s.clients);
+  const pendingLocalClients = useMemo(
+    () => localClients.filter((c) => c.syncStatus === "pending"),
+    [localClients],
+  );
+  const clients = useMemo(
+    () => [
+      ...pendingLocalClients,
+      ...(customersData ?? []).map(customerToClient),
+    ],
+    [customersData, pendingLocalClients],
+  );
+
   const pendingTxList = useTransactionStore((s) => s.pendingTransactions);
-  const loadTransactions = useTransactionStore((s) => s.loadTransactions);
+
+  const transactions = useMemo(() => {
+    const clientNameResolver = (id: string) =>
+      clients.find((c) => c.id === id)?.name;
+    return (transactionsData ?? []).map((row: any) =>
+      convexRowToTransaction(row, clientNameResolver),
+    );
+  }, [transactionsData, clients]);
 
   // Local UI state
   const perms = usePermissions();
 
-  const [searchQuery, setSearchQuery] = useState('');
+  const [searchQuery, setSearchQuery] = useState("");
   const [online, setOnline] = useState(true);
-  const [isLoading, setIsLoading] = useState(true);
+
+  const isLoading = customersData === undefined || transactionsData === undefined;
 
   // ── Network monitoring ──────────────────────────────────────────────────────
   useEffect(() => {
@@ -103,43 +154,25 @@ const AgentDashboard: React.FC = () => {
     return subscribeToNetworkChanges(setOnline);
   }, []);
 
-  // ── Data loading ────────────────────────────────────────────────────────────
-  useEffect(() => {
-    const init = async () => {
-      if (user && !isLoadingClients) {
-        try {
-          await loadClients();
-          if (user?.branchId) {
-            await loadTransactions(user.branchId);
-          }
-        } catch (err) {
-          console.error('Dashboard data load failed:', err);
-        }
-      }
-      setIsLoading(false);
-    };
-    init();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [user]);
-
   // ── Derived data ────────────────────────────────────────────────────────────
   const mergedTransactions = useMemo(
     () => mergeTransactionsSorted(transactions, pendingTxList),
-    [transactions, pendingTxList]
+    [transactions, pendingTxList],
   );
 
   const totalSavings = useMemo(
     () => clients.reduce((sum, c) => sum + (c.balance ?? 0), 0),
-    [clients]
+    [clients],
   );
 
   const activeClientCount = useMemo(
-    () => clients.filter((c) => c.status === 'active').length,
-    [clients]
+    () => clients.filter((c) => c.status === "active").length,
+    [clients],
   );
 
   const pendingCount =
-    pendingTxList.length + clients.filter((c) => c.syncStatus === 'pending').length;
+    pendingTxList.length +
+    clients.filter((c) => c.syncStatus === "pending").length;
 
   const isOffline = !online;
 
@@ -148,9 +181,7 @@ const AgentDashboard: React.FC = () => {
     const q = searchQuery.toLowerCase().trim();
     if (!q) return clients;
     return clients.filter(
-      (c) =>
-        c.name.toLowerCase().includes(q) ||
-        c.phone.includes(q)
+      (c) => c.name.toLowerCase().includes(q) || c.phone.includes(q),
     );
   }, [clients, searchQuery]);
 
@@ -158,7 +189,7 @@ const AgentDashboard: React.FC = () => {
     const q = searchQuery.toLowerCase().trim();
     if (!q) return mergedTransactions;
     return mergedTransactions.filter((t) =>
-      t.clientName?.toLowerCase().includes(q)
+      t.clientName?.toLowerCase().includes(q),
     );
   }, [mergedTransactions, searchQuery]);
 
@@ -174,20 +205,25 @@ const AgentDashboard: React.FC = () => {
     <SafeAreaView style={styles.container} edges={["top"]}>
       <StatusBar barStyle="light-content" backgroundColor={T.orange} />
 
-      <ScrollView stickyHeaderIndices={[0]} showsVerticalScrollIndicator={false}>
-
+      <ScrollView
+        stickyHeaderIndices={[0]}
+        showsVerticalScrollIndicator={false}
+      >
         {/* ── Header ─────────────────────────────────────────────────────── */}
         <View style={styles.header}>
           <View style={styles.headerTop}>
             <View>
               <Text style={styles.greeting}>Bonjour,</Text>
-              <Text style={styles.agentName}>{user?.name ?? 'Agent'}</Text>
+              <Text style={styles.agentName}>{user?.name ?? "Agent"}</Text>
             </View>
 
             <View style={styles.topUtilityRow}>
               <OfflineIcon isOffline={isOffline} />
               <NotificationBell hasNotifications={pendingCount > 0} />
-              <HeaderAvatar initials={getInitials(user?.name ?? 'AG')} onPress={() => router.push('/(app)/settings')} />
+              <HeaderAvatar
+                initials={getInitials(user?.name ?? "AG")}
+                onPress={() => router.push("/(app)/settings")}
+              />
             </View>
           </View>
 
@@ -201,7 +237,9 @@ const AgentDashboard: React.FC = () => {
             <MetricPill
               label="Clients actifs"
               value={String(activeClientCount)}
-              trend={pendingCount > 0 ? `${pendingCount} en attente` : undefined}
+              trend={
+                pendingCount > 0 ? `${pendingCount} en attente` : undefined
+              }
               icon={Users}
             />
           </View>
@@ -219,7 +257,7 @@ const AgentDashboard: React.FC = () => {
               iconColor="#185fa5"
               style={styles.actionBtn}
               disabled={!perms.addClient}
-              onClick={() => router.push('/(app)/clients/add')}
+              onClick={() => router.push("/(app)/clients/add")}
             />
             <ActionButton
               label="Rechercher"
@@ -227,7 +265,7 @@ const AgentDashboard: React.FC = () => {
               bgVariant="#eaf3de"
               iconColor="#3b6d11"
               style={styles.actionBtn}
-              onClick={() => router.push('/(app)/clients')}
+              onClick={() => router.push("/(app)/clients")}
             />
             <ActionButton
               label="Paiement"
@@ -236,7 +274,12 @@ const AgentDashboard: React.FC = () => {
               iconColor="#993C1D"
               style={styles.actionBtn}
               disabled={!perms.withdrawal}
-              onClick={() => router.push({ pathname: '/(app)/transactions/new', params: { type: 'withdrawal' } })}
+              onClick={() =>
+                router.push({
+                  pathname: "/(app)/transactions/new",
+                  params: { type: "withdrawal" },
+                })
+              }
             />
             <ActionButton
               label="Importer"
@@ -244,7 +287,7 @@ const AgentDashboard: React.FC = () => {
               bgVariant="#EEEDFE"
               iconColor="#534AB7"
               style={styles.actionBtn}
-              onClick={() => router.push('/(app)/data')}
+              onClick={() => router.push("/(app)/data")}
             />
           </View>
 
@@ -252,7 +295,7 @@ const AgentDashboard: React.FC = () => {
           <SectionHeader
             title="Mes clients"
             linkText="Voir tous"
-            onLinkClick={() => router.push('/(app)/clients')}
+            onLinkClick={() => router.push("/(app)/clients")}
           />
 
           {filteredClients.length === 0 ? (
@@ -260,25 +303,27 @@ const AgentDashboard: React.FC = () => {
               <Text style={styles.emptyText}>Aucun client trouvé</Text>
             </View>
           ) : (
-            filteredClients.slice(0, 3).map((client) => (
-              <ClientCard
-                key={client.id}
-                initials={getInitials(client.name)}
-                name={client.name}
-                phone={client.phone}
-                amount={formatBalance(client.balance ?? 0)}
-                status={clientStatus(client)}
-                avatarVariant={clientVariant(client)}
-                onPress={() => router.push(`/(app)/clients/${client.id}`)}
-              />
-            ))
+            filteredClients
+              .slice(0, 3)
+              .map((client) => (
+                <ClientCard
+                  key={client.id}
+                  initials={getInitials(client.name)}
+                  name={client.name}
+                  phone={client.phone}
+                  amount={formatBalance(client.balance ?? 0)}
+                  status={clientStatus(client)}
+                  avatarVariant={clientVariant(client)}
+                  onPress={() => router.push(`/(app)/clients/${client.id}`)}
+                />
+              ))
           )}
 
           {/* Transactions */}
           <SectionHeader
             title="Transactions récentes"
             linkText="Voir tous"
-            onLinkClick={() => router.push('/(app)/transactions')}
+            onLinkClick={() => router.push("/(app)/transactions")}
           />
 
           {filteredTransactions.length === 0 ? (
@@ -288,17 +333,23 @@ const AgentDashboard: React.FC = () => {
           ) : (
             <View style={styles.transactionContainer}>
               {filteredTransactions.slice(0, 5).map((tx, i) => {
-                const commitment = clients.find((c) => c.id === tx.clientId)?.commitmentAmount;
-                const multiplier = commitment && commitment > 0
-                  ? (() => { const m = Math.round(tx.amount / commitment); return m >= 1 ? m : undefined; })()
-                  : undefined;
+                const commitment = clients.find(
+                  (c) => c.id === tx.clientId,
+                )?.commitmentAmount;
+                const multiplier =
+                  commitment && commitment > 0
+                    ? (() => {
+                        const m = Math.round(tx.amount / commitment);
+                        return m >= 1 ? m : undefined;
+                      })()
+                    : undefined;
                 return (
                   <TransactionItem
                     key={tx.id}
-                    name={tx.clientName ?? '—'}
-                    type={tx.type === 'withdrawal' ? 'withdrawal' : 'deposit'}
+                    name={tx.clientName ?? "—"}
+                    type={tx.type === "withdrawal" ? "withdrawal" : "deposit"}
                     time={relativeTime(tx.date)}
-                    amount={tx.amount.toLocaleString('fr-FR')}
+                    amount={tx.amount.toLocaleString("fr-FR")}
                     multiplier={multiplier}
                     isLast={i === Math.min(filteredTransactions.length, 5) - 1}
                     onPress={() => router.push(`/(app)/transactions/${tx.id}`)}
@@ -316,13 +367,13 @@ const AgentDashboard: React.FC = () => {
 const styles = StyleSheet.create({
   loadingContainer: {
     flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
+    justifyContent: "center",
+    alignItems: "center",
     backgroundColor: T.bg,
   },
   container: {
     flex: 1,
-    backgroundColor: '#d0cfc8',
+    backgroundColor: "#d0cfc8",
   },
   header: {
     backgroundColor: T.orange,
@@ -331,27 +382,27 @@ const styles = StyleSheet.create({
     paddingTop: 10,
   },
   headerTop: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
     marginBottom: 14,
   },
   greeting: {
-    color: 'rgba(255,255,255,0.8)',
+    color: "rgba(255,255,255,0.8)",
     fontSize: 12,
   },
   agentName: {
-    color: 'white',
+    color: "white",
     fontSize: 16,
-    fontWeight: '500',
+    fontWeight: "500",
   },
   topUtilityRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     gap: 10,
   },
   metricRow: {
-    flexDirection: 'row',
+    flexDirection: "row",
     gap: 10,
   },
   body: {
@@ -359,32 +410,32 @@ const styles = StyleSheet.create({
   },
   sectionLabel: {
     fontSize: 11,
-    fontWeight: '500',
+    fontWeight: "500",
     color: T.text3,
-    textTransform: 'uppercase',
+    textTransform: "uppercase",
     letterSpacing: 0.06 * 11,
     marginBottom: 10,
   },
   actionGrid: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
+    flexDirection: "row",
+    flexWrap: "wrap",
     gap: 10,
     marginBottom: 20,
   },
   actionBtn: {
-    width: '48%',
+    width: "48%",
   },
   transactionContainer: {
     backgroundColor: T.bg,
     borderRadius: 14,
     borderWidth: 0.5,
     borderColor: T.border,
-    overflow: 'hidden',
+    overflow: "hidden",
     marginBottom: 20,
   },
   emptyBox: {
     paddingVertical: 20,
-    alignItems: 'center',
+    alignItems: "center",
     marginBottom: 16,
   },
   emptyText: {

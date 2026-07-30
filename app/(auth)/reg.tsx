@@ -94,7 +94,13 @@ function PrimaryButton({
 }
 
 // ── SCREEN 1: Welcome ───────────────────────────────────────────
-function WelcomeScreen({ onRegister, onLogin }: { onRegister: () => void; onLogin: () => void }) {
+function WelcomeScreen({
+  onRegister,
+  onLogin,
+}: {
+  onRegister: () => void;
+  onLogin: () => void;
+}) {
   return (
     <View style={styles.screenWelcome}>
       {/* Decorative circles */}
@@ -107,25 +113,32 @@ function WelcomeScreen({ onRegister, onLogin }: { onRegister: () => void; onLogi
         </View>
         <Text style={styles.welcomeTitle}>Kauridorr</Text>
         <Text style={styles.welcomeSubtitle}>
-          Gestion d'épargne moderne,{"\n"}sécurisée et accessible.
+          Gestion d&apos;épargne moderne,{"\n"}sécurisée et accessible.
         </Text>
       </View>
 
       <View style={styles.welcomeBottom}>
         <Pressable
           onPress={onRegister}
-          style={({ pressed }) => [styles.btnWhite, pressed && styles.btnPressed]}
+          style={({ pressed }) => [
+            styles.btnWhite,
+            pressed && styles.btnPressed,
+          ]}
         >
           <Text style={styles.btnWhiteText}>Créer mon compte (hors ligne)</Text>
         </Pressable>
         <Pressable
           onPress={onLogin}
-          style={({ pressed }) => [styles.btnGhost, pressed && styles.btnGhostPressed]}
+          style={({ pressed }) => [
+            styles.btnGhost,
+            pressed && styles.btnGhostPressed,
+          ]}
         >
-          <Text style={styles.btnGhostText}>J'ai déjà un compte</Text>
+          <Text style={styles.btnGhostText}>J&apos;ai déjà un compte</Text>
         </Pressable>
         <Text style={styles.welcomeFootnote}>
-          Mode hors ligne · Pour le mode en ligne, utilisez le lien d'invitation de votre gérant
+          Mode hors ligne · Pour le mode en ligne, utilisez le lien d&apos;invitation
+          de votre gérant
         </Text>
       </View>
     </View>
@@ -166,7 +179,10 @@ function PhoneScreen({
             <Text style={styles.countryCode}>+226</Text>
           </View>
           <TextInput
-            style={[styles.textInput, phone.length > 0 && styles.textInputFilled]}
+            style={[
+              styles.textInput,
+              phone.length > 0 && styles.textInputFilled,
+            ]}
             placeholder="70 11 22 33"
             placeholderTextColor={T.textTertiary}
             value={phone}
@@ -175,10 +191,11 @@ function PhoneScreen({
             maxLength={8}
           />
         </View>
-        <Text style={styles.inputNote}>Un SMS de vérification vous sera envoyé</Text>
+        <Text style={styles.inputNote}>
+          Un SMS de vérification vous sera envoyé
+        </Text>
         {error ? <Text style={styles.errorText}>{error}</Text> : null}
       </View>
-
 
       <View style={styles.spacer} />
       <PrimaryButton
@@ -209,7 +226,11 @@ function ProfileScreen({
   initials: string;
 }) {
   return (
-    <ScrollView style={styles.screenInner} contentContainerStyle={styles.screenInnerContent} showsVerticalScrollIndicator={false}>
+    <ScrollView
+      style={styles.screenInner}
+      contentContainerStyle={styles.screenInnerContent}
+      showsVerticalScrollIndicator={false}
+    >
       <BackRow onPress={onBack} />
       <StepDots current={3} />
 
@@ -233,7 +254,11 @@ function ProfileScreen({
       <View style={styles.fieldGroup}>
         <Text style={styles.fieldLabel}>Nom complet</Text>
         <TextInput
-          style={[styles.textInput, styles.textInputFull, name.length > 0 && styles.textInputFilled]}
+          style={[
+            styles.textInput,
+            styles.textInputFull,
+            name.length > 0 && styles.textInputFilled,
+          ]}
           placeholder="Konaté Djibril"
           placeholderTextColor={T.textTertiary}
           value={name}
@@ -244,33 +269,63 @@ function ProfileScreen({
 
       {/* Role selector */}
       <View style={styles.fieldGroup}>
-        <Text style={styles.fieldLabel}>Rôle dans l'organisation</Text>
+        <Text style={styles.fieldLabel}>Rôle dans l&apos;organisation</Text>
         <View style={styles.roleSelector}>
           <Pressable
             onPress={() => setRole("agent")}
-            style={[styles.roleCard, role === "agent" && styles.roleCardSelected]}
+            style={[
+              styles.roleCard,
+              role === "agent" && styles.roleCardSelected,
+            ]}
           >
-            <View style={[styles.roleIcon, role === "agent" && styles.roleIconSelected]}>
-              <User size={15} color={role === "agent" ? T.orange : T.textSecondary} />
+            <View
+              style={[
+                styles.roleIcon,
+                role === "agent" && styles.roleIconSelected,
+              ]}
+            >
+              <User
+                size={15}
+                color={role === "agent" ? T.orange : T.textSecondary}
+              />
             </View>
             <Text style={styles.roleName}>Agent</Text>
-            <Text style={styles.roleDesc}>Collecte et gestion de clients sur le terrain</Text>
+            <Text style={styles.roleDesc}>
+              Collecte et gestion de clients sur le terrain
+            </Text>
           </Pressable>
 
           <Pressable
             onPress={() => setRole("admin")}
-            style={[styles.roleCard, role === "admin" && styles.roleCardSelected]}
+            style={[
+              styles.roleCard,
+              role === "admin" && styles.roleCardSelected,
+            ]}
           >
-            <View style={[styles.roleIcon, role === "admin" && styles.roleIconSelected]}>
-              <Star size={15} color={role === "admin" ? T.orange : T.textSecondary} />
+            <View
+              style={[
+                styles.roleIcon,
+                role === "admin" && styles.roleIconSelected,
+              ]}
+            >
+              <Star
+                size={15}
+                color={role === "admin" ? T.orange : T.textSecondary}
+              />
             </View>
             <Text style={styles.roleName}>Administrateur</Text>
-            <Text style={styles.roleDesc}>Accès complet et gestion des permissions</Text>
+            <Text style={styles.roleDesc}>
+              Accès complet et gestion des permissions
+            </Text>
           </Pressable>
         </View>
       </View>
 
-      <PrimaryButton label="Continuer →" onPress={onNext} disabled={!name.trim()} />
+      <PrimaryButton
+        label="Continuer →"
+        onPress={onNext}
+        disabled={!name.trim()}
+      />
       <View style={{ height: 24 }} />
     </ScrollView>
   );
@@ -312,14 +367,21 @@ function PinScreen({
 
       <View style={styles.pinDots}>
         {Array.from({ length: 4 }).map((_, i) => (
-          <View key={i} style={[styles.pinDot, i < pin.length && styles.pinDotFilled]} />
+          <View
+            key={i}
+            style={[styles.pinDot, i < pin.length && styles.pinDotFilled]}
+          />
         ))}
       </View>
       <Text style={styles.pinHint}>Entrez 4 chiffres</Text>
-      {error ? <Text style={[styles.errorText, { textAlign: "center" }]}>{error}</Text> : null}
+      {error ? (
+        <Text style={[styles.errorText, { textAlign: "center" }]}>{error}</Text>
+      ) : null}
 
       <Numpad
-        onPress={(digit) => { if (pin.length < 4) setPin(pin + digit); }}
+        onPress={(digit) => {
+          if (pin.length < 4) setPin(pin + digit);
+        }}
         onDelete={() => setPin(pin.slice(0, -1))}
         accentColor={T.orange}
       />
@@ -368,7 +430,10 @@ function SuccessScreen({
       <View style={styles.summaryCard}>
         {[
           { label: "Téléphone", value: `+226 ${phone}` },
-          { label: "Rôle", value: role === "admin" ? "Administrateur" : "Agent" },
+          {
+            label: "Rôle",
+            value: role === "admin" ? "Administrateur" : "Agent",
+          },
           { label: "Code PIN", value: "●●●●" },
           { label: "Mode", value: "Hors ligne activé" },
         ].map(({ label, value }) => (
@@ -379,7 +444,10 @@ function SuccessScreen({
         ))}
       </View>
 
-      <PrimaryButton label="Accéder au tableau de bord →" onPress={onGoToDashboard} />
+      <PrimaryButton
+        label="Accéder au tableau de bord →"
+        onPress={onGoToDashboard}
+      />
     </View>
   );
 }
@@ -400,8 +468,7 @@ export default function OnboardingScreen() {
   const [phoneError, setPhoneError] = useState("");
   const [pinError, setPinError] = useState("");
 
-  const normalizePhone = (p: string) =>
-    /^[0-9]{8}$/.test(p) ? `+226${p}` : p;
+  const normalizePhone = (p: string) => (/^[0-9]{8}$/.test(p) ? `+226${p}` : p);
 
   const initials = name
     .trim()
@@ -523,7 +590,12 @@ const styles = StyleSheet.create({
   dotActive: { width: 18, backgroundColor: T.orange, opacity: 1 },
 
   // Back row
-  backRow: { flexDirection: "row", alignItems: "center", gap: 4, marginBottom: 20 },
+  backRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 4,
+    marginBottom: 20,
+  },
   backText: { fontSize: 13, color: T.textTertiary },
 
   // ── Welcome ──
@@ -603,7 +675,12 @@ const styles = StyleSheet.create({
   },
 
   // ── Inner screens ──
-  screenInner: { flex: 1, backgroundColor: T.bgPrimary, padding: 22, paddingTop: 16 },
+  screenInner: {
+    flex: 1,
+    backgroundColor: T.bgPrimary,
+    padding: 22,
+    paddingTop: 16,
+  },
   screenInnerContent: { paddingBottom: 32 },
   screenTitle: {
     fontSize: 22,
@@ -661,7 +738,12 @@ const styles = StyleSheet.create({
   textInputFilled: { borderColor: T.orange, backgroundColor: T.orangeLight },
   inputNote: { fontSize: 11, color: T.textTertiary, marginTop: 6 },
   errorText: { fontSize: 12, color: T.orangeDark, marginTop: 6 },
-  dividerOr: { flexDirection: "row", alignItems: "center", gap: 10, marginVertical: 20 },
+  dividerOr: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 10,
+    marginVertical: 20,
+  },
   dividerLine: { flex: 1, height: 0.5, backgroundColor: T.border },
   dividerText: { fontSize: 11, color: T.textTertiary },
   emailAlt: {
@@ -725,11 +807,24 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     alignItems: "center",
   },
-  otpBoxActive: { borderWidth: 1.5, borderColor: T.orange, backgroundColor: T.orangeLight },
+  otpBoxActive: {
+    borderWidth: 1.5,
+    borderColor: T.orange,
+    backgroundColor: T.orangeLight,
+  },
   otpBoxFilled: { borderColor: T.orange },
   otpBoxText: { fontSize: 22, fontWeight: "600", color: T.textPrimary },
-  otpMeta: { fontSize: 12, color: T.textTertiary, textAlign: "center", marginBottom: 8 },
-  resendRow: { flexDirection: "row", justifyContent: "center", alignItems: "center" },
+  otpMeta: {
+    fontSize: 12,
+    color: T.textTertiary,
+    textAlign: "center",
+    marginBottom: 8,
+  },
+  resendRow: {
+    flexDirection: "row",
+    justifyContent: "center",
+    alignItems: "center",
+  },
   resendText: { fontSize: 12, color: T.textTertiary },
   resendLink: { fontSize: 12, color: T.orange },
 
@@ -795,7 +890,12 @@ const styles = StyleSheet.create({
     backgroundColor: "transparent",
   },
   pinDotFilled: { backgroundColor: T.orange, borderColor: T.orange },
-  pinHint: { fontSize: 11, color: T.textTertiary, marginBottom: 28, textAlign: "center" },
+  pinHint: {
+    fontSize: 11,
+    color: T.textTertiary,
+    marginBottom: 28,
+    textAlign: "center",
+  },
   // ── Success screen ──
   screenSuccess: {
     flex: 1,

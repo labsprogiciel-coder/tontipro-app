@@ -98,7 +98,10 @@ function HoldToConfirm({
       onPressIn={startHold}
       onPressOut={cancelHold}
       disabled={disabled}
-      style={[s.holdBtn, { backgroundColor: accentColor, opacity: disabled ? 0.5 : 1 }]}
+      style={[
+        s.holdBtn,
+        { backgroundColor: accentColor, opacity: disabled ? 0.5 : 1 },
+      ]}
     >
       <Animated.View
         style={[
@@ -126,7 +129,7 @@ const TransactionEntryScreen = () => {
   const allClients = useClientStore((s) => s.clients);
   const loadClients = useClientStore((s) => s.loadClients);
   const selectedClient = useClientStore((s) =>
-    clientId ? s.clients.find((c) => c.id === clientId) ?? null : null
+    clientId ? (s.clients.find((c) => c.id === clientId) ?? null) : null,
   );
 
   const { addTransaction } = useTransactionStore();
@@ -150,7 +153,7 @@ const TransactionEntryScreen = () => {
       allClients.find((c) => c.id === currentSelectedClientId) ??
       selectedClient ??
       null,
-    [allClients, currentSelectedClientId, selectedClient]
+    [allClients, currentSelectedClientId, selectedClient],
   );
 
   const filteredClients = useMemo(() => {
@@ -175,7 +178,7 @@ const TransactionEntryScreen = () => {
   useFocusEffect(
     useCallback(() => {
       loadClients();
-    }, [loadClients])
+    }, [loadClients]),
   );
 
   useEffect(() => {
@@ -200,8 +203,7 @@ const TransactionEntryScreen = () => {
     setType(t);
   };
 
-  const displayName =
-    currentSelectedClient?.name ?? "Sélectionner un client";
+  const displayName = currentSelectedClient?.name ?? "Sélectionner un client";
   const displayInitials = currentSelectedClient
     ? currentSelectedClient.name
         .split(" ")
@@ -217,8 +219,8 @@ const TransactionEntryScreen = () => {
     commitment && commitment > 0
       ? [1, 2, 3, 5, 10].map((m) => String(m * commitment))
       : isDeposit
-      ? DEPOSIT_CHIPS
-      : WITHDRAW_CHIPS;
+        ? DEPOSIT_CHIPS
+        : WITHDRAW_CHIPS;
 
   const numericAmount = parseInt(amount || "0", 10);
   const balanceAfterWithdraw = displayBalance - numericAmount;
@@ -226,7 +228,10 @@ const TransactionEntryScreen = () => {
 
   const formattedAmount = numericAmount.toLocaleString("fr-FR");
   const formattedBalance = displayBalance.toLocaleString("fr-FR");
-  const formattedBalanceAfter = Math.max(0, balanceAfterWithdraw).toLocaleString("fr-FR");
+  const formattedBalanceAfter = Math.max(
+    0,
+    balanceAfterWithdraw,
+  ).toLocaleString("fr-FR");
 
   const handleNumpad = (digit: string) => {
     setAmount((prev) => (prev === "0" ? digit : prev + digit));
@@ -258,7 +263,7 @@ const TransactionEntryScreen = () => {
     } catch {
       Alert.alert(
         "Erreur",
-        "Impossible d'enregistrer la transaction. Veuillez réessayer."
+        "Impossible d'enregistrer la transaction. Veuillez réessayer.",
       );
     } finally {
       setIsLoading(false);
@@ -275,7 +280,10 @@ const TransactionEntryScreen = () => {
       >
         {/* Back row */}
         <View style={styles.backRow}>
-          <TouchableOpacity style={styles.backBtn} onPress={() => router.back()}>
+          <TouchableOpacity
+            style={styles.backBtn}
+            onPress={() => router.back()}
+          >
             <Text style={styles.backChevron}>‹</Text>
           </TouchableOpacity>
           <Text style={styles.backLabel}>
@@ -331,7 +339,9 @@ const TransactionEntryScreen = () => {
             <Text style={styles.warningIcon}>⚠</Text>
             <Text style={styles.warningText}>
               Solde restant après retrait :{" "}
-              <Text style={styles.warningBold}>{formattedBalanceAfter} FCFA</Text>
+              <Text style={styles.warningBold}>
+                {formattedBalanceAfter} FCFA
+              </Text>
             </Text>
           </View>
         )}
@@ -345,7 +355,10 @@ const TransactionEntryScreen = () => {
                 key={val}
                 style={[
                   styles.chip,
-                  isActive && { borderColor: accentColor, backgroundColor: accentLt },
+                  isActive && {
+                    borderColor: accentColor,
+                    backgroundColor: accentLt,
+                  },
                 ]}
                 onPress={() => setAmount(val)}
               >
@@ -363,13 +376,17 @@ const TransactionEntryScreen = () => {
         </View>
 
         {/* Numpad */}
-        <Numpad onPress={handleNumpad} onDelete={handleDelete} accentColor={accentColor} />
+        <Numpad
+          onPress={handleNumpad}
+          onDelete={handleDelete}
+          accentColor={accentColor}
+        />
 
         {/* Permission denied notice */}
         {!actionAllowed && (
           <View style={styles.permDenied}>
             <Text style={styles.permDeniedText}>
-              🔒 Vous n'avez pas la permission d'effectuer des{" "}
+              🔒 Vous n&apos;avez pas la permission d&apos;effectuer des{" "}
               {isDeposit ? "dépôts" : "retraits"}.
             </Text>
           </View>
@@ -377,7 +394,9 @@ const TransactionEntryScreen = () => {
 
         {/* Hold-to-confirm */}
         <HoldToConfirm
-          label={isDeposit ? "↓  Confirmer le dépôt" : "↑  Confirmer le retrait"}
+          label={
+            isDeposit ? "↓  Confirmer le dépôt" : "↑  Confirmer le retrait"
+          }
           accentColor={accentColor}
           onConfirm={handleAddTransaction}
           disabled={
@@ -407,7 +426,10 @@ const TransactionEntryScreen = () => {
                   styles.searchTypeBtn,
                   searchType === "name" && styles.searchTypeBtnActive,
                 ]}
-                onPress={() => { setSearchType("name"); setSearchQuery(""); }}
+                onPress={() => {
+                  setSearchType("name");
+                  setSearchQuery("");
+                }}
               >
                 <Text
                   style={[
@@ -423,7 +445,10 @@ const TransactionEntryScreen = () => {
                   styles.searchTypeBtn,
                   searchType === "code" && styles.searchTypeBtnActive,
                 ]}
-                onPress={() => { setSearchType("code"); setSearchQuery(""); }}
+                onPress={() => {
+                  setSearchType("code");
+                  setSearchQuery("");
+                }}
               >
                 <Text
                   style={[
@@ -523,7 +548,9 @@ const TransactionEntryScreen = () => {
               {successTx && (
                 <SuccessReceipt
                   amount={successTx.amount.toLocaleString("fr-FR")}
-                  type={successTx.type === "withdrawal" ? "withdraw" : "deposit"}
+                  type={
+                    successTx.type === "withdrawal" ? "withdraw" : "deposit"
+                  }
                   reference={successTx.id}
                   clientName={successTx.clientName}
                   balanceAfter={(
@@ -535,7 +562,10 @@ const TransactionEntryScreen = () => {
               )}
               <TouchableOpacity
                 style={[styles.doneBtn, { backgroundColor: accentColor }]}
-                onPress={() => { setSuccessTx(null); router.back(); }}
+                onPress={() => {
+                  setSuccessTx(null);
+                  router.back();
+                }}
               >
                 <Text style={styles.doneBtnText}>Terminer</Text>
               </TouchableOpacity>
@@ -600,7 +630,12 @@ const styles = StyleSheet.create({
     paddingHorizontal: 18,
   },
   amountLabel: { fontSize: 12, color: T.text3, marginBottom: 6 },
-  amountValue: { fontSize: 42, fontWeight: "600", letterSpacing: -1.3, lineHeight: 44 },
+  amountValue: {
+    fontSize: 42,
+    fontWeight: "600",
+    letterSpacing: -1.3,
+    lineHeight: 44,
+  },
   currency: { fontSize: 18, fontWeight: "400", color: T.text3 },
 
   warningPill: {
@@ -746,7 +781,12 @@ const styles = StyleSheet.create({
     textAlign: "center",
     marginBottom: 16,
   },
-  doneBtn: { marginTop: 4, padding: 15, borderRadius: 13, alignItems: "center" },
+  doneBtn: {
+    marginTop: 4,
+    padding: 15,
+    borderRadius: 13,
+    alignItems: "center",
+  },
   doneBtnText: { color: "#fff", fontSize: 15, fontWeight: "600" },
 });
 
@@ -781,4 +821,3 @@ const s = StyleSheet.create({
     bottom: 8,
   },
 });
-

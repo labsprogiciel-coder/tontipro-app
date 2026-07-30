@@ -1,19 +1,18 @@
-
-import { StatusVariant } from '@/constants/utils';
-import React from 'react';
-import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
+import { StatusVariant } from "@/constants/utils";
+import React from "react";
+import { View, Text, StyleSheet, TouchableOpacity } from "react-native";
 
 // 1. Add 'as const' so TS knows the exact values
 export const avatarColors = {
-  info: { bg: '#e6f1fb', text: '#185fa5' },
-  warning: { bg: '#faeeda', text: '#854f0b' },
-  success: { bg: '#eaf3de', text: '#3b6d11' },
+  info: { bg: "#e6f1fb", text: "#185fa5" },
+  warning: { bg: "#faeeda", text: "#854f0b" },
+  success: { bg: "#eaf3de", text: "#3b6d11" },
 } as const;
 
 export const badgeColors = {
-  Actif: { bg: '#eaf3de', text: '#3b6d11' },
-  Retard: { bg: '#FAE8E0', text: '#993C1D' },
-  Neutre: { bg: '#f5f4f0', text: '#5f5e5a' },
+  Actif: { bg: "#eaf3de", text: "#3b6d11" },
+  Retard: { bg: "#FAE8E0", text: "#993C1D" },
+  Neutre: { bg: "#f5f4f0", text: "#5f5e5a" },
 } as const;
 
 interface ClientCardProps {
@@ -68,25 +67,25 @@ const ClientCard: React.FC<ClientCardProps> = ({
 
 const styles = StyleSheet.create({
   card: {
-    backgroundColor: '#ffffff', // --color-background-primary
+    backgroundColor: "#ffffff", // --color-background-primary
     borderRadius: 14,
     padding: 13,
     marginBottom: 8,
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     borderWidth: 0.5,
-    borderColor: 'rgba(0,0,0,0.1)', // --color-border-tertiary
+    borderColor: "rgba(0,0,0,0.1)", // --color-border-tertiary
   },
   avatar: {
     width: 42,
     height: 42,
     borderRadius: 21,
-    justifyContent: 'center',
-    alignItems: 'center',
+    justifyContent: "center",
+    alignItems: "center",
   },
   avatarText: {
     fontSize: 14,
-    fontWeight: '500',
+    fontWeight: "500",
   },
   infoContainer: {
     marginLeft: 12,
@@ -94,21 +93,21 @@ const styles = StyleSheet.create({
   },
   nameText: {
     fontSize: 14,
-    fontWeight: '500',
-    color: '#1a1a18', // --color-text-primary
+    fontWeight: "500",
+    color: "#1a1a18", // --color-text-primary
   },
   phoneText: {
     fontSize: 11,
-    color: '#5f5e5a', // --color-text-secondary
+    color: "#5f5e5a", // --color-text-secondary
     marginTop: 1,
   },
   rightContainer: {
-    alignItems: 'flex-end',
+    alignItems: "flex-end",
   },
   amountText: {
     fontSize: 13,
-    fontWeight: '500',
-    color: '#1a1a18',
+    fontWeight: "500",
+    color: "#1a1a18",
   },
   badge: {
     paddingHorizontal: 7,

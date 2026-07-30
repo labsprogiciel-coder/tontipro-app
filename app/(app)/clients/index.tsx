@@ -1,24 +1,30 @@
 // app/(app)/clients/index.tsx
-import React, { useMemo, useState, useCallback } from 'react';
-import { FlatList, View, Text, StyleSheet, TouchableOpacity } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
-import { useFocusEffect } from 'expo-router';
-import { useClientStore } from '@/stores/client-store';
-import { useRouter } from 'expo-router';
-import { ArrowUp, ArrowDown, ChevronLeft } from 'lucide-react-native';
-import { KAURIDORR_THEME } from '@/constants/colors';
-import SearchInput from '../../components/quickactions/search-input';
+import React, { useMemo, useState, useCallback } from "react";
+import {
+  FlatList,
+  View,
+  Text,
+  StyleSheet,
+  TouchableOpacity,
+} from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
+import { useFocusEffect } from "expo-router";
+import { useClientStore } from "@/stores/client-store";
+import { useRouter } from "expo-router";
+import { ArrowUp, ArrowDown, ChevronLeft } from "lucide-react-native";
+import { KAURIDORR_THEME } from "@/constants/colors";
+import SearchInput from "../../components/quickactions/search-input";
 
 const T = KAURIDORR_THEME;
 
-type SortOrder = 'desc' | 'asc';
-type SearchType = 'name' | 'code';
+type SortOrder = "desc" | "asc";
+type SearchType = "name" | "code";
 
 export const ClientsScreen: React.FC = () => {
   const router = useRouter();
-  const [searchQuery, setSearchQuery] = useState('');
-  const [sortOrder, setSortOrder] = useState<SortOrder>('desc');
-  const [searchType, setSearchType] = useState<SearchType>('name');
+  const [searchQuery, setSearchQuery] = useState("");
+  const [sortOrder, setSortOrder] = useState<SortOrder>("desc");
+  const [searchType, setSearchType] = useState<SearchType>("name");
   const clients = useClientStore((state) => state.clients);
   // Clients list — loads from Convex via useClientStore
   const loadClients = useClientStore((state) => state.loadClientsFromConvex);
@@ -27,23 +33,26 @@ export const ClientsScreen: React.FC = () => {
   useFocusEffect(
     useCallback(() => {
       loadClients();
-    }, [loadClients])
+    }, [loadClients]),
   );
 
   const filteredClients = useMemo(() => {
     const q = searchQuery.toLowerCase();
     const result = clients.filter((c) => {
-      if (searchType === 'name') {
+      if (searchType === "name") {
         // `name` is still the local Client field (mapped from fullName in store)
-        return c.name.toLowerCase().includes(q) || c.phone.includes(searchQuery);
-      } else if (searchType === 'code') {
+        return (
+          c.name.toLowerCase().includes(q) || c.phone.includes(searchQuery)
+        );
+      } else if (searchType === "code") {
         return c.accountNumber?.toLowerCase().includes(q) || false;
       }
       return false;
     });
     result.sort((a, b) => {
-      const diff = new Date(a.joinDate).getTime() - new Date(b.joinDate).getTime();
-      return sortOrder === 'desc' ? -diff : diff;
+      const diff =
+        new Date(a.joinDate).getTime() - new Date(b.joinDate).getTime();
+      return sortOrder === "desc" ? -diff : diff;
     });
     return result;
   }, [clients, searchQuery, sortOrder, searchType]);
@@ -54,14 +63,25 @@ export const ClientsScreen: React.FC = () => {
       onPress={() => router.push(`/(app)/clients/${item.id}`)}
     >
       <View style={styles.avatar}>
-        <Text style={styles.avatarText}>{item.name.substring(0, 2).toUpperCase()}</Text>
+        <Text style={styles.avatarText}>
+          {item.name.substring(0, 2).toUpperCase()}
+        </Text>
       </View>
       <View style={{ flex: 1 }}>
-        <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 4 }}>
+        <View
+          style={{
+            flexDirection: "row",
+            alignItems: "center",
+            justifyContent: "space-between",
+            marginBottom: 4,
+          }}
+        >
           <Text style={styles.name}>{item.name}</Text>
-          <Text style={styles.balance}>{item.balance.toLocaleString('fr-FR')} F</Text>
+          <Text style={styles.balance}>
+            {item.balance.toLocaleString("fr-FR")} F
+          </Text>
         </View>
-        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+        <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
           {item.accountNumber && (
             <Text style={styles.code}>{item.accountNumber}</Text>
           )}
@@ -74,31 +94,67 @@ export const ClientsScreen: React.FC = () => {
     <SafeAreaView style={styles.container} edges={["top"]}>
       <View style={styles.titleRow}>
         <View style={styles.titleLeft}>
-          <TouchableOpacity style={styles.backBtn} onPress={() => router.back()}>
+          <TouchableOpacity
+            style={styles.backBtn}
+            onPress={() => router.back()}
+          >
             <ChevronLeft size={18} color={T.text2} strokeWidth={2} />
           </TouchableOpacity>
           <Text style={styles.title}>Mes Clients</Text>
         </View>
-        <TouchableOpacity style={styles.sortBtn} onPress={() => setSortOrder(o => o === 'desc' ? 'asc' : 'desc')}>
-          {sortOrder === 'desc'
-            ? <ArrowDown size={13} color={T.orange} strokeWidth={2} />
-            : <ArrowUp size={13} color={T.orange} strokeWidth={2} />}
-          <Text style={styles.sortLabel}>{sortOrder === 'desc' ? 'Plus récent' : 'Plus ancien'}</Text>
+        <TouchableOpacity
+          style={styles.sortBtn}
+          onPress={() => setSortOrder((o) => (o === "desc" ? "asc" : "desc"))}
+        >
+          {sortOrder === "desc" ? (
+            <ArrowDown size={13} color={T.orange} strokeWidth={2} />
+          ) : (
+            <ArrowUp size={13} color={T.orange} strokeWidth={2} />
+          )}
+          <Text style={styles.sortLabel}>
+            {sortOrder === "desc" ? "Plus récent" : "Plus ancien"}
+          </Text>
         </TouchableOpacity>
       </View>
 
       <View style={styles.searchTypeRow}>
         <TouchableOpacity
-          style={[styles.searchTypeBtn, searchType === 'name' && styles.searchTypeBtnActive]}
-          onPress={() => { setSearchType('name'); setSearchQuery(''); }}
+          style={[
+            styles.searchTypeBtn,
+            searchType === "name" && styles.searchTypeBtnActive,
+          ]}
+          onPress={() => {
+            setSearchType("name");
+            setSearchQuery("");
+          }}
         >
-          <Text style={[styles.searchTypeText, searchType === 'name' && styles.searchTypeTextActive]}>Par nom</Text>
+          <Text
+            style={[
+              styles.searchTypeText,
+              searchType === "name" && styles.searchTypeTextActive,
+            ]}
+          >
+            Par nom
+          </Text>
         </TouchableOpacity>
         <TouchableOpacity
-          style={[styles.searchTypeBtn, searchType === 'code' && styles.searchTypeBtnActive]}
-          onPress={() => { setSearchType('code'); setSearchQuery(''); }}
+          style={[
+            styles.searchTypeBtn,
+            searchType === "code" && styles.searchTypeBtnActive,
+          ]}
+          onPress={() => {
+            setSearchType("code");
+            setSearchQuery("");
+          }}
         >
-          <Text style={[styles.searchTypeText, searchType === 'code' && styles.searchTypeTextActive]}>Par code</Text>
+          <Text
+            style={[
+              styles.searchTypeText,
+              searchType === "code" && styles.searchTypeTextActive,
+            ]}
+          >
+            Par code
+          </Text>
         </TouchableOpacity>
       </View>
 
@@ -112,14 +168,22 @@ export const ClientsScreen: React.FC = () => {
 
       {searchQuery.length > 0 && filteredClients.length === 0 && (
         <View style={styles.noResultContainer}>
-          <Text style={styles.noResultText}>Ce client n'existe pas, voulez-vous l'ajouter&nbsp;?</Text>
+          <Text style={styles.noResultText}>
+            Ce client n&apos;existe pas, voulez-vous l&apos;ajouter&nbsp;?
+          </Text>
           <TouchableOpacity
             style={styles.addBtn}
             onPress={() => {
-              if (searchType === 'code') {
-                router.push({ pathname: '/(app)/clients/add', params: { code: searchQuery } });
+              if (searchType === "code") {
+                router.push({
+                  pathname: "/(app)/clients/add",
+                  params: { code: searchQuery },
+                });
               } else {
-                router.push({ pathname: '/(app)/clients/add', params: { name: searchQuery } });
+                router.push({
+                  pathname: "/(app)/clients/add",
+                  params: { name: searchQuery },
+                });
               }
             }}
           >
@@ -131,7 +195,7 @@ export const ClientsScreen: React.FC = () => {
       <FlatList
         data={filteredClients}
         renderItem={renderClient}
-        keyExtractor={item => item.id}
+        keyExtractor={(item) => item.id}
         ListEmptyComponent={
           searchQuery.length === 0 ? (
             <View style={styles.emptyContainer}>
@@ -139,8 +203,14 @@ export const ClientsScreen: React.FC = () => {
                 <Text style={styles.emptyIcon}>👤</Text>
               </View>
               <Text style={styles.emptyTitle}>Aucun client</Text>
-              <Text style={styles.emptySubtitle}>Ajoutez votre premier client pour commencer à gérer vos épargnes.</Text>
-              <TouchableOpacity style={styles.addBtn} onPress={() => router.push('/(app)/clients/add')}>
+              <Text style={styles.emptySubtitle}>
+                Ajoutez votre premier client pour commencer à gérer vos
+                épargnes.
+              </Text>
+              <TouchableOpacity
+                style={styles.addBtn}
+                onPress={() => router.push("/(app)/clients/add")}
+              >
                 <Text style={styles.addBtnText}>Ajouter un client</Text>
               </TouchableOpacity>
             </View>
@@ -155,7 +225,7 @@ export default ClientsScreen;
 
 const styles = StyleSheet.create({
   noResultContainer: {
-    alignItems: 'center',
+    alignItems: "center",
     marginVertical: 24,
     marginHorizontal: 24,
     padding: 18,
@@ -168,7 +238,7 @@ const styles = StyleSheet.create({
     fontSize: 15,
     color: T.text3,
     marginBottom: 12,
-    textAlign: 'center',
+    textAlign: "center",
   },
   addBtn: {
     backgroundColor: T.orange,
@@ -177,27 +247,64 @@ const styles = StyleSheet.create({
     borderRadius: 8,
   },
   addBtnText: {
-    color: '#fff',
-    fontWeight: '700',
+    color: "#fff",
+    fontWeight: "700",
     fontSize: 15,
   },
   container: { flex: 1, backgroundColor: T.bg },
-  titleRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 18, paddingVertical: 12 },
-  titleLeft: { flexDirection: 'row', alignItems: 'center', gap: 8 },
-  backBtn: { width: 30, height: 30, borderRadius: 15, alignItems: 'center', justifyContent: 'center', backgroundColor: T.bg2, borderWidth: 0.5, borderColor: T.border },
-  title: { fontSize: 22, fontWeight: '700' },
-  sortBtn: { flexDirection: 'row', alignItems: 'center', gap: 4, backgroundColor: T.orangeLt, paddingHorizontal: 10, paddingVertical: 5, borderRadius: 20 },
-  sortLabel: { fontSize: 11, fontWeight: '500', color: T.orange },
+  titleRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    paddingHorizontal: 18,
+    paddingVertical: 12,
+  },
+  titleLeft: { flexDirection: "row", alignItems: "center", gap: 8 },
+  backBtn: {
+    width: 30,
+    height: 30,
+    borderRadius: 15,
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: T.bg2,
+    borderWidth: 0.5,
+    borderColor: T.border,
+  },
+  title: { fontSize: 22, fontWeight: "700" },
+  sortBtn: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 4,
+    backgroundColor: T.orangeLt,
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+    borderRadius: 20,
+  },
+  sortLabel: { fontSize: 11, fontWeight: "500", color: T.orange },
 
-  searchTypeRow: { flexDirection: 'row', gap: 8, paddingHorizontal: 18, paddingVertical: 8 },
-  searchTypeBtn: { flex: 1, paddingVertical: 8, paddingHorizontal: 12, borderRadius: 8, borderWidth: 1, borderColor: T.border, backgroundColor: T.bg2, alignItems: 'center' },
+  searchTypeRow: {
+    flexDirection: "row",
+    gap: 8,
+    paddingHorizontal: 18,
+    paddingVertical: 8,
+  },
+  searchTypeBtn: {
+    flex: 1,
+    paddingVertical: 8,
+    paddingHorizontal: 12,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: T.border,
+    backgroundColor: T.bg2,
+    alignItems: "center",
+  },
   searchTypeBtnActive: { borderColor: T.orange, backgroundColor: T.orangeLt },
-  searchTypeText: { fontSize: 12, fontWeight: '600', color: T.text3 },
+  searchTypeText: { fontSize: 12, fontWeight: "600", color: T.text3 },
   searchTypeTextActive: { color: T.orange },
 
   clientCard: {
-    flexDirection: 'row',
-    alignItems: 'flex-start',
+    flexDirection: "row",
+    alignItems: "flex-start",
     padding: 14,
     marginHorizontal: 18,
     marginBottom: 8,
@@ -207,7 +314,7 @@ const styles = StyleSheet.create({
     borderColor: T.border,
   },
   emptyContainer: {
-    alignItems: 'center',
+    alignItems: "center",
     marginTop: 60,
     paddingHorizontal: 32,
   },
@@ -216,25 +323,48 @@ const styles = StyleSheet.create({
     height: 72,
     borderRadius: 36,
     backgroundColor: T.orangeLt,
-    alignItems: 'center',
-    justifyContent: 'center',
+    alignItems: "center",
+    justifyContent: "center",
     marginBottom: 16,
   },
   emptyIcon: { fontSize: 30 },
-  emptyTitle: { fontSize: 18, fontWeight: '700', color: T.text1, marginBottom: 8 },
-  emptySubtitle: { fontSize: 13, color: T.text3, textAlign: 'center', lineHeight: 20, marginBottom: 24 },
+  emptyTitle: {
+    fontSize: 18,
+    fontWeight: "700",
+    color: T.text1,
+    marginBottom: 8,
+  },
+  emptySubtitle: {
+    fontSize: 13,
+    color: T.text3,
+    textAlign: "center",
+    lineHeight: 20,
+    marginBottom: 24,
+  },
   searchInputWrapper: { paddingHorizontal: 20 },
 
   avatar: {
-    width: 44, height: 44, borderRadius: 22,
+    width: 44,
+    height: 44,
+    borderRadius: 22,
     backgroundColor: T.orangeLt,
-    justifyContent: 'center', alignItems: 'center',
+    justifyContent: "center",
+    alignItems: "center",
     marginRight: 12,
     marginTop: 2,
   },
-  avatarText: { color: T.orange, fontWeight: '700', fontSize: 14 },
-  name: { fontSize: 15, fontWeight: '600', color: T.text1, flex: 1 },
-  code: { fontSize: 11, fontWeight: '600', color: T.orange, backgroundColor: T.orangeLt, paddingHorizontal: 8, paddingVertical: 4, borderRadius: 6, alignSelf: 'flex-start' },
+  avatarText: { color: T.orange, fontWeight: "700", fontSize: 14 },
+  name: { fontSize: 15, fontWeight: "600", color: T.text1, flex: 1 },
+  code: {
+    fontSize: 11,
+    fontWeight: "600",
+    color: T.orange,
+    backgroundColor: T.orangeLt,
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 6,
+    alignSelf: "flex-start",
+  },
   phone: { fontSize: 12, color: T.text3, flex: 1 },
-  balance: { fontSize: 14, fontWeight: '700', color: T.text1 },
+  balance: { fontSize: 14, fontWeight: "700", color: T.text1 },
 });

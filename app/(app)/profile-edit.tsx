@@ -49,7 +49,11 @@ export default function ProfileEditScreen() {
     }
     setSaving(true);
     try {
-      await updateUser({ name: trimmedName, phone: phone.trim(), email: email.trim() });
+      await updateUser({
+        name: trimmedName,
+        phone: phone.trim(),
+        email: email.trim(),
+      });
       router.back();
     } catch {
       Alert.alert("Erreur", "Impossible de mettre à jour le profil.");
@@ -133,7 +137,11 @@ export default function ProfileEditScreen() {
 
           {/* Save button */}
           <Pressable
-            style={({ pressed }) => [styles.saveBtn, pressed && styles.saveBtnPressed, saving && styles.saveBtnDisabled]}
+            style={({ pressed }) => [
+              styles.saveBtn,
+              pressed && styles.saveBtnPressed,
+              saving && styles.saveBtnDisabled,
+            ]}
             onPress={handleSave}
             disabled={saving}
           >
@@ -160,7 +168,13 @@ const styles = StyleSheet.create({
     borderBottomColor: T.border,
   },
   backBtn: { padding: 4 },
-  headerTitle: { flex: 1, textAlign: "center", fontSize: 16, fontWeight: "600", color: T.text1 },
+  headerTitle: {
+    flex: 1,
+    textAlign: "center",
+    fontSize: 16,
+    fontWeight: "600",
+    color: T.text1,
+  },
   headerSpacer: { width: 30 },
 
   content: { padding: 20, paddingBottom: 40 },
@@ -178,7 +192,13 @@ const styles = StyleSheet.create({
 
   form: { gap: 16, marginBottom: 28 },
   fieldGroup: { gap: 6 },
-  label: { fontSize: 11, fontWeight: "600", color: T.text3, textTransform: "uppercase", letterSpacing: 0.5 },
+  label: {
+    fontSize: 11,
+    fontWeight: "600",
+    color: T.text3,
+    textTransform: "uppercase",
+    letterSpacing: 0.5,
+  },
   input: {
     backgroundColor: T.bg,
     borderWidth: 0.5,

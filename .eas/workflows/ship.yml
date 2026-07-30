@@ -32,5 +32,5 @@ jobs:
     params:
       platform: android
       profile: preview
-  
+
   ## repeat the get build -> update / build steps for iOS

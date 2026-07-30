@@ -12,7 +12,7 @@
  *   export-done    → done
  */
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect } from "react";
 import {
   View,
   Text,
@@ -21,8 +21,8 @@ import {
   TouchableOpacity,
   Switch,
   Alert,
-} from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+} from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
 import {
   Download,
   Upload,
@@ -38,58 +38,58 @@ import {
   X,
   Clock,
   Share2,
-} from 'lucide-react-native';
-import * as DocumentPicker from 'expo-document-picker';
-import { File as FSFile, Paths } from 'expo-file-system';
-import * as Sharing from 'expo-sharing';
-import { useClientStore } from '@/stores/client-store';
-import { useTransactionStore } from '@/stores/transaction-store';
-import { useAuthStore } from '@/stores/auth-store';
-import { usePermissions } from '@/hooks/usePermissions';
+} from "lucide-react-native";
+import * as DocumentPicker from "expo-document-picker";
+import { File as FSFile, Paths } from "expo-file-system";
+import * as Sharing from "expo-sharing";
+import { useClientStore } from "@/stores/client-store";
+import { useTransactionStore } from "@/stores/transaction-store";
+import { useAuthStore } from "@/stores/auth-store";
+import { usePermissions } from "@/hooks/usePermissions";
 
 // ─── Design tokens ────────────────────────────────────────────────────────────
 const T = {
-  bg:         '#ffffff',
-  bg2:        '#f5f4f0',
-  bg3:        '#eeede8',
-  bgSuccess:  '#eaf3de',
-  bgWarning:  '#faeeda',
-  bgDanger:   '#fcebeb',
-  bgInfo:     '#e6f1fb',
-  text1:      '#1a1a18',
-  text2:      '#5f5e5a',
-  text3:      '#888780',
-  textSuccess:'#3b6d11',
-  textWarning:'#854f0b',
-  textDanger: '#a32d2d',
-  textInfo:   '#185fa5',
-  border:     'rgba(0,0,0,0.09)',
-  border2:    'rgba(0,0,0,0.18)',
-  orange:     '#D85A30',
-  orangeDk:   '#993C1D',
-  orangeLt:   '#FAE8E0',
-  green:      '#2a5c0f',
-  greenMid:   '#3b6d11',
-  greenLt:    '#eaf3de',
-  blue:       '#185fa5',
-  blueLt:     '#e6f1fb',
-  purple:     '#534AB7',
-  purpleLt:   '#EEEDFE',
+  bg: "#ffffff",
+  bg2: "#f5f4f0",
+  bg3: "#eeede8",
+  bgSuccess: "#eaf3de",
+  bgWarning: "#faeeda",
+  bgDanger: "#fcebeb",
+  bgInfo: "#e6f1fb",
+  text1: "#1a1a18",
+  text2: "#5f5e5a",
+  text3: "#888780",
+  textSuccess: "#3b6d11",
+  textWarning: "#854f0b",
+  textDanger: "#a32d2d",
+  textInfo: "#185fa5",
+  border: "rgba(0,0,0,0.09)",
+  border2: "rgba(0,0,0,0.18)",
+  orange: "#D85A30",
+  orangeDk: "#993C1D",
+  orangeLt: "#FAE8E0",
+  green: "#2a5c0f",
+  greenMid: "#3b6d11",
+  greenLt: "#eaf3de",
+  blue: "#185fa5",
+  blueLt: "#e6f1fb",
+  purple: "#534AB7",
+  purpleLt: "#EEEDFE",
 };
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 type Screen =
-  | 'hub'
-  | 'import-upload'
-  | 'import-map'
-  | 'import-preview'
-  | 'import-success'
-  | 'import-tx-upload'
-  | 'import-tx-preview'
-  | 'import-tx-success'
-  | 'clean-data'
-  | 'export-config'
-  | 'export-done';
+  | "hub"
+  | "import-upload"
+  | "import-map"
+  | "import-preview"
+  | "import-success"
+  | "import-tx-upload"
+  | "import-tx-preview"
+  | "import-tx-success"
+  | "clean-data"
+  | "export-config"
+  | "export-done";
 
 type ParsedRow = {
   externalId?: string;
@@ -100,7 +100,7 @@ type ParsedRow = {
   address?: string;
   groupName?: string;
   rawLine: number;
-  status: 'ok' | 'err' | 'dup';
+  status: "ok" | "err" | "dup";
   errorReason?: string;
 };
 
@@ -115,13 +115,13 @@ type ParsedTx = {
   id: string;
   clientId: string;
   clientName: string;
-  type: 'deposit' | 'withdrawal';
+  type: "deposit" | "withdrawal";
   amount: number;
   date: string;
   agentName: string;
   notes?: string;
   rawLine: number;
-  status: 'ok' | 'err' | 'dup';
+  status: "ok" | "err" | "dup";
   errorReason?: string;
 };
 
@@ -137,41 +137,74 @@ type TxImportResult = {
 function parseCsv(content: string): { headers: string[]; rows: string[][] } {
   const lines = content.trim().split(/\r?\n/);
   if (lines.length === 0) return { headers: [], rows: [] };
-  const clean = (v: string) => v.trim().replace(/^"|"$/g, '');
-  const headers = lines[0].split(',').map(clean);
-  const rows = lines.slice(1).filter(l => l.trim()).map(l => l.split(',').map(clean));
+  const clean = (v: string) => v.trim().replace(/^"|"$/g, "");
+  const headers = lines[0].split(",").map(clean);
+  const rows = lines
+    .slice(1)
+    .filter((l) => l.trim())
+    .map((l) => l.split(",").map(clean));
   return { headers, rows };
 }
 
 // Maps normalised CSV header → ParsedRow field name
 const HEADER_MAP: Record<string, keyof ParsedRow> = {
-  id: 'externalId',
-  nom: 'name', nom_complet: 'name', name: 'name', prenom: 'name', prénom: 'name',
-  nom_client: 'name', fullname: 'name', full_name: 'name',
-  tel: 'phone', telephone: 'phone', téléphone: 'phone', phone: 'phone',
-  mobile: 'phone', portable: 'phone', phonenumber: 'phone', phone_number: 'phone',
+  id: "externalId",
+  nom: "name",
+  nom_complet: "name",
+  name: "name",
+  prenom: "name",
+  prénom: "name",
+  nom_client: "name",
+  fullname: "name",
+  full_name: "name",
+  tel: "phone",
+  telephone: "phone",
+  téléphone: "phone",
+  phone: "phone",
+  mobile: "phone",
+  portable: "phone",
+  phonenumber: "phone",
+  phone_number: "phone",
   // backup format: "Numéro de compte" normalises to this key
-  numero_de_compte: 'accountNumber', account_number: 'accountNumber', compte: 'accountNumber',
-  accountnumber: 'accountNumber', idnumber: 'accountNumber',
-  montant: 'commitmentAmount', montant_engagement: 'commitmentAmount',
-  engagement: 'commitmentAmount', commitment: 'commitmentAmount',
-  commitmentamount: 'commitmentAmount',
+  numero_de_compte: "accountNumber",
+  account_number: "accountNumber",
+  compte: "accountNumber",
+  accountnumber: "accountNumber",
+  idnumber: "accountNumber",
+  montant: "commitmentAmount",
+  montant_engagement: "commitmentAmount",
+  engagement: "commitmentAmount",
+  commitment: "commitmentAmount",
+  commitmentamount: "commitmentAmount",
   // backup format: "Engagement d'épargne" normalises to this key
-  "engagement_d'epargne": 'commitmentAmount',
-  localite: 'address', localité: 'address', adresse: 'address',
-  address: 'address', quartier: 'address', ville: 'address',
-  groupe: 'groupName', groupe_tontine: 'groupName', group: 'groupName', tontine: 'groupName',
-  groupname: 'groupName',
+  "engagement_d'epargne": "commitmentAmount",
+  localite: "address",
+  localité: "address",
+  adresse: "address",
+  address: "address",
+  quartier: "address",
+  ville: "address",
+  groupe: "groupName",
+  groupe_tontine: "groupName",
+  group: "groupName",
+  tontine: "groupName",
+  groupname: "groupName",
 };
 
 function normaliseKey(h: string): string {
-  return h.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/\s+/g, '_');
+  return h
+    .toLowerCase()
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/\s+/g, "_");
 }
 
-function detectMapping(headers: string[]): Record<string, keyof ParsedRow | 'skip'> {
-  const result: Record<string, keyof ParsedRow | 'skip'> = {};
+function detectMapping(
+  headers: string[],
+): Record<string, keyof ParsedRow | "skip"> {
+  const result: Record<string, keyof ParsedRow | "skip"> = {};
   for (const h of headers) {
-    result[h] = HEADER_MAP[normaliseKey(h)] ?? 'skip';
+    result[h] = HEADER_MAP[normaliseKey(h)] ?? "skip";
   }
   return result;
 }
@@ -179,15 +212,17 @@ function detectMapping(headers: string[]): Record<string, keyof ParsedRow | 'ski
 function buildParsedRows(
   headers: string[],
   rows: string[][],
-  mapping: Record<string, keyof ParsedRow | 'skip'>,
+  mapping: Record<string, keyof ParsedRow | "skip">,
 ): ParsedRow[] {
   return rows.map((cols, i) => {
     const record: Record<string, string> = {};
-    headers.forEach((h, j) => { record[h] = cols[j] ?? ''; });
+    headers.forEach((h, j) => {
+      record[h] = cols[j] ?? "";
+    });
 
     let externalId: string | undefined;
-    let name = '';
-    let phone = '';
+    let name = "";
+    let phone = "";
     let accountNumber: string | undefined;
     let commitmentAmount: number | undefined;
     let address: string | undefined;
@@ -196,55 +231,84 @@ function buildParsedRows(
     for (const h of headers) {
       const field = mapping[h];
       const val = record[h];
-      if (field === 'externalId' && val)         externalId = val || undefined;
-      if (field === 'name' && !name)             name = val;
-      if (field === 'phone' && !phone)           phone = val;
-      if (field === 'accountNumber' && val)      accountNumber = val || undefined;
-      if (field === 'commitmentAmount' && val)   commitmentAmount = parseFloat(val) || undefined;
-      if (field === 'address' && val)            address = val || undefined;
-      if (field === 'groupName' && val)          groupName = val || undefined;
+      if (field === "externalId" && val) externalId = val || undefined;
+      if (field === "name" && !name) name = val;
+      if (field === "phone" && !phone) phone = val;
+      if (field === "accountNumber" && val) accountNumber = val || undefined;
+      if (field === "commitmentAmount" && val)
+        commitmentAmount = parseFloat(val) || undefined;
+      if (field === "address" && val) address = val || undefined;
+      if (field === "groupName" && val) groupName = val || undefined;
     }
 
-    return { externalId, name, phone, accountNumber, commitmentAmount, address, groupName, rawLine: i + 2, status: 'ok' };
+    return {
+      externalId,
+      name,
+      phone,
+      accountNumber,
+      commitmentAmount,
+      address,
+      groupName,
+      rawLine: i + 2,
+      status: "ok",
+    };
   });
 }
 
-function validateRows(rows: ParsedRow[], existingPhones: Set<string>): ParsedRow[] {
+function validateRows(
+  rows: ParsedRow[],
+  existingPhones: Set<string>,
+): ParsedRow[] {
   const seen = new Set<string>();
-  return rows.map(row => {
-    const phone = row.phone.replace(/\s/g, '');
+  return rows.map((row) => {
+    const phone = row.phone.replace(/\s/g, "");
     if (!row.name.trim() || !phone) {
-      return { ...row, status: 'err' as const, errorReason: 'Champs requis manquants' };
+      return {
+        ...row,
+        status: "err" as const,
+        errorReason: "Champs requis manquants",
+      };
     }
     if (existingPhones.has(phone) || seen.has(phone)) {
-      return { ...row, status: 'dup' as const, errorReason: 'Doublon téléphone' };
+      return {
+        ...row,
+        status: "dup" as const,
+        errorReason: "Doublon téléphone",
+      };
     }
     seen.add(phone);
-    return { ...row, status: 'ok' as const };
+    return { ...row, status: "ok" as const };
   });
 }
 
 // ─── Transaction CSV utilities ────────────────────────────────────────────────
 
 function parseTxDate(dateStr: string, timeStr: string): string {
-  const parts = dateStr.split('/');
+  const parts = dateStr.split("/");
   if (parts.length !== 3) return new Date().toISOString();
   const [d, m, y] = parts;
-  let hours = 0, minutes = 0;
-  const t = (timeStr || '').trim();
+  let hours = 0,
+    minutes = 0;
+  const t = (timeStr || "").trim();
   if (/AM|PM/i.test(t)) {
     const isPM = /PM/i.test(t);
-    const [h, min] = t.replace(/\s*(AM|PM)/i, '').split(':');
+    const [h, min] = t.replace(/\s*(AM|PM)/i, "").split(":");
     hours = parseInt(h) || 0;
     minutes = parseInt(min) || 0;
     if (isPM && hours !== 12) hours += 12;
     if (!isPM && hours === 12) hours = 0;
   } else {
-    const [h, min] = t.split(':');
+    const [h, min] = t.split(":");
     hours = parseInt(h) || 0;
     minutes = parseInt(min) || 0;
   }
-  return new Date(parseInt(y), parseInt(m) - 1, parseInt(d), hours, minutes).toISOString();
+  return new Date(
+    parseInt(y),
+    parseInt(m) - 1,
+    parseInt(d),
+    hours,
+    minutes,
+  ).toISOString();
 }
 
 function parseTxCsv(content: string): ParsedTx[] {
@@ -252,44 +316,64 @@ function parseTxCsv(content: string): ParsedTx[] {
   const norm = headers.map(normaliseKey);
   const col = (name: string) => norm.indexOf(normaliseKey(name));
 
-  const iID    = col('ID');
-  const iCid   = col('ID Client');
-  const iCname = col('Nom Client');
-  const iType  = col('Type');
-  const iAmt   = col('Montant');
-  const iDate  = col('Date');
-  const iTime  = col('Heure');
-  const iAgent = col('Agent');
-  const iNotes = col('Notes');
+  const iID = col("ID");
+  const iCid = col("ID Client");
+  const iCname = col("Nom Client");
+  const iType = col("Type");
+  const iAmt = col("Montant");
+  const iDate = col("Date");
+  const iTime = col("Heure");
+  const iAgent = col("Agent");
+  const iNotes = col("Notes");
 
-  const g = (cols: string[], i: number) => (i >= 0 ? cols[i] ?? '' : '').trim();
+  const g = (cols: string[], i: number) =>
+    (i >= 0 ? (cols[i] ?? "") : "").trim();
   const seen = new Set<string>();
 
   return rows.map((cols, i) => {
-    const id         = g(cols, iID);
-    const clientId   = g(cols, iCid);
+    const id = g(cols, iID);
+    const clientId = g(cols, iCid);
     const clientName = g(cols, iCname);
-    const typeRaw    = g(cols, iType).toLowerCase();
-    const amount     = parseFloat(g(cols, iAmt)) || 0;
-    const dateRaw    = g(cols, iDate);
-    const timeRaw    = g(cols, iTime);
-    const agentName  = g(cols, iAgent);
-    const notes      = g(cols, iNotes) || undefined;
+    const typeRaw = g(cols, iType).toLowerCase();
+    const amount = parseFloat(g(cols, iAmt)) || 0;
+    const dateRaw = g(cols, iDate);
+    const timeRaw = g(cols, iTime);
+    const agentName = g(cols, iAgent);
+    const notes = g(cols, iNotes) || undefined;
 
-    const type: 'deposit' | 'withdrawal' | null =
-      typeRaw === 'collecte' ? 'deposit' : typeRaw === 'retrait' ? 'withdrawal' : null;
+    const type: "deposit" | "withdrawal" | null =
+      typeRaw === "collecte"
+        ? "deposit"
+        : typeRaw === "retrait"
+          ? "withdrawal"
+          : null;
 
     const base = { id, clientId, clientName, agentName, notes, rawLine: i + 2 };
-    const fallback = { ...base, type: (type ?? 'deposit') as 'deposit' | 'withdrawal', amount, date: new Date().toISOString() };
+    const fallback = {
+      ...base,
+      type: (type ?? "deposit") as "deposit" | "withdrawal",
+      amount,
+      date: new Date().toISOString(),
+    };
 
     if (!id || !clientId || !type || !amount || !dateRaw) {
-      return { ...fallback, status: 'err' as const, errorReason: 'Champs requis manquants' };
+      return {
+        ...fallback,
+        status: "err" as const,
+        errorReason: "Champs requis manquants",
+      };
     }
     if (seen.has(id)) {
-      return { ...fallback, status: 'dup' as const, errorReason: 'ID doublon' };
+      return { ...fallback, status: "dup" as const, errorReason: "ID doublon" };
     }
     seen.add(id);
-    return { ...base, type, amount, date: parseTxDate(dateRaw, timeRaw), status: 'ok' as const };
+    return {
+      ...base,
+      type,
+      amount,
+      date: parseTxDate(dateRaw, timeRaw),
+      status: "ok" as const,
+    };
   });
 }
 
@@ -351,10 +435,10 @@ function StepBar({
   total: number;
   done: number;
   active: number;
-  accent: 'orange' | 'blue';
+  accent: "orange" | "blue";
 }) {
-  const doneColor   = accent === 'orange' ? T.orange : T.blue;
-  const activeColor = accent === 'orange' ? '#F0997B' : '#85B7EB';
+  const doneColor = accent === "orange" ? T.orange : T.blue;
+  const activeColor = accent === "orange" ? "#F0997B" : "#85B7EB";
   return (
     <View style={styles.stepBar}>
       {Array.from({ length: total }).map((_, i) => {
@@ -362,9 +446,11 @@ function StepBar({
           i < done
             ? doneColor
             : i === done + active - done - 1 || i === active - 1
-            ? activeColor
-            : T.border2;
-        return <View key={i} style={[styles.stepSeg, { backgroundColor: bg }]} />;
+              ? activeColor
+              : T.border2;
+        return (
+          <View key={i} style={[styles.stepSeg, { backgroundColor: bg }]} />
+        );
       })}
     </View>
   );
@@ -384,12 +470,18 @@ function BackRow({
 }) {
   return (
     <View style={styles.backRow}>
-      <TouchableOpacity onPress={onBack} style={styles.backBtn} activeOpacity={0.7}>
+      <TouchableOpacity
+        onPress={onBack}
+        style={styles.backBtn}
+        activeOpacity={0.7}
+      >
         <ArrowLeft size={16} color={T.text3} strokeWidth={1.8} />
         <Text style={styles.backLabel}>{label}</Text>
       </TouchableOpacity>
       <View style={styles.stepBadge}>
-        <Text style={styles.stepBadgeText}>{step} / {total}</Text>
+        <Text style={styles.stepBadgeText}>
+          {step} / {total}
+        </Text>
       </View>
     </View>
   );
@@ -416,44 +508,44 @@ function HubScreen({ onNavigate }: { onNavigate: (s: Screen) => void }) {
 
   const allTiles = [
     {
-      key: 'import-upload' as Screen,
-      name: 'Importer\ndes clients',
-      desc: 'Charger un fichier CSV ou Excel',
-      bg:   T.orangeLt,
-      borderColor: 'rgba(216,90,48,0.18)',
-      iconBg: 'rgba(216,90,48,0.15)',
+      key: "import-upload" as Screen,
+      name: "Importer\ndes clients",
+      desc: "Charger un fichier CSV ou Excel",
+      bg: T.orangeLt,
+      borderColor: "rgba(216,90,48,0.18)",
+      iconBg: "rgba(216,90,48,0.15)",
       icon: <Download size={20} color={T.orange} strokeWidth={1.6} />,
-      requirePerm: 'importData' as const,
+      requirePerm: "importData" as const,
     },
     {
-      key: 'export-config' as Screen,
-      name: 'Exporter\nles données',
-      desc: 'CSV, rapport PDF ou sauvegarde',
-      bg:   T.blueLt,
-      borderColor: 'rgba(24,95,165,0.18)',
-      iconBg: 'rgba(24,95,165,0.12)',
+      key: "export-config" as Screen,
+      name: "Exporter\nles données",
+      desc: "CSV, rapport PDF ou sauvegarde",
+      bg: T.blueLt,
+      borderColor: "rgba(24,95,165,0.18)",
+      iconBg: "rgba(24,95,165,0.12)",
       icon: <Upload size={20} color={T.blue} strokeWidth={1.6} />,
-      requirePerm: 'exportReports' as const,
+      requirePerm: "exportReports" as const,
     },
     {
-      key: 'import-tx-upload' as Screen,
-      name: 'Importer des\ntransactions',
-      desc: 'Charger un fichier CSV de transactions',
-      bg:   T.purpleLt,
-      borderColor: 'rgba(83,74,183,0.18)',
-      iconBg: 'rgba(83,74,183,0.12)',
+      key: "import-tx-upload" as Screen,
+      name: "Importer des\ntransactions",
+      desc: "Charger un fichier CSV de transactions",
+      bg: T.purpleLt,
+      borderColor: "rgba(83,74,183,0.18)",
+      iconBg: "rgba(83,74,183,0.12)",
       icon: <RotateCcw size={20} color={T.purple} strokeWidth={1.6} />,
-      requirePerm: 'importData' as const,
+      requirePerm: "importData" as const,
     },
     {
-      key: 'clean-data' as Screen,
-      name: 'Nettoyer\nles données',
-      desc: 'Effacer et réimporter',
-      bg:   T.bgWarning,
-      borderColor: 'rgba(133,79,11,0.18)',
-      iconBg: 'rgba(133,79,11,0.12)',
+      key: "clean-data" as Screen,
+      name: "Nettoyer\nles données",
+      desc: "Effacer et réimporter",
+      bg: T.bgWarning,
+      borderColor: "rgba(133,79,11,0.18)",
+      iconBg: "rgba(133,79,11,0.12)",
       icon: <XCircle size={20} color={T.textWarning} strokeWidth={1.6} />,
-      requirePerm: 'importData' as const,
+      requirePerm: "importData" as const,
     },
   ];
 
@@ -461,22 +553,22 @@ function HubScreen({ onNavigate }: { onNavigate: (s: Screen) => void }) {
 
   const history = [
     {
-      label: 'Export clients — avr. 2025',
-      sub:   'CSV · 38 enreg. · 12 ko',
-      bg:    T.blueLt,
-      icon:  <FileText size={14} color={T.blue} strokeWidth={1.4} />,
+      label: "Export clients — avr. 2025",
+      sub: "CSV · 38 enreg. · 12 ko",
+      bg: T.blueLt,
+      icon: <FileText size={14} color={T.blue} strokeWidth={1.4} />,
     },
     {
-      label: 'Import membres — mars 2025',
-      sub:   'CSV · 24 importés · 2 erreurs',
-      bg:    T.orangeLt,
-      icon:  <Download size={14} color={T.orange} strokeWidth={1.4} />,
+      label: "Import membres — mars 2025",
+      sub: "CSV · 24 importés · 2 erreurs",
+      bg: T.orangeLt,
+      icon: <Download size={14} color={T.orange} strokeWidth={1.4} />,
     },
     {
-      label: 'Sauvegarde complète',
-      sub:   'ZIP · 15 mars 2025 · 234 ko',
-      bg:    T.purpleLt,
-      icon:  <RotateCcw size={14} color={T.purple} strokeWidth={1.4} />,
+      label: "Sauvegarde complète",
+      sub: "ZIP · 15 mars 2025 · 234 ko",
+      bg: T.purpleLt,
+      icon: <RotateCcw size={14} color={T.purple} strokeWidth={1.4} />,
     },
   ];
 
@@ -500,7 +592,7 @@ function HubScreen({ onNavigate }: { onNavigate: (s: Screen) => void }) {
       <View style={styles.syncRow}>
         <View style={[styles.syncDot, { backgroundColor: T.greenMid }]} />
         <Text style={styles.syncTxt}>Dernière synchronisation réussie</Text>
-        <Text style={styles.syncTime}>Aujourd'hui · 08:42</Text>
+        <Text style={styles.syncTime}>Aujourd&apos;hui · 08:42</Text>
       </View>
 
       {/* Action tiles */}
@@ -539,7 +631,14 @@ function HubScreen({ onNavigate }: { onNavigate: (s: Screen) => void }) {
                 i === history.length - 1 && { borderBottomWidth: 0 },
               ]}
             >
-              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10, flex: 1 }}>
+              <View
+                style={{
+                  flexDirection: "row",
+                  alignItems: "center",
+                  gap: 10,
+                  flex: 1,
+                }}
+              >
                 <View style={[styles.histIcon, { backgroundColor: h.bg }]}>
                   {h.icon}
                 </View>
@@ -559,22 +658,29 @@ function HubScreen({ onNavigate }: { onNavigate: (s: Screen) => void }) {
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
-async function shareOrSaveCsv(filename: string, content: string, title: string) {
+async function shareOrSaveCsv(
+  filename: string,
+  content: string,
+  title: string,
+) {
   const file = new FSFile(Paths.cache, filename);
   file.write(content);
-  await Sharing.shareAsync(file.uri, { mimeType: 'text/csv', dialogTitle: title });
+  await Sharing.shareAsync(file.uri, {
+    mimeType: "text/csv",
+    dialogTitle: title,
+  });
 }
 
 const ERROR_REPORT_CSV =
-  'fullName,phoneNumber,erreur\n' +
-  'Binta Diallo,,Téléphone manquant\n' +
-  'Roukia Traoré,70 44 55 66,Doublon détecté\n';
+  "fullName,phoneNumber,erreur\n" +
+  "Binta Diallo,,Téléphone manquant\n" +
+  "Roukia Traoré,70 44 55 66,Doublon détecté\n";
 
 const EXPORT_CSV =
-  'fullName,phoneNumber,balance,groupName\n' +
-  'Aïssata Zongo,70445566,25000,Groupe A\n' +
-  'Koné Seydou,76112233,18500,Groupe B\n' +
-  'Hamidou Kaboré,62889900,31200,Groupe A\n';
+  "fullName,phoneNumber,balance,groupName\n" +
+  "Aïssata Zongo,70445566,25000,Groupe A\n" +
+  "Koné Seydou,76112233,18500,Groupe B\n" +
+  "Hamidou Kaboré,62889900,31200,Groupe A\n";
 
 // ─── IMPORT STEP 1 — Upload file ──────────────────────────────────────────────
 function ImportUploadScreen({
@@ -586,8 +692,11 @@ function ImportUploadScreen({
 }) {
   const pickFile = async () => {
     const result = await DocumentPicker.getDocumentAsync({
-      type: ['text/csv', 'application/vnd.ms-excel',
-             'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'],
+      type: [
+        "text/csv",
+        "application/vnd.ms-excel",
+        "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+      ],
       copyToCacheDirectory: true,
     });
     if (!result.canceled && result.assets[0]) {
@@ -596,23 +705,27 @@ function ImportUploadScreen({
   };
 
   const required = [
-    { col: 'fullName',             req: true  },
-    { col: 'phoneNumber',          req: true  },
-    { col: 'commitmentAmount',     req: true  },
-    { col: 'address',              req: false },
-    { col: 'groupName',            req: false },
+    { col: "fullName", req: true },
+    { col: "phoneNumber", req: true },
+    { col: "commitmentAmount", req: true },
+    { col: "address", req: false },
+    { col: "groupName", req: false },
   ];
 
   return (
     <View style={{ flex: 1, backgroundColor: T.bg3 }}>
       <StepBar total={4} done={1} active={1} accent="orange" />
-      <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 32 }}>
+      <ScrollView
+        showsVerticalScrollIndicator={false}
+        contentContainerStyle={{ paddingBottom: 32 }}
+      >
         <BackRow label="Données" step={1} total={4} onBack={onBack} />
 
         <View style={styles.screenTitleBlock}>
-          <Text style={styles.screenTitle}>{'Importer\ndes clients'}</Text>
+          <Text style={styles.screenTitle}>{"Importer\ndes clients"}</Text>
           <Text style={styles.screenSub}>
-            Chargez votre fichier de membres. Les numéros de téléphone servent d'identifiants uniques.
+            Chargez votre fichier de membres. Les numéros de téléphone servent
+            d&apos;identifiants uniques.
           </Text>
         </View>
 
@@ -627,12 +740,14 @@ function ImportUploadScreen({
           <View style={styles.uploadIconWrap}>
             <Upload size={24} color={T.orange} strokeWidth={1.5} />
           </View>
-          <Text style={styles.uploadTitle}>Appuyer pour choisir un fichier</Text>
-          <Text style={styles.uploadSub}>
-            {'Depuis votre téléphone,\nGoogle Drive ou WhatsApp'}
+          <Text style={styles.uploadTitle}>
+            Appuyer pour choisir un fichier
           </Text>
-          <View style={{ flexDirection: 'row', gap: 6 }}>
-            {['.CSV', '.XLS', '.XLSX'].map((f) => (
+          <Text style={styles.uploadSub}>
+            {"Depuis votre téléphone,\nGoogle Drive ou WhatsApp"}
+          </Text>
+          <View style={{ flexDirection: "row", gap: 6 }}>
+            {[".CSV", ".XLS", ".XLSX"].map((f) => (
               <View key={f} style={styles.fmtChip}>
                 <Text style={styles.fmtChipText}>{f}</Text>
               </View>
@@ -649,7 +764,9 @@ function ImportUploadScreen({
             </View>
             <View style={{ flex: 1 }}>
               <Text style={styles.cardLabel}>Télécharger le modèle CSV</Text>
-              <Text style={styles.cardSub}>Colonnes requises : nom, téléphone, engagement</Text>
+              <Text style={styles.cardSub}>
+                Colonnes requises : nom, téléphone, engagement
+              </Text>
             </View>
             <ChevronRight size={14} color={T.text3} strokeWidth={1.5} />
           </TouchableOpacity>
@@ -680,7 +797,7 @@ function ImportUploadScreen({
                       { color: r.req ? T.textDanger : T.text3 },
                     ]}
                   >
-                    {r.req ? 'Requis' : 'Optionnel'}
+                    {r.req ? "Requis" : "Optionnel"}
                   </Text>
                 </View>
               </View>
@@ -702,10 +819,12 @@ function ImportMapScreen({
   onNext: (rows: ParsedRow[]) => void;
   file: DocumentPicker.DocumentPickerAsset | null;
 }) {
-  const [headers, setHeaders]   = useState<string[]>([]);
-  const [csvRows, setCsvRows]   = useState<string[][]>([]);
-  const [mapping, setMapping]   = useState<Record<string, keyof ParsedRow | 'skip'>>({});
-  const [loading, setLoading]   = useState(false);
+  const [headers, setHeaders] = useState<string[]>([]);
+  const [csvRows, setCsvRows] = useState<string[][]>([]);
+  const [mapping, setMapping] = useState<
+    Record<string, keyof ParsedRow | "skip">
+  >({});
+  const [loading, setLoading] = useState(false);
 
   useEffect(() => {
     if (!file) return;
@@ -723,14 +842,18 @@ function ImportMapScreen({
     })();
   }, [file?.uri]);
 
-  const FIELD_LABELS: Partial<Record<keyof ParsedRow | 'skip', string>> = {
-    name: 'fullName', phone: 'phoneNumber', commitmentAmount: 'commitmentAmount',
-    address: 'address', groupName: 'groupName', accountNumber: 'accountNumber',
-    skip: 'Ignoré',
+  const FIELD_LABELS: Partial<Record<keyof ParsedRow | "skip", string>> = {
+    name: "fullName",
+    phone: "phoneNumber",
+    commitmentAmount: "commitmentAmount",
+    address: "address",
+    groupName: "groupName",
+    accountNumber: "accountNumber",
+    skip: "Ignoré",
   };
 
-  const fieldColor = (f: keyof ParsedRow | 'skip') =>
-    f === 'skip' ? T.text3 : T.greenMid;
+  const fieldColor = (f: keyof ParsedRow | "skip") =>
+    f === "skip" ? T.text3 : T.greenMid;
 
   const handleConfirm = () => {
     onNext(buildParsedRows(headers, csvRows, mapping));
@@ -739,14 +862,19 @@ function ImportMapScreen({
   return (
     <View style={{ flex: 1, backgroundColor: T.bg3 }}>
       <StepBar total={4} done={2} active={2} accent="orange" />
-      <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 32 }}>
+      <ScrollView
+        showsVerticalScrollIndicator={false}
+        contentContainerStyle={{ paddingBottom: 32 }}
+      >
         <BackRow label="Retour" step={2} total={4} onBack={onBack} />
 
         <View style={styles.screenTitleBlock}>
-          <Text style={styles.screenTitle}>{'Correspondance\ndes colonnes'}</Text>
+          <Text style={styles.screenTitle}>
+            {"Correspondance\ndes colonnes"}
+          </Text>
           <Text style={styles.screenSub}>
-            Fichier :{' '}
-            <Text style={{ fontWeight: '600' }}>{file?.name ?? '—'}</Text>
+            Fichier :{" "}
+            <Text style={{ fontWeight: "600" }}>{file?.name ?? "—"}</Text>
             {csvRows.length > 0 && ` · ${csvRows.length} lignes détectées`}
           </Text>
         </View>
@@ -757,13 +885,17 @@ function ImportMapScreen({
             <FileText size={16} color={T.greenMid} strokeWidth={1.5} />
           </View>
           <View style={{ flex: 1 }}>
-            <Text style={styles.fileName}>{file?.name ?? '—'}</Text>
+            <Text style={styles.fileName}>{file?.name ?? "—"}</Text>
             <Text style={styles.fileMeta}>
-              {file?.size ? `${Math.round(file.size / 1024)} ko` : ''}
-              {loading ? '  Lecture…' : ''}
+              {file?.size ? `${Math.round(file.size / 1024)} ko` : ""}
+              {loading ? "  Lecture…" : ""}
             </Text>
           </View>
-          <TouchableOpacity style={styles.fileRemove} onPress={onBack} activeOpacity={0.7}>
+          <TouchableOpacity
+            style={styles.fileRemove}
+            onPress={onBack}
+            activeOpacity={0.7}
+          >
             <X size={11} color={T.text3} strokeWidth={1.8} />
           </TouchableOpacity>
         </View>
@@ -776,23 +908,36 @@ function ImportMapScreen({
           <View style={styles.mapHeader}>
             <Text style={styles.mapHeaderText}>Colonne CSV</Text>
             <View style={{ width: 20 }} />
-            <Text style={[styles.mapHeaderText, { textAlign: 'right' }]}>Champ Kauridorr</Text>
+            <Text style={[styles.mapHeaderText, { textAlign: "right" }]}>
+              Champ Kauridorr
+            </Text>
           </View>
           {headers.length === 0 && !loading && (
             <View style={{ padding: 16 }}>
-              <Text style={{ color: T.text3, fontSize: 13 }}>Aucune colonne détectée</Text>
+              <Text style={{ color: T.text3, fontSize: 13 }}>
+                Aucune colonne détectée
+              </Text>
             </View>
           )}
           {headers.map((h, i) => {
-            const f = mapping[h] ?? 'skip';
+            const f = mapping[h] ?? "skip";
             return (
               <View
                 key={h}
-                style={[styles.mapRow, i === headers.length - 1 && { borderBottomWidth: 0 }]}
+                style={[
+                  styles.mapRow,
+                  i === headers.length - 1 && { borderBottomWidth: 0 },
+                ]}
               >
                 <Text style={styles.mapCsv}>{h}</Text>
                 <ArrowRight size={14} color={T.text3} strokeWidth={1.5} />
-                <Text style={[styles.mapField, { color: fieldColor(f) }, f === 'skip' && { fontWeight: '400' }]}>
+                <Text
+                  style={[
+                    styles.mapField,
+                    { color: fieldColor(f) },
+                    f === "skip" && { fontWeight: "400" },
+                  ]}
+                >
                   {FIELD_LABELS[f] ?? String(f)}
                 </Text>
               </View>
@@ -823,44 +968,65 @@ function ImportPreviewScreen({
   onNext: (result: ImportResult) => void;
   rawRows: ParsedRow[];
 }) {
-  const clients    = useClientStore((s) => s.clients);
-  const addClient  = useClientStore((s) => s.addClient);
+  const clients = useClientStore((s) => s.clients);
+  const addClient = useClientStore((s) => s.addClient);
   const [importing, setImporting] = useState(false);
 
-  const existingPhones = new Set(clients.map((c) => c.phone.replace(/\s/g, '')));
+  const existingPhones = new Set(
+    clients.map((c) => c.phone.replace(/\s/g, "")),
+  );
   const rows = validateRows(rawRows, existingPhones);
 
-  const validCount = rows.filter((r) => r.status === 'ok').length;
-  const dupCount   = rows.filter((r) => r.status === 'dup').length;
-  const errCount   = rows.filter((r) => r.status === 'err').length;
+  const validCount = rows.filter((r) => r.status === "ok").length;
+  const dupCount = rows.filter((r) => r.status === "dup").length;
+  const errCount = rows.filter((r) => r.status === "err").length;
 
   const errorCsv =
-    'fullName,phoneNumber,ligne,erreur\n' +
+    "fullName,phoneNumber,ligne,erreur\n" +
     rows
-      .filter((r) => r.status !== 'ok')
-      .map((r) => `"${r.name}","${r.phone}",${r.rawLine},"${r.errorReason ?? ''}"`)
-      .join('\n');
+      .filter((r) => r.status !== "ok")
+      .map(
+        (r) => `"${r.name}","${r.phone}",${r.rawLine},"${r.errorReason ?? ""}"`,
+      )
+      .join("\n");
 
-  const badgeBg:    Record<string, string> = { ok: T.bgSuccess,  err: T.bgDanger,  dup: T.bgWarning  };
-  const badgeTxt:   Record<string, string> = { ok: T.greenMid,   err: T.textDanger, dup: T.textWarning };
-  const badgeLbl:   Record<string, string> = { ok: 'OK', err: 'Erreur', dup: 'Doublon' };
+  const badgeBg: Record<string, string> = {
+    ok: T.bgSuccess,
+    err: T.bgDanger,
+    dup: T.bgWarning,
+  };
+  const badgeTxt: Record<string, string> = {
+    ok: T.greenMid,
+    err: T.textDanger,
+    dup: T.textWarning,
+  };
+  const badgeLbl: Record<string, string> = {
+    ok: "OK",
+    err: "Erreur",
+    dup: "Doublon",
+  };
 
   const handleImport = async () => {
     setImporting(true);
     try {
-      const valid = rows.filter((r) => r.status === 'ok');
+      const valid = rows.filter((r) => r.status === "ok");
       for (const row of valid) {
         await addClient({
-          id:               row.externalId,
-          name:             row.name,
-          phone:            row.phone,
-          accountNumber:    row.accountNumber,
-          address:          row.address,
-          groupName:        row.groupName,
+          id: row.externalId,
+          name: row.name,
+          phone: row.phone,
+          accountNumber: row.accountNumber,
+          address: row.address,
+          groupName: row.groupName,
           commitmentAmount: row.commitmentAmount,
         });
       }
-      onNext({ imported: valid.length, duplicates: dupCount, errors: errCount, total: rows.length });
+      onNext({
+        imported: valid.length,
+        duplicates: dupCount,
+        errors: errCount,
+        total: rows.length,
+      });
     } finally {
       setImporting(false);
     }
@@ -869,21 +1035,26 @@ function ImportPreviewScreen({
   return (
     <View style={{ flex: 1, backgroundColor: T.bg3 }}>
       <StepBar total={4} done={3} active={3} accent="orange" />
-      <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 32 }}>
+      <ScrollView
+        showsVerticalScrollIndicator={false}
+        contentContainerStyle={{ paddingBottom: 32 }}
+      >
         <BackRow label="Retour" step={3} total={4} onBack={onBack} />
 
         <View style={styles.screenTitleBlock}>
-          <Text style={styles.screenTitle}>{'Aperçu\navant import'}</Text>
-          <Text style={styles.screenSub}>Vérifiez les données avant de confirmer.</Text>
+          <Text style={styles.screenTitle}>{"Aperçu\navant import"}</Text>
+          <Text style={styles.screenSub}>
+            Vérifiez les données avant de confirmer.
+          </Text>
         </View>
 
         {/* Validation strip */}
         <View style={styles.sectionPad}>
           <View style={styles.validationStrip}>
             {[
-              { num: String(validCount), lbl: 'Valides',  color: T.greenMid   },
-              { num: String(dupCount),   lbl: 'Doublons', color: T.textWarning },
-              { num: String(errCount),   lbl: 'Erreurs',  color: T.textDanger  },
+              { num: String(validCount), lbl: "Valides", color: T.greenMid },
+              { num: String(dupCount), lbl: "Doublons", color: T.textWarning },
+              { num: String(errCount), lbl: "Erreurs", color: T.textDanger },
             ].map((v) => (
               <View key={v.lbl} style={styles.valCell}>
                 <Text style={[styles.valNum, { color: v.color }]}>{v.num}</Text>
@@ -897,11 +1068,17 @@ function ImportPreviewScreen({
         {(dupCount > 0 || errCount > 0) && (
           <View style={styles.warnBanner}>
             <View style={{ marginTop: 1 }}>
-              <AlertTriangle size={14} color={T.textWarning} strokeWidth={1.4} />
+              <AlertTriangle
+                size={14}
+                color={T.textWarning}
+                strokeWidth={1.4}
+              />
             </View>
             <Text style={styles.warnBannerText}>
-              {dupCount > 0 && `${dupCount} doublon${dupCount > 1 ? 's' : ''} détecté${dupCount > 1 ? 's' : ''} (même téléphone). `}
-              {errCount > 0 && `${errCount} ligne${errCount > 1 ? 's' : ''} invalide${errCount > 1 ? 's' : ''}. `}
+              {dupCount > 0 &&
+                `${dupCount} doublon${dupCount > 1 ? "s" : ""} détecté${dupCount > 1 ? "s" : ""} (même téléphone). `}
+              {errCount > 0 &&
+                `${errCount} ligne${errCount > 1 ? "s" : ""} invalide${errCount > 1 ? "s" : ""}. `}
               {`Seules les ${validCount} lignes valides seront importées.`}
             </Text>
           </View>
@@ -909,13 +1086,17 @@ function ImportPreviewScreen({
 
         {/* Preview table */}
         <View style={[styles.sectionPad, { paddingBottom: 8 }]}>
-          <SecTitle label={`Aperçu des données (${Math.min(rows.length, 5)} premières)`} />
+          <SecTitle
+            label={`Aperçu des données (${Math.min(rows.length, 5)} premières)`}
+          />
         </View>
         <View style={styles.previewTable}>
           <View style={styles.ptHeader}>
             <Text style={[styles.ptHeaderText, { flex: 2 }]}>Nom</Text>
             <Text style={styles.ptHeaderText}>Téléphone</Text>
-            <Text style={[styles.ptHeaderText, { textAlign: 'right' }]}>Statut</Text>
+            <Text style={[styles.ptHeaderText, { textAlign: "right" }]}>
+              Statut
+            </Text>
           </View>
           {rows.slice(0, 5).map((r, i) => (
             <View
@@ -923,16 +1104,28 @@ function ImportPreviewScreen({
               style={[
                 styles.ptRow,
                 i === Math.min(rows.length, 5) - 1 && { borderBottomWidth: 0 },
-                r.status === 'err' && { backgroundColor: T.bgDanger },
+                r.status === "err" && { backgroundColor: T.bgDanger },
               ]}
             >
-              <Text style={[styles.ptName, { flex: 2 }]}>{r.name || '—'}</Text>
-              <Text style={[styles.ptPhone, r.status === 'err' && { color: T.textDanger }]}>
-                {r.phone || '—'}
+              <Text style={[styles.ptName, { flex: 2 }]}>{r.name || "—"}</Text>
+              <Text
+                style={[
+                  styles.ptPhone,
+                  r.status === "err" && { color: T.textDanger },
+                ]}
+              >
+                {r.phone || "—"}
               </Text>
-              <View style={{ alignItems: 'flex-end' }}>
-                <View style={[styles.ptBadge, { backgroundColor: badgeBg[r.status] }]}>
-                  <Text style={[styles.ptBadgeText, { color: badgeTxt[r.status] }]}>
+              <View style={{ alignItems: "flex-end" }}>
+                <View
+                  style={[
+                    styles.ptBadge,
+                    { backgroundColor: badgeBg[r.status] },
+                  ]}
+                >
+                  <Text
+                    style={[styles.ptBadgeText, { color: badgeTxt[r.status] }]}
+                  >
                     {badgeLbl[r.status]}
                   </Text>
                 </View>
@@ -943,7 +1136,11 @@ function ImportPreviewScreen({
 
         <View style={styles.ctaWrap}>
           <BtnMain
-            label={importing ? 'Import en cours…' : `Importer ${validCount} client${validCount !== 1 ? 's' : ''} valide${validCount !== 1 ? 's' : ''}`}
+            label={
+              importing
+                ? "Import en cours…"
+                : `Importer ${validCount} client${validCount !== 1 ? "s" : ""} valide${validCount !== 1 ? "s" : ""}`
+            }
             color={T.orange}
             icon={<Download size={15} color="#fff" strokeWidth={1.8} />}
             onPress={handleImport}
@@ -952,7 +1149,13 @@ function ImportPreviewScreen({
             <BtnOutline
               label="Télécharger rapport d'erreurs"
               icon={<FileText size={14} color={T.text2} strokeWidth={1.5} />}
-              onPress={() => shareOrSaveCsv('rapport_erreurs.csv', errorCsv, "Rapport d'erreurs")}
+              onPress={() =>
+                shareOrSaveCsv(
+                  "rapport_erreurs.csv",
+                  errorCsv,
+                  "Rapport d'erreurs",
+                )
+              }
             />
           )}
         </View>
@@ -962,7 +1165,13 @@ function ImportPreviewScreen({
 }
 
 // ─── IMPORT SUCCESS ───────────────────────────────────────────────────────────
-function ImportSuccessScreen({ onDone, result }: { onDone: () => void; result: ImportResult }) {
+function ImportSuccessScreen({
+  onDone,
+  result,
+}: {
+  onDone: () => void;
+  result: ImportResult;
+}) {
   const skipped = result.duplicates + result.errors;
   return (
     <ScrollView
@@ -975,15 +1184,19 @@ function ImportSuccessScreen({ onDone, result }: { onDone: () => void; result: I
       </View>
       <Text style={styles.successH}>Import réussi !</Text>
       <Text style={styles.successP}>
-        {`${result.imported} nouveau${result.imported !== 1 ? 'x' : ''} membre${result.imported !== 1 ? 's' : ''} ajouté${result.imported !== 1 ? 's' : ''} à Kauridorr.`}
+        {`${result.imported} nouveau${result.imported !== 1 ? "x" : ""} membre${result.imported !== 1 ? "s" : ""} ajouté${result.imported !== 1 ? "s" : ""} à Kauridorr.`}
       </Text>
 
       <View style={styles.resultGrid}>
         {[
-          { val: String(result.imported),    lbl: 'Importés',           color: T.greenMid   },
-          { val: String(result.duplicates),  lbl: 'Ignorés (doublons)', color: T.textWarning },
-          { val: String(result.errors),      lbl: 'Erreurs',            color: T.textDanger  },
-          { val: String(result.total),       lbl: 'Total traités',      color: T.text1       },
+          { val: String(result.imported), lbl: "Importés", color: T.greenMid },
+          {
+            val: String(result.duplicates),
+            lbl: "Ignorés (doublons)",
+            color: T.textWarning,
+          },
+          { val: String(result.errors), lbl: "Erreurs", color: T.textDanger },
+          { val: String(result.total), lbl: "Total traités", color: T.text1 },
         ].map((r) => (
           <View key={r.lbl} style={styles.resultTile}>
             <Text style={[styles.resultVal, { color: r.color }]}>{r.val}</Text>
@@ -998,20 +1211,32 @@ function ImportSuccessScreen({ onDone, result }: { onDone: () => void; result: I
             <AlertTriangle size={15} color={T.textWarning} strokeWidth={1.4} />
           </View>
           <Text style={styles.errTxt}>
-            {`${skipped} ligne${skipped !== 1 ? 's' : ''} ignorée${skipped !== 1 ? 's' : ''}. `}
-            <Text style={{ fontWeight: '600', color: T.textWarning }}>Téléchargez le rapport</Text>
-            {' pour les corriger et réimporter.'}
+            {`${skipped} ligne${skipped !== 1 ? "s" : ""} ignorée${skipped !== 1 ? "s" : ""}. `}
+            <Text style={{ fontWeight: "600", color: T.textWarning }}>
+              Téléchargez le rapport
+            </Text>
+            {" pour les corriger et réimporter."}
           </Text>
         </View>
       )}
 
-      <View style={{ width: '100%', gap: 8 }}>
-        <BtnMain label="Voir la liste des clients" color={T.orange} onPress={onDone} />
+      <View style={{ width: "100%", gap: 8 }}>
+        <BtnMain
+          label="Voir la liste des clients"
+          color={T.orange}
+          onPress={onDone}
+        />
         {skipped > 0 && (
           <BtnOutline
             label="Télécharger rapport d'erreurs"
             icon={<FileText size={14} color={T.text2} strokeWidth={1.5} />}
-            onPress={() => shareOrSaveCsv('rapport_erreurs.csv', ERROR_REPORT_CSV, "Rapport d'erreurs")}
+            onPress={() =>
+              shareOrSaveCsv(
+                "rapport_erreurs.csv",
+                ERROR_REPORT_CSV,
+                "Rapport d'erreurs",
+              )
+            }
           />
         )}
         <BtnOutline label="Nouvel import" onPress={onDone} />
@@ -1030,43 +1255,54 @@ function ImportTxUploadScreen({
 }) {
   const pickFile = async () => {
     const result = await DocumentPicker.getDocumentAsync({
-      type: ['text/csv', 'application/vnd.ms-excel'],
+      type: ["text/csv", "application/vnd.ms-excel"],
       copyToCacheDirectory: true,
     });
     if (!result.canceled && result.assets[0]) onNext(result.assets[0]);
   };
 
   const columns = [
-    { col: 'ID',         req: true  },
-    { col: 'ID Client',  req: true  },
-    { col: 'Nom Client', req: false },
-    { col: 'Type',       req: true  },
-    { col: 'Montant',    req: true  },
-    { col: 'Date',       req: true  },
-    { col: 'Heure',      req: false },
-    { col: 'Agent',      req: false },
-    { col: 'Notes',      req: false },
+    { col: "ID", req: true },
+    { col: "ID Client", req: true },
+    { col: "Nom Client", req: false },
+    { col: "Type", req: true },
+    { col: "Montant", req: true },
+    { col: "Date", req: true },
+    { col: "Heure", req: false },
+    { col: "Agent", req: false },
+    { col: "Notes", req: false },
   ];
 
   return (
     <View style={{ flex: 1, backgroundColor: T.bg3 }}>
       <StepBar total={3} done={1} active={1} accent="orange" />
-      <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 32 }}>
+      <ScrollView
+        showsVerticalScrollIndicator={false}
+        contentContainerStyle={{ paddingBottom: 32 }}
+      >
         <BackRow label="Données" step={1} total={3} onBack={onBack} />
         <View style={styles.screenTitleBlock}>
-          <Text style={styles.screenTitle}>{'Importer des\ntransactions'}</Text>
+          <Text style={styles.screenTitle}>{"Importer des\ntransactions"}</Text>
           <Text style={styles.screenSub}>
             Chargez votre fichier de transactions au format backup CSV.
           </Text>
         </View>
         <View style={styles.divider} />
-        <TouchableOpacity onPress={pickFile} activeOpacity={0.8} style={styles.uploadZone}>
+        <TouchableOpacity
+          onPress={pickFile}
+          activeOpacity={0.8}
+          style={styles.uploadZone}
+        >
           <View style={styles.uploadIconWrap}>
             <Upload size={24} color={T.orange} strokeWidth={1.5} />
           </View>
-          <Text style={styles.uploadTitle}>Appuyer pour choisir un fichier</Text>
-          <Text style={styles.uploadSub}>{'Depuis votre téléphone,\nGoogle Drive ou WhatsApp'}</Text>
-          <View style={{ flexDirection: 'row', gap: 6 }}>
+          <Text style={styles.uploadTitle}>
+            Appuyer pour choisir un fichier
+          </Text>
+          <Text style={styles.uploadSub}>
+            {"Depuis votre téléphone,\nGoogle Drive ou WhatsApp"}
+          </Text>
+          <View style={{ flexDirection: "row", gap: 6 }}>
             <View style={styles.fmtChip}>
               <Text style={styles.fmtChipText}>.CSV</Text>
             </View>
@@ -1078,12 +1314,25 @@ function ImportTxUploadScreen({
             {columns.map((r, i) => (
               <View
                 key={r.col}
-                style={[styles.cardRow, i === columns.length - 1 && { borderBottomWidth: 0 }]}
+                style={[
+                  styles.cardRow,
+                  i === columns.length - 1 && { borderBottomWidth: 0 },
+                ]}
               >
                 <Text style={styles.cardLabel}>{r.col}</Text>
-                <View style={[styles.colBadge, { backgroundColor: r.req ? T.bgDanger : T.bg2 }]}>
-                  <Text style={[styles.colBadgeText, { color: r.req ? T.textDanger : T.text3 }]}>
-                    {r.req ? 'Requis' : 'Optionnel'}
+                <View
+                  style={[
+                    styles.colBadge,
+                    { backgroundColor: r.req ? T.bgDanger : T.bg2 },
+                  ]}
+                >
+                  <Text
+                    style={[
+                      styles.colBadgeText,
+                      { color: r.req ? T.textDanger : T.text3 },
+                    ]}
+                  >
+                    {r.req ? "Requis" : "Optionnel"}
                   </Text>
                 </View>
               </View>
@@ -1105,13 +1354,13 @@ function ImportTxPreviewScreen({
   onNext: (result: TxImportResult) => void;
   file: DocumentPicker.DocumentPickerAsset | null;
 }) {
-  const importTransactions  = useTransactionStore((s) => s.importTransactions);
-  const existingTxs         = useTransactionStore((s) => s.transactions);
-  const reconcileBalances   = useClientStore((s) => s.reconcileBalances);
-  const agentId             = useAuthStore((s) => s.user?.id);
+  const importTransactions = useTransactionStore((s) => s.importTransactions);
+  const existingTxs = useTransactionStore((s) => s.transactions);
+  const reconcileBalances = useClientStore((s) => s.reconcileBalances);
+  const agentId = useAuthStore((s) => s.user?.id);
 
-  const [rows, setRows]         = useState<ParsedTx[]>([]);
-  const [loading, setLoading]   = useState(false);
+  const [rows, setRows] = useState<ParsedTx[]>([]);
+  const [loading, setLoading] = useState(false);
   const [importing, setImporting] = useState(false);
 
   useEffect(() => {
@@ -1122,44 +1371,67 @@ function ImportTxPreviewScreen({
         const content = await new FSFile(file.uri).text();
         const parsed = parseTxCsv(content);
         const existingIds = new Set(existingTxs.map((t) => t.id));
-        setRows(parsed.map((r) =>
-          r.status === 'ok' && existingIds.has(r.id)
-            ? { ...r, status: 'dup' as const, errorReason: 'Transaction déjà présente' }
-            : r
-        ));
+        setRows(
+          parsed.map((r) =>
+            r.status === "ok" && existingIds.has(r.id)
+              ? {
+                  ...r,
+                  status: "dup" as const,
+                  errorReason: "Transaction déjà présente",
+                }
+              : r,
+          ),
+        );
       } finally {
         setLoading(false);
       }
     })();
   }, [file?.uri]);
 
-  const validCount = rows.filter((r) => r.status === 'ok').length;
-  const dupCount   = rows.filter((r) => r.status === 'dup').length;
-  const errCount   = rows.filter((r) => r.status === 'err').length;
+  const validCount = rows.filter((r) => r.status === "ok").length;
+  const dupCount = rows.filter((r) => r.status === "dup").length;
+  const errCount = rows.filter((r) => r.status === "err").length;
 
-  const badgeBg:  Record<string, string> = { ok: T.bgSuccess,  err: T.bgDanger,   dup: T.bgWarning  };
-  const badgeTxt: Record<string, string> = { ok: T.greenMid,   err: T.textDanger,  dup: T.textWarning };
-  const badgeLbl: Record<string, string> = { ok: 'OK', err: 'Erreur', dup: 'Doublon' };
+  const badgeBg: Record<string, string> = {
+    ok: T.bgSuccess,
+    err: T.bgDanger,
+    dup: T.bgWarning,
+  };
+  const badgeTxt: Record<string, string> = {
+    ok: T.greenMid,
+    err: T.textDanger,
+    dup: T.textWarning,
+  };
+  const badgeLbl: Record<string, string> = {
+    ok: "OK",
+    err: "Erreur",
+    dup: "Doublon",
+  };
 
   const handleImport = async () => {
     setImporting(true);
     try {
-      const valid = rows.filter((r) => r.status === 'ok');
+      const valid = rows.filter((r) => r.status === "ok");
       const toImport = valid.map((r) => ({
-        id:         r.id,
-        clientId:   r.clientId,
+        id: r.id,
+        clientId: r.clientId,
         clientName: r.clientName,
-        amount:     r.amount,
-        type:       r.type,
-        date:       r.date,
-        status:     'completed' as const,
-        agentId:    agentId ?? undefined,
-        notes:      r.notes ?? (r.agentName ? `Agent: ${r.agentName}` : undefined),
+        amount: r.amount,
+        type: r.type,
+        date: r.date,
+        status: "completed" as const,
+        agentId: agentId ?? undefined,
+        notes: r.notes ?? (r.agentName ? `Agent: ${r.agentName}` : undefined),
       }));
       importTransactions(toImport);
       const allTxs = [...existingTxs, ...toImport];
       reconcileBalances(allTxs);
-      onNext({ imported: valid.length, duplicates: dupCount, errors: errCount, total: rows.length });
+      onNext({
+        imported: valid.length,
+        duplicates: dupCount,
+        errors: errCount,
+        total: rows.length,
+      });
     } finally {
       setImporting(false);
     }
@@ -1168,13 +1440,16 @@ function ImportTxPreviewScreen({
   return (
     <View style={{ flex: 1, backgroundColor: T.bg3 }}>
       <StepBar total={3} done={2} active={2} accent="orange" />
-      <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 32 }}>
+      <ScrollView
+        showsVerticalScrollIndicator={false}
+        contentContainerStyle={{ paddingBottom: 32 }}
+      >
         <BackRow label="Retour" step={2} total={3} onBack={onBack} />
         <View style={styles.screenTitleBlock}>
-          <Text style={styles.screenTitle}>{'Aperçu\navant import'}</Text>
+          <Text style={styles.screenTitle}>{"Aperçu\navant import"}</Text>
           <Text style={styles.screenSub}>
-            Fichier :{' '}
-            <Text style={{ fontWeight: '600' }}>{file?.name ?? '—'}</Text>
+            Fichier :{" "}
+            <Text style={{ fontWeight: "600" }}>{file?.name ?? "—"}</Text>
             {rows.length > 0 && ` · ${rows.length} lignes`}
           </Text>
         </View>
@@ -1182,9 +1457,9 @@ function ImportTxPreviewScreen({
         <View style={styles.sectionPad}>
           <View style={styles.validationStrip}>
             {[
-              { num: String(validCount), lbl: 'Valides',  color: T.greenMid   },
-              { num: String(dupCount),   lbl: 'Doublons', color: T.textWarning },
-              { num: String(errCount),   lbl: 'Erreurs',  color: T.textDanger  },
+              { num: String(validCount), lbl: "Valides", color: T.greenMid },
+              { num: String(dupCount), lbl: "Doublons", color: T.textWarning },
+              { num: String(errCount), lbl: "Erreurs", color: T.textDanger },
             ].map((v) => (
               <View key={v.lbl} style={styles.valCell}>
                 <Text style={[styles.valNum, { color: v.color }]}>{v.num}</Text>
@@ -1197,24 +1472,34 @@ function ImportTxPreviewScreen({
         {(dupCount > 0 || errCount > 0) && (
           <View style={styles.warnBanner}>
             <View style={{ marginTop: 1 }}>
-              <AlertTriangle size={14} color={T.textWarning} strokeWidth={1.4} />
+              <AlertTriangle
+                size={14}
+                color={T.textWarning}
+                strokeWidth={1.4}
+              />
             </View>
             <Text style={styles.warnBannerText}>
-              {dupCount > 0 && `${dupCount} doublon${dupCount > 1 ? 's' : ''} ignoré${dupCount > 1 ? 's' : ''}. `}
-              {errCount > 0 && `${errCount} ligne${errCount > 1 ? 's' : ''} invalide${errCount > 1 ? 's' : ''}. `}
+              {dupCount > 0 &&
+                `${dupCount} doublon${dupCount > 1 ? "s" : ""} ignoré${dupCount > 1 ? "s" : ""}. `}
+              {errCount > 0 &&
+                `${errCount} ligne${errCount > 1 ? "s" : ""} invalide${errCount > 1 ? "s" : ""}. `}
               {`Seules les ${validCount} lignes valides seront importées.`}
             </Text>
           </View>
         )}
 
         <View style={[styles.sectionPad, { paddingBottom: 8 }]}>
-          <SecTitle label={`Aperçu (${Math.min(rows.length, 5)} premières lignes)`} />
+          <SecTitle
+            label={`Aperçu (${Math.min(rows.length, 5)} premières lignes)`}
+          />
         </View>
         <View style={styles.previewTable}>
           <View style={styles.ptHeader}>
             <Text style={[styles.ptHeaderText, { flex: 2 }]}>Client</Text>
             <Text style={styles.ptHeaderText}>Montant</Text>
-            <Text style={[styles.ptHeaderText, { textAlign: 'right' }]}>Statut</Text>
+            <Text style={[styles.ptHeaderText, { textAlign: "right" }]}>
+              Statut
+            </Text>
           </View>
           {loading && (
             <View style={{ padding: 16 }}>
@@ -1227,16 +1512,30 @@ function ImportTxPreviewScreen({
               style={[
                 styles.ptRow,
                 i === Math.min(rows.length, 5) - 1 && { borderBottomWidth: 0 },
-                r.status === 'err' && { backgroundColor: T.bgDanger },
+                r.status === "err" && { backgroundColor: T.bgDanger },
               ]}
             >
-              <Text style={[styles.ptName, { flex: 2 }]}>{r.clientName || '—'}</Text>
-              <Text style={[styles.ptPhone, r.status === 'err' && { color: T.textDanger }]}>
-                {r.amount.toLocaleString('fr-FR')} F
+              <Text style={[styles.ptName, { flex: 2 }]}>
+                {r.clientName || "—"}
               </Text>
-              <View style={{ alignItems: 'flex-end' }}>
-                <View style={[styles.ptBadge, { backgroundColor: badgeBg[r.status] }]}>
-                  <Text style={[styles.ptBadgeText, { color: badgeTxt[r.status] }]}>
+              <Text
+                style={[
+                  styles.ptPhone,
+                  r.status === "err" && { color: T.textDanger },
+                ]}
+              >
+                {r.amount.toLocaleString("fr-FR")} F
+              </Text>
+              <View style={{ alignItems: "flex-end" }}>
+                <View
+                  style={[
+                    styles.ptBadge,
+                    { backgroundColor: badgeBg[r.status] },
+                  ]}
+                >
+                  <Text
+                    style={[styles.ptBadgeText, { color: badgeTxt[r.status] }]}
+                  >
                     {badgeLbl[r.status]}
                   </Text>
                 </View>
@@ -1247,7 +1546,11 @@ function ImportTxPreviewScreen({
 
         <View style={styles.ctaWrap}>
           <BtnMain
-            label={importing ? 'Import en cours…' : `Importer ${validCount} transaction${validCount !== 1 ? 's' : ''}`}
+            label={
+              importing
+                ? "Import en cours…"
+                : `Importer ${validCount} transaction${validCount !== 1 ? "s" : ""}`
+            }
             color={T.orange}
             icon={<Download size={15} color="#fff" strokeWidth={1.8} />}
             onPress={handleImport}
@@ -1259,7 +1562,13 @@ function ImportTxPreviewScreen({
 }
 
 // ─── IMPORT TX SUCCESS ────────────────────────────────────────────────────────
-function ImportTxSuccessScreen({ onDone, result }: { onDone: () => void; result: TxImportResult }) {
+function ImportTxSuccessScreen({
+  onDone,
+  result,
+}: {
+  onDone: () => void;
+  result: TxImportResult;
+}) {
   return (
     <ScrollView
       style={{ flex: 1, backgroundColor: T.bg }}
@@ -1271,14 +1580,18 @@ function ImportTxSuccessScreen({ onDone, result }: { onDone: () => void; result:
       </View>
       <Text style={styles.successH}>Import réussi !</Text>
       <Text style={styles.successP}>
-        {`${result.imported} transaction${result.imported !== 1 ? 's' : ''} importée${result.imported !== 1 ? 's' : ''}.`}
+        {`${result.imported} transaction${result.imported !== 1 ? "s" : ""} importée${result.imported !== 1 ? "s" : ""}.`}
       </Text>
       <View style={styles.resultGrid}>
         {[
-          { val: String(result.imported),   lbl: 'Importées',           color: T.greenMid    },
-          { val: String(result.duplicates), lbl: 'Ignorées (doublons)', color: T.textWarning  },
-          { val: String(result.errors),     lbl: 'Erreurs',             color: T.textDanger   },
-          { val: String(result.total),      lbl: 'Total traitées',      color: T.text1        },
+          { val: String(result.imported), lbl: "Importées", color: T.greenMid },
+          {
+            val: String(result.duplicates),
+            lbl: "Ignorées (doublons)",
+            color: T.textWarning,
+          },
+          { val: String(result.errors), lbl: "Erreurs", color: T.textDanger },
+          { val: String(result.total), lbl: "Total traitées", color: T.text1 },
         ].map((r) => (
           <View key={r.lbl} style={styles.resultTile}>
             <Text style={[styles.resultVal, { color: r.color }]}>{r.val}</Text>
@@ -1286,7 +1599,7 @@ function ImportTxSuccessScreen({ onDone, result }: { onDone: () => void; result:
           </View>
         ))}
       </View>
-      <View style={{ width: '100%', gap: 8 }}>
+      <View style={{ width: "100%", gap: 8 }}>
         <BtnMain label="Retour aux données" color={T.purple} onPress={onDone} />
         <BtnOutline label="Nouvel import" onPress={onDone} />
       </View>
@@ -1295,83 +1608,96 @@ function ImportTxSuccessScreen({ onDone, result }: { onDone: () => void; result:
 }
 
 // ─── CLEAN DATA ───────────────────────────────────────────────────────────────
-function CleanDataScreen({ onBack, onNavigate }: { onBack: () => void; onNavigate: (s: Screen) => void }) {
-  const clients           = useClientStore((s) => s.clients);
-  const clearClients      = useClientStore((s) => s.clearAll);
+function CleanDataScreen({
+  onBack,
+  onNavigate,
+}: {
+  onBack: () => void;
+  onNavigate: (s: Screen) => void;
+}) {
+  const clients = useClientStore((s) => s.clients);
+  const clearClients = useClientStore((s) => s.clearAll);
   const reconcileBalances = useClientStore((s) => s.reconcileBalances);
-  const transactions      = useTransactionStore((s) => s.transactions);
-  const pendingTxs        = useTransactionStore((s) => s.pendingTransactions);
-  const clearTxs          = useTransactionStore((s) => s.clearAll);
+  const transactions = useTransactionStore((s) => s.transactions);
+  const pendingTxs = useTransactionStore((s) => s.pendingTransactions);
+  const clearTxs = useTransactionStore((s) => s.clearAll);
 
   const clientCount = clients.length;
-  const txCount     = transactions.length + pendingTxs.length;
+  const txCount = transactions.length + pendingTxs.length;
 
   const confirm = (title: string, message: string, onConfirm: () => void) =>
     Alert.alert(title, message, [
-      { text: 'Annuler', style: 'cancel' },
-      { text: 'Effacer', style: 'destructive', onPress: onConfirm },
+      { text: "Annuler", style: "cancel" },
+      { text: "Effacer", style: "destructive", onPress: onConfirm },
     ]);
 
   const actions = [
     {
-      label:   'Effacer les clients',
-      sub:     `${clientCount} client${clientCount !== 1 ? 's' : ''} en mémoire`,
-      count:   clientCount,
-      bg:      T.bgDanger,
-      border:  'rgba(163,45,45,0.18)',
-      iconBg:  'rgba(163,45,45,0.12)',
+      label: "Effacer les clients",
+      sub: `${clientCount} client${clientCount !== 1 ? "s" : ""} en mémoire`,
+      count: clientCount,
+      bg: T.bgDanger,
+      border: "rgba(163,45,45,0.18)",
+      iconBg: "rgba(163,45,45,0.12)",
       txtColor: T.textDanger,
-      reimport: 'import-upload' as Screen,
+      reimport: "import-upload" as Screen,
       onPress: () =>
         confirm(
-          'Effacer les clients ?',
-          `Cette action supprimera ${clientCount} client${clientCount !== 1 ? 's' : ''} de l'appareil. Les données sur le serveur ne seront pas affectées.`,
+          "Effacer les clients ?",
+          `Cette action supprimera ${clientCount} client${clientCount !== 1 ? "s" : ""} de l'appareil. Les données sur le serveur ne seront pas affectées.`,
           clearClients,
         ),
     },
     {
-      label:   'Effacer les transactions',
-      sub:     `${txCount} transaction${txCount !== 1 ? 's' : ''} en mémoire`,
-      count:   txCount,
-      bg:      T.bgWarning,
-      border:  'rgba(133,79,11,0.18)',
-      iconBg:  'rgba(133,79,11,0.12)',
+      label: "Effacer les transactions",
+      sub: `${txCount} transaction${txCount !== 1 ? "s" : ""} en mémoire`,
+      count: txCount,
+      bg: T.bgWarning,
+      border: "rgba(133,79,11,0.18)",
+      iconBg: "rgba(133,79,11,0.12)",
       txtColor: T.textWarning,
-      reimport: 'import-tx-upload' as Screen,
+      reimport: "import-tx-upload" as Screen,
       onPress: () =>
         confirm(
-          'Effacer les transactions ?',
-          `Cette action supprimera ${txCount} transaction${txCount !== 1 ? 's' : ''} de l'appareil. Les données sur le serveur ne seront pas affectées.`,
+          "Effacer les transactions ?",
+          `Cette action supprimera ${txCount} transaction${txCount !== 1 ? "s" : ""} de l'appareil. Les données sur le serveur ne seront pas affectées.`,
           clearTxs,
         ),
     },
     {
-      label:   'Tout effacer',
-      sub:     `Clients + transactions`,
-      count:   clientCount + txCount,
-      bg:      T.bg2,
-      border:  T.border2,
-      iconBg:  T.bg3,
+      label: "Tout effacer",
+      sub: `Clients + transactions`,
+      count: clientCount + txCount,
+      bg: T.bg2,
+      border: T.border2,
+      iconBg: T.bg3,
       txtColor: T.text1,
-      reimport: 'import-upload' as Screen,
+      reimport: "import-upload" as Screen,
       onPress: () =>
         confirm(
-          'Tout effacer ?',
-          `Supprime ${clientCount} client${clientCount !== 1 ? 's' : ''} et ${txCount} transaction${txCount !== 1 ? 's' : ''} de l'appareil.`,
-          () => { clearClients(); clearTxs(); },
+          "Tout effacer ?",
+          `Supprime ${clientCount} client${clientCount !== 1 ? "s" : ""} et ${txCount} transaction${txCount !== 1 ? "s" : ""} de l'appareil.`,
+          () => {
+            clearClients();
+            clearTxs();
+          },
         ),
     },
   ];
 
   return (
     <View style={{ flex: 1, backgroundColor: T.bg3 }}>
-      <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 32 }}>
+      <ScrollView
+        showsVerticalScrollIndicator={false}
+        contentContainerStyle={{ paddingBottom: 32 }}
+      >
         <BackRow label="Données" step={1} total={1} onBack={onBack} />
 
         <View style={styles.screenTitleBlock}>
-          <Text style={styles.screenTitle}>{'Nettoyer\nles données'}</Text>
+          <Text style={styles.screenTitle}>{"Nettoyer\nles données"}</Text>
           <Text style={styles.screenSub}>
-            Effacez les données locales pour repartir d'un import propre. Les données sur le serveur restent intactes.
+            Effacez les données locales pour repartir d&apos;un import propre. Les
+            données sur le serveur restent intactes.
           </Text>
         </View>
 
@@ -1385,23 +1711,32 @@ function CleanDataScreen({ onBack, onNavigate }: { onBack: () => void; onNavigat
               key={a.label}
               onPress={a.onPress}
               activeOpacity={0.8}
-              style={[styles.cleanCard, { backgroundColor: a.bg, borderColor: a.border }]}
+              style={[
+                styles.cleanCard,
+                { backgroundColor: a.bg, borderColor: a.border },
+              ]}
             >
               <View style={[styles.cleanIcon, { backgroundColor: a.iconBg }]}>
                 <XCircle size={20} color={a.txtColor} strokeWidth={1.6} />
               </View>
               <View style={{ flex: 1 }}>
-                <Text style={[styles.cleanLabel, { color: a.txtColor }]}>{a.label}</Text>
+                <Text style={[styles.cleanLabel, { color: a.txtColor }]}>
+                  {a.label}
+                </Text>
                 <Text style={styles.cleanSub}>{a.sub}</Text>
               </View>
               <View style={[styles.cleanBadge, { backgroundColor: a.iconBg }]}>
-                <Text style={[styles.cleanBadgeTxt, { color: a.txtColor }]}>{a.count}</Text>
+                <Text style={[styles.cleanBadgeTxt, { color: a.txtColor }]}>
+                  {a.count}
+                </Text>
               </View>
             </TouchableOpacity>
           ))}
         </View>
 
-        <View style={[styles.sectionPad, { paddingTop: 20, paddingBottom: 10 }]}>
+        <View
+          style={[styles.sectionPad, { paddingTop: 20, paddingBottom: 10 }]}
+        >
           <SecTitle label="Réconciliation" />
         </View>
         <View style={{ paddingHorizontal: 18, gap: 8 }}>
@@ -1412,7 +1747,9 @@ function CleanDataScreen({ onBack, onNavigate }: { onBack: () => void; onNavigat
           />
         </View>
 
-        <View style={[styles.sectionPad, { paddingTop: 20, paddingBottom: 10 }]}>
+        <View
+          style={[styles.sectionPad, { paddingTop: 20, paddingBottom: 10 }]}
+        >
           <SecTitle label="Réimporter après nettoyage" />
         </View>
         <View style={{ paddingHorizontal: 18, gap: 8 }}>
@@ -1420,12 +1757,12 @@ function CleanDataScreen({ onBack, onNavigate }: { onBack: () => void; onNavigat
             label="Importer des clients"
             color={T.orange}
             icon={<Download size={15} color="#fff" strokeWidth={1.8} />}
-            onPress={() => onNavigate('import-upload')}
+            onPress={() => onNavigate("import-upload")}
           />
           <BtnOutline
             label="Importer des transactions"
             icon={<RotateCcw size={14} color={T.text2} strokeWidth={1.5} />}
-            onPress={() => onNavigate('import-tx-upload')}
+            onPress={() => onNavigate("import-tx-upload")}
           />
         </View>
       </ScrollView>
@@ -1434,7 +1771,7 @@ function CleanDataScreen({ onBack, onNavigate }: { onBack: () => void; onNavigat
 }
 
 // ─── EXPORT CONFIG ────────────────────────────────────────────────────────────
-type ExportFormat = 'csv' | 'pdf' | 'zip';
+type ExportFormat = "csv" | "pdf" | "zip";
 
 function ExportConfigScreen({
   onBack,
@@ -1443,11 +1780,11 @@ function ExportConfigScreen({
   onBack: () => void;
   onNext: () => void;
 }) {
-  const [format, setFormat] = useState<ExportFormat>('csv');
-  const [includeClients, setIncludeClients]   = useState(true);
-  const [includeTx,      setIncludeTx]        = useState(true);
-  const [includeAgents,  setIncludeAgents]    = useState(false);
-  const [includeGoals,   setIncludeGoals]     = useState(true);
+  const [format, setFormat] = useState<ExportFormat>("csv");
+  const [includeClients, setIncludeClients] = useState(true);
+  const [includeTx, setIncludeTx] = useState(true);
+  const [includeAgents, setIncludeAgents] = useState(false);
+  const [includeGoals, setIncludeGoals] = useState(true);
 
   const formats: {
     id: ExportFormat;
@@ -1457,39 +1794,62 @@ function ExportConfigScreen({
     icon: React.ReactNode;
   }[] = [
     {
-      id: 'csv',
-      name: 'CSV',
-      desc: 'Compatible Excel, Google Sheets',
+      id: "csv",
+      name: "CSV",
+      desc: "Compatible Excel, Google Sheets",
       iconBg: T.bgSuccess,
       icon: <FileText size={18} color={T.greenMid} strokeWidth={1.5} />,
     },
     {
-      id: 'pdf',
-      name: 'PDF',
-      desc: 'Rapport imprimable formaté',
+      id: "pdf",
+      name: "PDF",
+      desc: "Rapport imprimable formaté",
       iconBg: T.bgDanger,
       icon: <FileText size={18} color={T.textDanger} strokeWidth={1.5} />,
     },
     {
-      id: 'zip',
-      name: 'Sauvegarde ZIP',
-      desc: 'Archive complète de toutes les données',
+      id: "zip",
+      name: "Sauvegarde ZIP",
+      desc: "Archive complète de toutes les données",
       iconBg: T.purpleLt,
       icon: <RotateCcw size={18} color={T.purple} strokeWidth={1.5} />,
     },
   ];
 
   const toggles = [
-    { label: 'Liste des clients',            sub: 'Nom, téléphone, solde, groupe',       val: includeClients, set: setIncludeClients },
-    { label: 'Historique des transactions',  sub: 'Dépôts, retraits, commissions',       val: includeTx,      set: setIncludeTx      },
-    { label: 'Informations agents',          sub: 'Noms, rôles, performances',           val: includeAgents,  set: setIncludeAgents  },
-    { label: "Objectifs d'épargne",          sub: 'Montants cibles et progressions',     val: includeGoals,   set: setIncludeGoals   },
+    {
+      label: "Liste des clients",
+      sub: "Nom, téléphone, solde, groupe",
+      val: includeClients,
+      set: setIncludeClients,
+    },
+    {
+      label: "Historique des transactions",
+      sub: "Dépôts, retraits, commissions",
+      val: includeTx,
+      set: setIncludeTx,
+    },
+    {
+      label: "Informations agents",
+      sub: "Noms, rôles, performances",
+      val: includeAgents,
+      set: setIncludeAgents,
+    },
+    {
+      label: "Objectifs d'épargne",
+      sub: "Montants cibles et progressions",
+      val: includeGoals,
+      set: setIncludeGoals,
+    },
   ];
 
   return (
     <View style={{ flex: 1, backgroundColor: T.bg3 }}>
       <StepBar total={3} done={2} active={2} accent="blue" />
-      <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 32 }}>
+      <ScrollView
+        showsVerticalScrollIndicator={false}
+        contentContainerStyle={{ paddingBottom: 32 }}
+      >
         <BackRow label="Données" step={2} total={3} onBack={onBack} />
 
         <View style={styles.screenTitleBlock}>
@@ -1599,9 +1959,9 @@ function ExportConfigScreen({
 // ─── EXPORT DONE ──────────────────────────────────────────────────────────────
 function ExportDoneScreen({ onDone }: { onDone: () => void }) {
   const stats = [
-    { val: '43',  lbl: 'Clients'      },
-    { val: '318', lbl: 'Transactions' },
-    { val: '22 ko', lbl: 'Taille'    },
+    { val: "43", lbl: "Clients" },
+    { val: "318", lbl: "Transactions" },
+    { val: "22 ko", lbl: "Taille" },
   ];
 
   return (
@@ -1616,15 +1976,24 @@ function ExportDoneScreen({ onDone }: { onDone: () => void }) {
       </View>
       <Text style={styles.successH}>Fichier prêt !</Text>
       <Text style={styles.successP}>
-        {'Votre export CSV a été généré\navec succès.'}
+        {"Votre export CSV a été généré\navec succès."}
       </Text>
 
       {/* File card */}
       <View style={styles.fileCard}>
         <View style={[styles.fileCardHeader, { backgroundColor: T.blue }]}>
-          <FileText size={32} color="#fff" strokeWidth={1.5} style={{ marginBottom: 8 }} />
-          <Text style={styles.fileCardName}>kauridorr_export_avril2025.csv</Text>
-          <Text style={styles.fileCardMeta}>43 clients · 318 transactions · 22 ko</Text>
+          <FileText
+            size={32}
+            color="#fff"
+            strokeWidth={1.5}
+            style={{ marginBottom: 8 }}
+          />
+          <Text style={styles.fileCardName}>
+            kauridorr_export_avril2025.csv
+          </Text>
+          <Text style={styles.fileCardMeta}>
+            43 clients · 318 transactions · 22 ko
+          </Text>
         </View>
         <View style={styles.fileCardStats}>
           {stats.map((s, i) => (
@@ -1649,21 +2018,38 @@ function ExportDoneScreen({ onDone }: { onDone: () => void }) {
           <Text style={[styles.progLabel, { color: T.greenMid }]}>100%</Text>
         </View>
         <View style={styles.progTrack}>
-          <View style={[styles.progFill, { backgroundColor: T.greenMid, width: '100%' }]} />
+          <View
+            style={[
+              styles.progFill,
+              { backgroundColor: T.greenMid, width: "100%" },
+            ]}
+          />
         </View>
       </View>
 
-      <View style={{ width: '100%', gap: 8, marginTop: 4 }}>
+      <View style={{ width: "100%", gap: 8, marginTop: 4 }}>
         <BtnMain
           label="Télécharger le fichier"
           color={T.blue}
           icon={<Download size={15} color="#fff" strokeWidth={1.8} />}
-          onPress={() => shareOrSaveCsv('kauridorr_export_avril2025.csv', EXPORT_CSV, 'Télécharger export')}
+          onPress={() =>
+            shareOrSaveCsv(
+              "kauridorr_export_avril2025.csv",
+              EXPORT_CSV,
+              "Télécharger export",
+            )
+          }
         />
         <BtnOutline
           label="Partager via WhatsApp / e-mail"
           icon={<Share2 size={14} color={T.text2} strokeWidth={1.5} />}
-          onPress={() => shareOrSaveCsv('kauridorr_export_avril2025.csv', EXPORT_CSV, 'Partager export')}
+          onPress={() =>
+            shareOrSaveCsv(
+              "kauridorr_export_avril2025.csv",
+              EXPORT_CSV,
+              "Partager export",
+            )
+          }
         />
         <BtnOutline label="Nouvel export" onPress={onDone} />
       </View>
@@ -1673,80 +2059,105 @@ function ExportDoneScreen({ onDone }: { onDone: () => void }) {
 
 // ─── Root component ───────────────────────────────────────────────────────────
 export default function DataScreen() {
-  const [screen, setScreen]             = useState<Screen>('hub');
-  const [pickedFile, setPickedFile]     = useState<DocumentPicker.DocumentPickerAsset | null>(null);
-  const [txFile, setTxFile]             = useState<DocumentPicker.DocumentPickerAsset | null>(null);
-  const [parsedRows, setParsedRows]     = useState<ParsedRow[]>([]);
-  const [importResult, setImportResult] = useState<ImportResult>({ imported: 0, duplicates: 0, errors: 0, total: 0 });
-  const [txResult, setTxResult]         = useState<TxImportResult>({ imported: 0, duplicates: 0, errors: 0, total: 0 });
+  const [screen, setScreen] = useState<Screen>("hub");
+  const [pickedFile, setPickedFile] =
+    useState<DocumentPicker.DocumentPickerAsset | null>(null);
+  const [txFile, setTxFile] =
+    useState<DocumentPicker.DocumentPickerAsset | null>(null);
+  const [parsedRows, setParsedRows] = useState<ParsedRow[]>([]);
+  const [importResult, setImportResult] = useState<ImportResult>({
+    imported: 0,
+    duplicates: 0,
+    errors: 0,
+    total: 0,
+  });
+  const [txResult, setTxResult] = useState<TxImportResult>({
+    imported: 0,
+    duplicates: 0,
+    errors: 0,
+    total: 0,
+  });
 
   const nav = (s: Screen) => setScreen(s);
 
   return (
-    <SafeAreaView style={{ flex: 1, backgroundColor: T.bg3 }} edges={['top']}>
-      {screen === 'hub' && (
-        <HubScreen onNavigate={nav} />
-      )}
+    <SafeAreaView style={{ flex: 1, backgroundColor: T.bg3 }} edges={["top"]}>
+      {screen === "hub" && <HubScreen onNavigate={nav} />}
 
-      {screen === 'import-upload' && (
+      {screen === "import-upload" && (
         <ImportUploadScreen
-          onBack={() => nav('hub')}
-          onNext={(file) => { setPickedFile(file); nav('import-map'); }}
+          onBack={() => nav("hub")}
+          onNext={(file) => {
+            setPickedFile(file);
+            nav("import-map");
+          }}
         />
       )}
 
-      {screen === 'import-map' && (
+      {screen === "import-map" && (
         <ImportMapScreen
-          onBack={() => nav('import-upload')}
-          onNext={(rows) => { setParsedRows(rows); nav('import-preview'); }}
+          onBack={() => nav("import-upload")}
+          onNext={(rows) => {
+            setParsedRows(rows);
+            nav("import-preview");
+          }}
           file={pickedFile}
         />
       )}
 
-      {screen === 'import-preview' && (
+      {screen === "import-preview" && (
         <ImportPreviewScreen
-          onBack={() => nav('import-map')}
-          onNext={(result) => { setImportResult(result); nav('import-success'); }}
+          onBack={() => nav("import-map")}
+          onNext={(result) => {
+            setImportResult(result);
+            nav("import-success");
+          }}
           rawRows={parsedRows}
         />
       )}
 
-      {screen === 'import-success' && (
-        <ImportSuccessScreen onDone={() => nav('hub')} result={importResult} />
+      {screen === "import-success" && (
+        <ImportSuccessScreen onDone={() => nav("hub")} result={importResult} />
       )}
 
-      {screen === 'import-tx-upload' && (
+      {screen === "import-tx-upload" && (
         <ImportTxUploadScreen
-          onBack={() => nav('hub')}
-          onNext={(file) => { setTxFile(file); nav('import-tx-preview'); }}
+          onBack={() => nav("hub")}
+          onNext={(file) => {
+            setTxFile(file);
+            nav("import-tx-preview");
+          }}
         />
       )}
 
-      {screen === 'import-tx-preview' && (
+      {screen === "import-tx-preview" && (
         <ImportTxPreviewScreen
-          onBack={() => nav('import-tx-upload')}
-          onNext={(result) => { setTxResult(result); nav('import-tx-success'); }}
+          onBack={() => nav("import-tx-upload")}
+          onNext={(result) => {
+            setTxResult(result);
+            nav("import-tx-success");
+          }}
           file={txFile}
         />
       )}
 
-      {screen === 'import-tx-success' && (
-        <ImportTxSuccessScreen onDone={() => nav('hub')} result={txResult} />
+      {screen === "import-tx-success" && (
+        <ImportTxSuccessScreen onDone={() => nav("hub")} result={txResult} />
       )}
 
-      {screen === 'clean-data' && (
-        <CleanDataScreen onBack={() => nav('hub')} onNavigate={nav} />
+      {screen === "clean-data" && (
+        <CleanDataScreen onBack={() => nav("hub")} onNavigate={nav} />
       )}
 
-      {screen === 'export-config' && (
+      {screen === "export-config" && (
         <ExportConfigScreen
-          onBack={() => nav('hub')}
-          onNext={() => nav('export-done')}
+          onBack={() => nav("hub")}
+          onNext={() => nav("export-done")}
         />
       )}
 
-      {screen === 'export-done' && (
-        <ExportDoneScreen onDone={() => nav('hub')} />
+      {screen === "export-done" && (
+        <ExportDoneScreen onDone={() => nav("hub")} />
       )}
     </SafeAreaView>
   );
@@ -1764,13 +2175,13 @@ const styles = StyleSheet.create({
     borderBottomColor: T.border,
   },
   topbarRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
   },
   pageTitle: {
     fontSize: 18,
-    fontWeight: '600',
+    fontWeight: "600",
     color: T.text1,
     letterSpacing: -0.4,
   },
@@ -1781,14 +2192,14 @@ const styles = StyleSheet.create({
     backgroundColor: T.bg2,
     borderWidth: 0.5,
     borderColor: T.border,
-    alignItems: 'center',
-    justifyContent: 'center',
+    alignItems: "center",
+    justifyContent: "center",
   },
 
   // ── Sync row ──
   syncRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     gap: 8,
     paddingHorizontal: 18,
     paddingVertical: 10,
@@ -1801,8 +2212,8 @@ const styles = StyleSheet.create({
     height: 7,
     borderRadius: 3.5,
   },
-  syncTxt:  { fontSize: 12, color: T.text2 },
-  syncTime: { marginLeft: 'auto', fontSize: 11, color: T.text3 },
+  syncTxt: { fontSize: 12, color: T.text2 },
+  syncTime: { marginLeft: "auto", fontSize: 11, color: T.text3 },
 
   // ── Section padding ──
   sectionPad: { paddingHorizontal: 18, paddingTop: 14 },
@@ -1810,22 +2221,22 @@ const styles = StyleSheet.create({
   // ── Section title ──
   secTitle: {
     fontSize: 11,
-    fontWeight: '500',
+    fontWeight: "500",
     color: T.text3,
-    textTransform: 'uppercase',
+    textTransform: "uppercase",
     letterSpacing: 0.5,
     marginBottom: 8,
   },
 
   // ── Action tiles ──
   actionTiles: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
+    flexDirection: "row",
+    flexWrap: "wrap",
     gap: 10,
     paddingHorizontal: 18,
   },
   tile: {
-    width: '47%',
+    width: "47%",
     borderRadius: 16,
     padding: 16,
     gap: 10,
@@ -1835,12 +2246,12 @@ const styles = StyleSheet.create({
     width: 40,
     height: 40,
     borderRadius: 12,
-    alignItems: 'center',
-    justifyContent: 'center',
+    alignItems: "center",
+    justifyContent: "center",
   },
   tileName: {
     fontSize: 14,
-    fontWeight: '600',
+    fontWeight: "600",
     color: T.text1,
     lineHeight: 19,
   },
@@ -1856,26 +2267,26 @@ const styles = StyleSheet.create({
     borderWidth: 0.5,
     borderColor: T.border,
     borderRadius: 14,
-    overflow: 'hidden',
+    overflow: "hidden",
   },
   cardRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
     paddingHorizontal: 14,
     paddingVertical: 12,
     borderBottomWidth: 0.5,
     borderBottomColor: T.border,
   },
   cardLabel: { fontSize: 13, color: T.text1 },
-  cardSub:   { fontSize: 11, color: T.text3, marginTop: 1 },
+  cardSub: { fontSize: 11, color: T.text3, marginTop: 1 },
 
   histIcon: {
     width: 30,
     height: 30,
     borderRadius: 8,
-    alignItems: 'center',
-    justifyContent: 'center',
+    alignItems: "center",
+    justifyContent: "center",
   },
 
   colBadge: {
@@ -1883,23 +2294,23 @@ const styles = StyleSheet.create({
     paddingVertical: 2,
     borderRadius: 4,
   },
-  colBadgeText: { fontSize: 10, fontWeight: '500' },
+  colBadgeText: { fontSize: 10, fontWeight: "500" },
 
   // ── Step bar ──
-  stepBar: { height: 3, flexDirection: 'row' },
+  stepBar: { height: 3, flexDirection: "row" },
   stepSeg: { flex: 1, height: 3 },
 
   // ── Back row ──
   backRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
     paddingHorizontal: 18,
     paddingTop: 12,
     paddingBottom: 0,
     backgroundColor: T.bg,
   },
-  backBtn:   { flexDirection: 'row', alignItems: 'center', gap: 5 },
+  backBtn: { flexDirection: "row", alignItems: "center", gap: 5 },
   backLabel: { fontSize: 13, color: T.text3 },
   stepBadge: {
     backgroundColor: T.bg2,
@@ -1909,7 +2320,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 9,
     paddingVertical: 3,
   },
-  stepBadgeText: { fontSize: 11, fontWeight: '500', color: T.text3 },
+  stepBadgeText: { fontSize: 11, fontWeight: "500", color: T.text3 },
 
   // ── Screen title block ──
   screenTitleBlock: {
@@ -1920,7 +2331,7 @@ const styles = StyleSheet.create({
   },
   screenTitle: {
     fontSize: 20,
-    fontWeight: '600',
+    fontWeight: "600",
     color: T.text1,
     letterSpacing: -0.4,
     marginBottom: 4,
@@ -1933,11 +2344,11 @@ const styles = StyleSheet.create({
   uploadZone: {
     marginHorizontal: 18,
     borderWidth: 1.5,
-    borderStyle: 'dashed',
-    borderColor: 'rgba(216,90,48,0.35)',
+    borderStyle: "dashed",
+    borderColor: "rgba(216,90,48,0.35)",
     borderRadius: 16,
     padding: 28,
-    alignItems: 'center',
+    alignItems: "center",
     gap: 10,
     backgroundColor: T.orangeLt,
   },
@@ -1945,24 +2356,30 @@ const styles = StyleSheet.create({
     width: 48,
     height: 48,
     borderRadius: 14,
-    backgroundColor: 'rgba(216,90,48,0.15)',
-    alignItems: 'center',
-    justifyContent: 'center',
+    backgroundColor: "rgba(216,90,48,0.15)",
+    alignItems: "center",
+    justifyContent: "center",
   },
-  uploadTitle: { fontSize: 14, fontWeight: '600', color: T.orangeDk },
-  uploadSub:   { fontSize: 12, color: T.orangeDk, opacity: 0.7, textAlign: 'center', lineHeight: 18 },
+  uploadTitle: { fontSize: 14, fontWeight: "600", color: T.orangeDk },
+  uploadSub: {
+    fontSize: 12,
+    color: T.orangeDk,
+    opacity: 0.7,
+    textAlign: "center",
+    lineHeight: 18,
+  },
 
   fmtChip: {
     paddingHorizontal: 8,
     paddingVertical: 3,
     borderRadius: 5,
-    backgroundColor: 'rgba(216,90,48,0.15)',
+    backgroundColor: "rgba(216,90,48,0.15)",
   },
-  fmtChipText: { fontSize: 10, color: T.orangeDk, fontWeight: '500' },
+  fmtChipText: { fontSize: 10, color: T.orangeDk, fontWeight: "500" },
 
   templateRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     gap: 10,
     backgroundColor: T.bg,
     borderWidth: 0.5,
@@ -1973,8 +2390,8 @@ const styles = StyleSheet.create({
 
   // ── File pill ──
   filePill: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     gap: 10,
     backgroundColor: T.bg,
     borderWidth: 0.5,
@@ -1989,19 +2406,19 @@ const styles = StyleSheet.create({
     width: 34,
     height: 34,
     borderRadius: 9,
-    alignItems: 'center',
-    justifyContent: 'center',
+    alignItems: "center",
+    justifyContent: "center",
   },
-  fileName: { fontSize: 13, fontWeight: '500', color: T.text1 },
+  fileName: { fontSize: 13, fontWeight: "500", color: T.text1 },
   fileMeta: { fontSize: 11, color: T.text3, marginTop: 1 },
   fileRemove: {
-    marginLeft: 'auto',
+    marginLeft: "auto",
     width: 24,
     height: 24,
     borderRadius: 12,
     backgroundColor: T.bg2,
-    alignItems: 'center',
-    justifyContent: 'center',
+    alignItems: "center",
+    justifyContent: "center",
   },
 
   // ── Column map ──
@@ -2010,12 +2427,12 @@ const styles = StyleSheet.create({
     borderWidth: 0.5,
     borderColor: T.border,
     borderRadius: 14,
-    overflow: 'hidden',
+    overflow: "hidden",
     marginHorizontal: 18,
   },
   mapHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
+    flexDirection: "row",
+    justifyContent: "space-between",
     paddingHorizontal: 14,
     paddingVertical: 8,
     backgroundColor: T.bg2,
@@ -2024,28 +2441,28 @@ const styles = StyleSheet.create({
   },
   mapHeaderText: {
     fontSize: 10,
-    fontWeight: '500',
+    fontWeight: "500",
     color: T.text3,
-    textTransform: 'uppercase',
+    textTransform: "uppercase",
     letterSpacing: 0.4,
   },
   mapRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
     paddingHorizontal: 14,
     paddingVertical: 9,
     borderBottomWidth: 0.5,
     borderBottomColor: T.border,
   },
-  mapCsv:   { fontSize: 12, color: T.text2, fontVariant: ['tabular-nums'] },
-  mapField: { fontSize: 12, fontWeight: '500', textAlign: 'right' },
+  mapCsv: { fontSize: 12, color: T.text2, fontVariant: ["tabular-nums"] },
+  mapField: { fontSize: 12, fontWeight: "500", textAlign: "right" },
 
   // ── Validation strip ──
   validationStrip: {
-    flexDirection: 'row',
+    flexDirection: "row",
     borderRadius: 12,
-    overflow: 'hidden',
+    overflow: "hidden",
     borderWidth: 0.5,
     borderColor: T.border,
     gap: 1,
@@ -2055,21 +2472,21 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: T.bg2,
     paddingVertical: 10,
-    alignItems: 'center',
+    alignItems: "center",
   },
-  valNum: { fontSize: 18, fontWeight: '700' },
+  valNum: { fontSize: 18, fontWeight: "700" },
   valLbl: { fontSize: 10, color: T.text3, marginTop: 1 },
 
   // ── Warning banner ──
   warnBanner: {
-    flexDirection: 'row',
-    alignItems: 'flex-start',
+    flexDirection: "row",
+    alignItems: "flex-start",
     gap: 8,
     marginHorizontal: 18,
     marginBottom: 12,
     backgroundColor: T.bgWarning,
     borderWidth: 0.5,
-    borderColor: 'rgba(133,79,11,0.2)',
+    borderColor: "rgba(133,79,11,0.2)",
     borderRadius: 11,
     paddingHorizontal: 13,
     paddingVertical: 10,
@@ -2087,11 +2504,11 @@ const styles = StyleSheet.create({
     borderWidth: 0.5,
     borderColor: T.border,
     borderRadius: 14,
-    overflow: 'hidden',
+    overflow: "hidden",
     marginHorizontal: 18,
   },
   ptHeader: {
-    flexDirection: 'row',
+    flexDirection: "row",
     paddingHorizontal: 12,
     paddingVertical: 8,
     backgroundColor: T.bg2,
@@ -2102,21 +2519,21 @@ const styles = StyleSheet.create({
   ptHeaderText: {
     flex: 1,
     fontSize: 10,
-    fontWeight: '500',
+    fontWeight: "500",
     color: T.text3,
-    textTransform: 'uppercase',
+    textTransform: "uppercase",
     letterSpacing: 0.4,
   },
   ptRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     paddingHorizontal: 12,
     paddingVertical: 9,
     borderBottomWidth: 0.5,
     borderBottomColor: T.border,
     gap: 8,
   },
-  ptName:  { fontSize: 12, fontWeight: '500', color: T.text1 },
+  ptName: { fontSize: 12, fontWeight: "500", color: T.text1 },
   ptPhone: { flex: 1, fontSize: 11, color: T.text3 },
   ptBadge: {
     paddingHorizontal: 6,
@@ -2137,26 +2554,26 @@ const styles = StyleSheet.create({
     borderRadius: 14,
     paddingHorizontal: 14,
     paddingVertical: 13,
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     gap: 12,
   },
   expIcon: {
     width: 36,
     height: 36,
     borderRadius: 10,
-    alignItems: 'center',
-    justifyContent: 'center',
+    alignItems: "center",
+    justifyContent: "center",
   },
-  expName: { fontSize: 13, fontWeight: '500', color: T.text1 },
+  expName: { fontSize: 13, fontWeight: "500", color: T.text1 },
   expDesc: { fontSize: 11, color: T.text3, marginTop: 1 },
   selCheck: {
     width: 20,
     height: 20,
     borderRadius: 10,
     backgroundColor: T.orange,
-    alignItems: 'center',
-    justifyContent: 'center',
+    alignItems: "center",
+    justifyContent: "center",
   },
   uncheck: {
     width: 20,
@@ -2168,16 +2585,16 @@ const styles = StyleSheet.create({
 
   // ── Date row ──
   dateRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     gap: 8,
     marginHorizontal: 18,
   },
   dateInput: {
     flex: 1,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
     backgroundColor: T.bg2,
     borderWidth: 0.5,
     borderColor: T.border,
@@ -2185,21 +2602,21 @@ const styles = StyleSheet.create({
     paddingHorizontal: 13,
     paddingVertical: 10,
   },
-  dateInputText: { fontSize: 13, fontWeight: '500', color: T.text1 },
+  dateInputText: { fontSize: 13, fontWeight: "500", color: T.text1 },
   dateArrow: { fontSize: 13, color: T.text3, paddingHorizontal: 4 },
 
   // ── Toggle row ──
   toggleRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
     paddingHorizontal: 14,
     paddingVertical: 11,
     borderBottomWidth: 0.5,
     borderBottomColor: T.border,
   },
   toggleLabel: { fontSize: 13, color: T.text1 },
-  toggleSub:   { fontSize: 11, color: T.text3, marginTop: 1 },
+  toggleSub: { fontSize: 11, color: T.text3, marginTop: 1 },
 
   // ── CTA wrap ──
   ctaWrap: {
@@ -2211,32 +2628,32 @@ const styles = StyleSheet.create({
 
   // ── Buttons ──
   btnMain: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
     paddingVertical: 14,
     borderRadius: 13,
   },
   btnMainText: {
     fontSize: 14,
-    fontWeight: '500',
-    color: '#fff',
+    fontWeight: "500",
+    color: "#fff",
   },
   btnOutline: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
     paddingVertical: 13,
     borderRadius: 13,
     borderWidth: 0.5,
     borderColor: T.border2,
     backgroundColor: T.bg,
   },
-  btnOutlineText: { fontSize: 13, fontWeight: '500', color: T.text1 },
+  btnOutlineText: { fontSize: 13, fontWeight: "500", color: T.text1 },
 
   // ── Success screen ──
   successScreen: {
-    alignItems: 'center',
+    alignItems: "center",
     paddingHorizontal: 22,
     paddingTop: 48,
     paddingBottom: 28,
@@ -2245,13 +2662,13 @@ const styles = StyleSheet.create({
     width: 76,
     height: 76,
     borderRadius: 38,
-    alignItems: 'center',
-    justifyContent: 'center',
+    alignItems: "center",
+    justifyContent: "center",
     marginBottom: 18,
   },
   successH: {
     fontSize: 22,
-    fontWeight: '600',
+    fontWeight: "600",
     color: T.text1,
     letterSpacing: -0.4,
     marginBottom: 6,
@@ -2260,36 +2677,41 @@ const styles = StyleSheet.create({
     fontSize: 13,
     color: T.text2,
     lineHeight: 20,
-    textAlign: 'center',
+    textAlign: "center",
     marginBottom: 22,
   },
   resultGrid: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
+    flexDirection: "row",
+    flexWrap: "wrap",
     gap: 8,
-    width: '100%',
+    width: "100%",
     marginBottom: 18,
   },
   resultTile: {
-    width: '47%',
+    width: "47%",
     backgroundColor: T.bg2,
     borderWidth: 0.5,
     borderColor: T.border,
     borderRadius: 14,
     padding: 14,
-    alignItems: 'center',
+    alignItems: "center",
   },
-  resultVal: { fontSize: 22, fontWeight: '700' },
-  resultLbl: { fontSize: 11, color: T.text3, marginTop: 3, textAlign: 'center' },
+  resultVal: { fontSize: 22, fontWeight: "700" },
+  resultLbl: {
+    fontSize: 11,
+    color: T.text3,
+    marginTop: 3,
+    textAlign: "center",
+  },
 
   errSummary: {
-    flexDirection: 'row',
-    alignItems: 'flex-start',
+    flexDirection: "row",
+    alignItems: "flex-start",
     gap: 9,
-    width: '100%',
+    width: "100%",
     backgroundColor: T.bgWarning,
     borderWidth: 0.5,
-    borderColor: 'rgba(133,79,11,0.2)',
+    borderColor: "rgba(133,79,11,0.2)",
     borderRadius: 12,
     paddingHorizontal: 14,
     paddingVertical: 12,
@@ -2299,51 +2721,51 @@ const styles = StyleSheet.create({
 
   // ── File ready card ──
   fileCard: {
-    width: '100%',
+    width: "100%",
     backgroundColor: T.bg2,
     borderWidth: 0.5,
     borderColor: T.border,
     borderRadius: 16,
-    overflow: 'hidden',
+    overflow: "hidden",
     marginBottom: 16,
   },
   fileCardHeader: {
     padding: 16,
-    alignItems: 'center',
+    alignItems: "center",
   },
   fileCardName: {
     fontSize: 15,
-    fontWeight: '600',
-    color: '#fff',
-    textAlign: 'center',
+    fontWeight: "600",
+    color: "#fff",
+    textAlign: "center",
   },
   fileCardMeta: {
     fontSize: 11,
-    color: 'rgba(255,255,255,0.6)',
+    color: "rgba(255,255,255,0.6)",
     marginTop: 3,
   },
   fileCardStats: {
-    flexDirection: 'row',
+    flexDirection: "row",
     borderTopWidth: 0.5,
     borderTopColor: T.border,
   },
   fileCardStatCell: {
     flex: 1,
     padding: 10,
-    alignItems: 'center',
+    alignItems: "center",
   },
   fileCardStatBorder: {
     borderRightWidth: 0.5,
     borderRightColor: T.border,
   },
-  fileCardStatVal: { fontSize: 15, fontWeight: '700', color: T.text1 },
+  fileCardStatVal: { fontSize: 15, fontWeight: "700", color: T.text1 },
   fileCardStatLbl: { fontSize: 10, color: T.text3 },
 
   // ── Progress bar ──
-  progressWrap: { width: '100%', marginBottom: 18 },
+  progressWrap: { width: "100%", marginBottom: 18 },
   progLabelRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
+    flexDirection: "row",
+    justifyContent: "space-between",
     marginBottom: 6,
   },
   progLabel: { fontSize: 12, color: T.text2 },
@@ -2351,16 +2773,16 @@ const styles = StyleSheet.create({
     height: 8,
     backgroundColor: T.bg2,
     borderRadius: 4,
-    overflow: 'hidden',
+    overflow: "hidden",
     borderWidth: 0.5,
     borderColor: T.border,
   },
-  progFill: { height: '100%', borderRadius: 4 },
+  progFill: { height: "100%", borderRadius: 4 },
 
   // ── Clean data ──
   cleanCard: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     gap: 12,
     borderRadius: 14,
     borderWidth: 0.5,
@@ -2371,15 +2793,15 @@ const styles = StyleSheet.create({
     width: 40,
     height: 40,
     borderRadius: 12,
-    alignItems: 'center',
-    justifyContent: 'center',
+    alignItems: "center",
+    justifyContent: "center",
   },
-  cleanLabel: { fontSize: 14, fontWeight: '600' },
-  cleanSub:   { fontSize: 11, color: T.text3, marginTop: 2 },
+  cleanLabel: { fontSize: 14, fontWeight: "600" },
+  cleanSub: { fontSize: 11, color: T.text3, marginTop: 2 },
   cleanBadge: {
     paddingHorizontal: 9,
     paddingVertical: 4,
     borderRadius: 20,
   },
-  cleanBadgeTxt: { fontSize: 13, fontWeight: '700' },
+  cleanBadgeTxt: { fontSize: 13, fontWeight: "700" },
 });

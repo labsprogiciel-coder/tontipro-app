@@ -3,7 +3,7 @@ import { View, Text, StyleSheet, TouchableOpacity } from "react-native";
 
 export interface TransactionProps {
   name: string;
-  type: 'deposit' | 'withdrawal';
+  type: "deposit" | "withdrawal";
   time: string;
   amount: string;
   balance?: string;
@@ -12,12 +12,30 @@ export interface TransactionProps {
   onPress?: () => void;
 }
 
-const TransactionItem: React.FC<TransactionProps> = ({ name, type, time, amount, balance, multiplier, isLast, onPress }) => {
-  const isDeposit = type === 'deposit';
+const TransactionItem: React.FC<TransactionProps> = ({
+  name,
+  type,
+  time,
+  amount,
+  balance,
+  multiplier,
+  isLast,
+  onPress,
+}) => {
+  const isDeposit = type === "deposit";
 
   return (
-    <TouchableOpacity style={[styles.item, isLast && styles.itemLast]} onPress={onPress} activeOpacity={0.7}>
-      <View style={[styles.dot, { backgroundColor: isDeposit ? '#eaf3de' : '#FAE8E0' }]} />
+    <TouchableOpacity
+      style={[styles.item, isLast && styles.itemLast]}
+      onPress={onPress}
+      activeOpacity={0.7}
+    >
+      <View
+        style={[
+          styles.dot,
+          { backgroundColor: isDeposit ? "#eaf3de" : "#FAE8E0" },
+        ]}
+      />
       <View style={styles.textContainer}>
         <Text style={styles.name}>{name}</Text>
         <Text style={styles.meta}>{time}</Text>
@@ -25,13 +43,25 @@ const TransactionItem: React.FC<TransactionProps> = ({ name, type, time, amount,
       <View style={styles.right}>
         <View style={styles.amountRow}>
           {multiplier != null && multiplier > 0 && (
-            <View style={[styles.multiplierBadge, { backgroundColor: isDeposit ? '#eaf3de' : '#FAE8E0' }]}>
-              <Text style={[styles.multiplierText, { color: isDeposit ? '#3b6d11' : '#993C1D' }]}>
+            <View
+              style={[
+                styles.multiplierBadge,
+                { backgroundColor: isDeposit ? "#eaf3de" : "#FAE8E0" },
+              ]}
+            >
+              <Text
+                style={[
+                  styles.multiplierText,
+                  { color: isDeposit ? "#3b6d11" : "#993C1D" },
+                ]}
+              >
                 ×{multiplier}
               </Text>
             </View>
           )}
-          <Text style={[styles.val, { color: isDeposit ? '#3b6d11' : '#993C1D' }]}>
+          <Text
+            style={[styles.val, { color: isDeposit ? "#3b6d11" : "#993C1D" }]}
+          >
             {isDeposit ? `+${amount}` : `−${amount}`}
           </Text>
         </View>
@@ -43,23 +73,33 @@ const TransactionItem: React.FC<TransactionProps> = ({ name, type, time, amount,
 
 const styles = StyleSheet.create({
   item: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     padding: 11,
     borderBottomWidth: 0.5,
-    borderBottomColor: 'rgba(0,0,0,0.1)'
+    borderBottomColor: "rgba(0,0,0,0.1)",
   },
   itemLast: { borderBottomWidth: 0 },
-  dot: { width: 34, height: 34, borderRadius: 17, justifyContent: 'center', alignItems: 'center' },
+  dot: {
+    width: 34,
+    height: 34,
+    borderRadius: 17,
+    justifyContent: "center",
+    alignItems: "center",
+  },
   textContainer: { marginLeft: 11, flex: 1 },
-  name: { fontSize: 13, fontWeight: '500', color: '#1a1a18' },
-  meta: { fontSize: 11, color: '#888780' },
-  right: { alignItems: 'flex-end' },
-  amountRow: { flexDirection: 'row', alignItems: 'center', gap: 5 },
-  multiplierBadge: { paddingHorizontal: 6, paddingVertical: 2, borderRadius: 6 },
-  multiplierText: { fontSize: 10, fontWeight: '700' },
-  val: { fontSize: 13, fontWeight: '500' },
-  bal: { fontSize: 10, color: '#888780', marginTop: 1 },
+  name: { fontSize: 13, fontWeight: "500", color: "#1a1a18" },
+  meta: { fontSize: 11, color: "#888780" },
+  right: { alignItems: "flex-end" },
+  amountRow: { flexDirection: "row", alignItems: "center", gap: 5 },
+  multiplierBadge: {
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: 6,
+  },
+  multiplierText: { fontSize: 10, fontWeight: "700" },
+  val: { fontSize: 13, fontWeight: "500" },
+  bal: { fontSize: 10, color: "#888780", marginTop: 1 },
 });
 
 export default TransactionItem;

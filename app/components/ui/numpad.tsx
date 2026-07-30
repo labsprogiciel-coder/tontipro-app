@@ -50,7 +50,10 @@ export function Numpad({
                 onPress={() => handleKey(digit)}
                 style={({ pressed }) => [
                   styles.key,
-                  pressed && { backgroundColor: accentColor + "22", borderColor: accentColor },
+                  pressed && {
+                    backgroundColor: accentColor + "22",
+                    borderColor: accentColor,
+                  },
                 ]}
               >
                 <Text style={digit === "⌫" ? styles.delete : styles.digit}>

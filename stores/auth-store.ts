@@ -3,14 +3,24 @@ import { create } from "zustand";
 import { createJSONStorage, persist } from "zustand/middleware";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { convex } from "@/lib/convex";
+import { withAuthRetry } from "@/lib/withAuthRetry";
 import { api } from "@/convex/_generated/api";
 import { useClientStore } from "@/stores/client-store";
 import { useTransactionStore } from "@/stores/transaction-store";
 import { useAgentStore } from "@/stores/agent-store";
 import { generateId } from "@/utils/id-generator";
 import { AgentPermissions, AgentRole, permissionsForRole } from "@/types/agent";
+import { clearOfflineCredential } from "@/utils/secure-storage";
 
 const PHONES_KEY = "kauridorr_registered_phones";
+
+// `currentUser` est une query réactive : elle se redéclenche à chaque
+// changement du document (device, statut, etc.), pas seulement à la
+// connexion. Sans ce garde, `setConvexUser` relançait loadClients/
+// loadTransactions/loadAgents à chaque mise à jour, créant des appels
+// concurrents redondants avec ceux de dashboard.tsx et multipliant les
+// occasions de retomber sur la course d'authentification token/transport.
+let lastLoadedUserId: string | null = null;
 
 async function addToPhoneRegistry(phone: string) {
   const raw = await AsyncStorage.getItem(PHONES_KEY);
@@ -35,6 +45,14 @@ export interface User {
   device?: any | null; // null = unbound → triggers binding flow
   status?: string;
   permissions?: AgentPermissions;
+  mustChangePassword?: boolean;
+  passwordSetAt?: number | null;
+  lockedUntil?: number | null;
+  organization?: {
+    _id: string;
+    name: string;
+    currency: string;
+  };
 }
 
 interface AuthState {
@@ -51,9 +69,16 @@ interface AuthState {
   // PIN offline login (unchanged)
   verifyPin: (pin: string) => Promise<void>;
   savePin: (phone: string, pin: string) => Promise<void>;
-  registerOffline: (phone: string, name: string, role: "agent", pin: string) => Promise<void>;
+  registerOffline: (
+    phone: string,
+    name: string,
+    role: "agent",
+    pin: string,
+  ) => Promise<void>;
 
-  updateUser: (fields: Partial<Pick<User, "name" | "email" | "phone">>) => Promise<void>;
+  updateUser: (
+    fields: Partial<Pick<User, "name" | "email" | "phone">>,
+  ) => Promise<void>;
   logout: () => void;
 }
 
@@ -85,7 +110,19 @@ export const useAuthStore = create<AuthState>()(
           currency: convexUser.organization?.currency ?? "FCFA",
           device: convexUser.device ?? null,
           status: convexUser.status,
-          permissions: convexUser.role ? permissionsForRole(convexUser.role as AgentRole) : undefined,
+          permissions: convexUser.role
+            ? permissionsForRole(convexUser.role as AgentRole)
+            : undefined,
+          mustChangePassword: convexUser.mustChangePassword ?? false,
+          passwordSetAt: convexUser.passwordSetAt ?? null,
+          lockedUntil: convexUser.lockedUntil ?? null,
+          organization: convexUser.organization
+            ? {
+                _id: convexUser.organization._id,
+                name: convexUser.organization.name,
+                currency: convexUser.organization.currency,
+              }
+            : undefined,
         };
 
         set({
@@ -93,14 +130,29 @@ export const useAuthStore = create<AuthState>()(
           user,
         });
 
+        // Ne charger qu'une fois par session — pas à chaque re-déclenchement
+        // réactif de currentUser (voir `lastLoadedUserId` ci-dessus).
+        if (lastLoadedUserId === user.id) return;
+        lastLoadedUserId = user.id;
+
         // Load data from Convex
         const loadData = async () => {
           set({ isLoadingClients: true });
           try {
             await useClientStore.getState().loadClientsFromConvex();
             if (user.branchId) {
-              await useTransactionStore.getState().loadTransactions(user.branchId);
-              await useAgentStore.getState().loadAgents(user.branchId as any);
+              await useTransactionStore
+                .getState()
+                .loadTransactions(user.branchId);
+              // La liste des agents de l'agence est réservée à admin/supervisor
+              // côté serveur (voir assertCanManage dans convex/users.ts) — un
+              // field_agent n'a accès qu'à ses propres informations, appeler
+              // loadAgents pour lui ne fait que produire une erreur 403.
+              if (user.role === "admin" || user.role === "supervisor") {
+                await useAgentStore
+                  .getState()
+                  .loadAgents(user.branchId as any);
+              }
             }
           } catch (error) {
             console.error("Failed to load data after Convex auth:", error);
@@ -116,7 +168,9 @@ export const useAuthStore = create<AuthState>()(
        */
       fetchCurrentUser: async () => {
         try {
-          const convexUser = await convex.query(api.users.currentUser);
+          const convexUser = await withAuthRetry(() =>
+            convex.query(api.users.currentUser),
+          );
           if (!convexUser) return;
 
           const user: User = {
@@ -129,7 +183,19 @@ export const useAuthStore = create<AuthState>()(
             currency: convexUser.organization?.currency ?? "FCFA",
             device: convexUser.device ?? null,
             status: convexUser.status,
-            permissions: convexUser.role ? permissionsForRole(convexUser.role as AgentRole) : undefined,
+            permissions: convexUser.role
+              ? permissionsForRole(convexUser.role as AgentRole)
+              : undefined,
+            mustChangePassword: convexUser.mustChangePassword ?? false,
+            passwordSetAt: convexUser.passwordSetAt ?? null,
+            lockedUntil: convexUser.lockedUntil ?? null,
+            organization: convexUser.organization
+              ? {
+                  _id: convexUser.organization._id,
+                  name: convexUser.organization.name,
+                  currency: convexUser.organization.currency,
+                }
+              : undefined,
           };
 
           set({ isAuthenticated: true, user });
@@ -145,7 +211,12 @@ export const useAuthStore = create<AuthState>()(
       },
 
       // Full offline registration — no server call
-      registerOffline: async (phone: string, name: string, role: "agent", pin: string) => {
+      registerOffline: async (
+        phone: string,
+        name: string,
+        role: "agent",
+        pin: string,
+      ) => {
         const id = generateId("USR");
         const user: User = { id, name, phone, role };
 
@@ -169,12 +240,16 @@ export const useAuthStore = create<AuthState>()(
         const legacy = get().registeredPhone;
         if (legacy && !phones.includes(legacy)) phones.unshift(legacy);
 
-        if (phones.length === 0) throw new Error("Aucun compte enregistré sur cet appareil");
+        if (phones.length === 0)
+          throw new Error("Aucun compte enregistré sur cet appareil");
 
         let matchedPhone: string | null = null;
         for (const p of phones) {
           const stored = await AsyncStorage.getItem(`pin_${p}`);
-          if (stored === pin) { matchedPhone = p; break; }
+          if (stored === pin) {
+            matchedPhone = p;
+            break;
+          }
         }
         if (!matchedPhone) throw new Error("PIN incorrect");
 
@@ -182,7 +257,9 @@ export const useAuthStore = create<AuthState>()(
         const localRaw = await AsyncStorage.getItem(`user_${matchedPhone}`);
         const localUser: User | null = localRaw ? JSON.parse(localRaw) : null;
 
-        const pinAgentRecord = useAgentStore.getState().agents.find((a) => a.phoneNumber === matchedPhone);
+        const pinAgentRecord = useAgentStore
+          .getState()
+          .agents.find((a) => a.phoneNumber === matchedPhone);
 
         set({
           isAuthenticated: true,
@@ -192,7 +269,9 @@ export const useAuthStore = create<AuthState>()(
             name: "Agent",
             phone: matchedPhone,
             role: "agent",
-            permissions: pinAgentRecord ? permissionsForRole(pinAgentRecord.role) : undefined,
+            permissions: pinAgentRecord
+              ? permissionsForRole(pinAgentRecord.role)
+              : undefined,
           },
         });
 
@@ -211,14 +290,29 @@ export const useAuthStore = create<AuthState>()(
         const updated = { ...current, ...fields };
         set({ user: updated });
         if (updated.phone) {
-          await AsyncStorage.setItem(`user_${updated.phone}`, JSON.stringify(updated));
+          await AsyncStorage.setItem(
+            `user_${updated.phone}`,
+            JSON.stringify(updated),
+          );
         }
       },
 
       logout: () => {
         // Convex signOut is handled by the component (useAuthActions().signOut())
         // This just clears local state
+        const phone = get().user?.phone;
+        lastLoadedUserId = null;
         set({ isAuthenticated: false, isLoadingClients: false, user: null });
+        // Un logout peut signifier que le téléphone change de main (agent
+        // suivant sur un TPE partagé) — on efface le secret de
+        // déverrouillage hors-ligne de l'agent précédent (voir
+        // utils/secure-storage.ts). Fire-and-forget : logout() reste
+        // synchrone, rien n'attend cette purge.
+        if (phone) {
+          clearOfflineCredential(phone).catch((e) =>
+            console.error("[Auth] clearOfflineCredential failed:", e),
+          );
+        }
       },
     }),
     {
@@ -229,6 +323,6 @@ export const useAuthStore = create<AuthState>()(
           if (state) state.isInitialized = true;
         };
       },
-    }
-  )
+    },
+  ),
 );

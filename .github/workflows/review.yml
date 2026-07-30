@@ -17,7 +17,7 @@ jobs:
         uses: oven-sh/setup-bun@v1
         with:
           bun-version: latest
-          
+
       - name: Setup EAS
         uses: expo/expo-github-action@v8
         with:

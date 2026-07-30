@@ -290,7 +290,12 @@ export default function TransactionDetailScreen() {
         {/* ── Transaction details ── */}
         <View style={styles.section}>
           <SectionTitle label="Détails de la transaction" />
-          <Shadow stretch distance={3} startColor="rgba(0,0,0,0.07)" offset={[0, 1]}>
+          <Shadow
+            stretch
+            distance={3}
+            startColor="rgba(0,0,0,0.07)"
+            offset={[0, 1]}
+          >
             <View style={styles.infoCard}>
               <InfoRow
                 label="Référence"
@@ -343,7 +348,12 @@ export default function TransactionDetailScreen() {
         {/* ── Commission ── */}
         <View style={styles.section}>
           <SectionTitle label="Commission" />
-          <Shadow stretch distance={3} startColor="rgba(0,0,0,0.07)" offset={[0, 1]}>
+          <Shadow
+            stretch
+            distance={3}
+            startColor="rgba(0,0,0,0.07)"
+            offset={[0, 1]}
+          >
             <View style={styles.commRow}>
               <View style={styles.commLeft}>
                 <View style={styles.commIcon}>
@@ -363,7 +373,12 @@ export default function TransactionDetailScreen() {
         {client && (
           <View style={styles.section}>
             <SectionTitle label="Client" />
-            <Shadow stretch distance={3} startColor="rgba(0,0,0,0.07)" offset={[0, 1]}>
+            <Shadow
+              stretch
+              distance={3}
+              startColor="rgba(0,0,0,0.07)"
+              offset={[0, 1]}
+            >
               <Pressable
                 style={styles.clientMini}
                 onPress={() => router.push(`/(app)/clients/${client.id}`)}
@@ -393,7 +408,12 @@ export default function TransactionDetailScreen() {
         {/* ── Agent ── */}
         <View style={styles.section}>
           <SectionTitle label="Enregistré par" />
-          <Shadow stretch distance={3} startColor="rgba(0,0,0,0.07)" offset={[0, 1]}>
+          <Shadow
+            stretch
+            distance={3}
+            startColor="rgba(0,0,0,0.07)"
+            offset={[0, 1]}
+          >
             <View style={styles.agentMini}>
               <View style={styles.agentAvatar}>
                 <Text style={styles.agentAvatarText}>{agentInitials}</Text>
@@ -420,7 +440,12 @@ export default function TransactionDetailScreen() {
         {/* ── Timeline ── */}
         <View style={styles.section}>
           <SectionTitle label="Historique de statut" />
-          <Shadow stretch distance={3} startColor="rgba(0,0,0,0.07)" offset={[0, 1]}>
+          <Shadow
+            stretch
+            distance={3}
+            startColor="rgba(0,0,0,0.07)"
+            offset={[0, 1]}
+          >
             <View style={styles.infoCard}>
               <View style={{ padding: 14, paddingBottom: 2 }}>
                 {timeline.map((item, i) => (

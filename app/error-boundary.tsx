@@ -1,8 +1,8 @@
-import React from 'react';
-import { View, Text, StyleSheet, Platform, Pressable } from 'react-native';
-import { useNavigationStore } from '@/stores/navigation-store';
-import { colors } from '@/constants/colors';
-import { useRouter } from 'expo-router';
+import React from "react";
+import { View, Text, StyleSheet, Platform, Pressable } from "react-native";
+import { useNavigationStore } from "@/stores/navigation-store";
+import { colors } from "@/constants/colors";
+import { useRouter } from "expo-router";
 
 interface Props {
   children: React.ReactNode;
@@ -14,26 +14,26 @@ interface State {
   error: Error | null;
 }
 
-const IFRAME_ID = 'rork-web-preview';
+const IFRAME_ID = "rork-web-preview";
 
 const webTargetOrigins = [
   "http://localhost:3000",
   "https://rorkai.com",
   "https://rork.app",
-];    
+];
 
 function sendErrorToIframeParent(error: any, errorInfo?: any) {
-  if (Platform.OS === 'web' && typeof window !== 'undefined') {
-    console.debug('Sending error to parent:', {
+  if (Platform.OS === "web" && typeof window !== "undefined") {
+    console.debug("Sending error to parent:", {
       error,
       errorInfo,
-      referrer: document.referrer
+      referrer: document.referrer,
     });
 
     const errorMessage = {
-      type: 'ERROR',
+      type: "ERROR",
       error: {
-        message: error?.message || error?.toString() || 'Unknown error',
+        message: error?.message || error?.toString() || "Unknown error",
         stack: error?.stack,
         componentStack: errorInfo?.componentStack,
         timestamp: new Date().toISOString(),
@@ -44,34 +44,42 @@ function sendErrorToIframeParent(error: any, errorInfo?: any) {
     try {
       window.parent.postMessage(
         errorMessage,
-        webTargetOrigins.includes(document.referrer) ? document.referrer : '*'
+        webTargetOrigins.includes(document.referrer) ? document.referrer : "*",
       );
     } catch (postMessageError) {
-      console.error('Failed to send error to parent:', postMessageError);
+      console.error("Failed to send error to parent:", postMessageError);
     }
   }
 }
 
-if (Platform.OS === 'web' && typeof window !== 'undefined') {
-  window.addEventListener('error', (event) => {
-    event.preventDefault();
-    const errorDetails = event.error ?? {
-      message: event.message ?? 'Unknown error',
-      filename: event.filename ?? 'Unknown file',
-      lineno: event.lineno ?? 'Unknown line',
-      colno: event.colno ?? 'Unknown column'
-    };
-    sendErrorToIframeParent(errorDetails);
-  }, true);
+if (Platform.OS === "web" && typeof window !== "undefined") {
+  window.addEventListener(
+    "error",
+    (event) => {
+      event.preventDefault();
+      const errorDetails = event.error ?? {
+        message: event.message ?? "Unknown error",
+        filename: event.filename ?? "Unknown file",
+        lineno: event.lineno ?? "Unknown line",
+        colno: event.colno ?? "Unknown column",
+      };
+      sendErrorToIframeParent(errorDetails);
+    },
+    true,
+  );
 
-  window.addEventListener('unhandledrejection', (event) => {
-    event.preventDefault();
-    sendErrorToIframeParent(event.reason);
-  }, true);
+  window.addEventListener(
+    "unhandledrejection",
+    (event) => {
+      event.preventDefault();
+      sendErrorToIframeParent(event.reason);
+    },
+    true,
+  );
 
   const originalConsoleError = console.error;
   console.error = (...args) => {
-    sendErrorToIframeParent(args.join(' '));
+    sendErrorToIframeParent(args.join(" "));
     originalConsoleError.apply(console, args);
   };
 }
@@ -91,7 +99,7 @@ export class ErrorBoundary extends React.Component<Props, State> {
     if (this.props.onError) {
       this.props.onError(error, errorInfo);
     }
-    
+
     // Clear navigation state on error
     useNavigationStore.getState().clearNavigationState();
   }
@@ -107,24 +115,26 @@ export class ErrorBoundary extends React.Component<Props, State> {
 
 function ErrorFallback({ error }: { error: Error | null }) {
   const router = useRouter();
-  const clearNavigationState = useNavigationStore(state => state.clearNavigationState);
-  
+  const clearNavigationState = useNavigationStore(
+    (state) => state.clearNavigationState,
+  );
+
   const handleReset = () => {
     clearNavigationState();
     router.replace("/");
   };
-  
+
   return (
     <View style={styles.container}>
       <View style={styles.content}>
         <Text style={styles.title}>Something went wrong</Text>
         <Text style={styles.subtitle}>{error?.message}</Text>
-        {Platform.OS !== 'web' && (
+        {Platform.OS !== "web" && (
           <Text style={styles.description}>
             Please check your device logs for more details.
           </Text>
         )}
-        
+
         <Pressable style={styles.resetButton} onPress={handleReset}>
           <Text style={styles.resetButtonText}>Return to Home</Text>
         </Pressable>
@@ -140,14 +150,14 @@ const styles = StyleSheet.create({
   },
   content: {
     flex: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
+    alignItems: "center",
+    justifyContent: "center",
     padding: 20,
   },
   title: {
     fontSize: 36,
-    textAlign: 'center',
-    fontWeight: 'bold',
+    textAlign: "center",
+    fontWeight: "bold",
     marginBottom: 8,
     color: colors.text,
   },
@@ -155,12 +165,12 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: colors.textSecondary,
     marginBottom: 12,
-    textAlign: 'center',
+    textAlign: "center",
   },
   description: {
     fontSize: 14,
     color: colors.textSecondary,
-    textAlign: 'center',
+    textAlign: "center",
     marginTop: 8,
   },
   resetButton: {
@@ -171,10 +181,10 @@ const styles = StyleSheet.create({
     borderRadius: 8,
   },
   resetButtonText: {
-    color: 'white',
-    fontWeight: '600',
+    color: "white",
+    fontWeight: "600",
     fontSize: 16,
   },
-}); 
+});
 
 export default ErrorBoundary;

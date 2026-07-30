@@ -7,14 +7,14 @@ They solve different problems, involve different actors, and happen at different
 
 ## Quick summary
 
-| | Device Auth | Device Binding |
-|---|---|---|
-| **Question answered** | Who are you? | Which hardware is yours? |
-| **Actor** | Field agent | Manager (generates) + Agent (claims) |
-| **Frequency** | Every session | Once per device assignment |
-| **Mechanism** | Clerk JWT | 6-digit PIN or QR token |
-| **Expires** | Session lifetime | 10 minutes |
-| **Result** | Authenticated Convex session | `device.assignedTo` set in DB |
+|                       | Device Auth                  | Device Binding                       |
+| --------------------- | ---------------------------- | ------------------------------------ |
+| **Question answered** | Who are you?                 | Which hardware is yours?             |
+| **Actor**             | Field agent                  | Manager (generates) + Agent (claims) |
+| **Frequency**         | Every session                | Once per device assignment           |
+| **Mechanism**         | Clerk JWT                    | 6-digit PIN or QR token              |
+| **Expires**           | Session lifetime             | 10 minutes                           |
+| **Result**            | Authenticated Convex session | `device.assignedTo` set in DB        |
 
 ---
 
@@ -94,19 +94,19 @@ Agent opens app
                                 normal operation
 ```
 
-Auth establishes *identity*. Binding establishes *which hardware* that identity operates on.
+Auth establishes _identity_. Binding establishes _which hardware_ that identity operates on.
 Both must be complete before an agent can record transactions.
 
 ---
 
 ## Relevant source files
 
-| File | What it contains |
-|------|-----------------|
-| `convex/auth.config.ts` | Trusted JWT issuers (Clerk) |
-| `convex/auth.ts` | Convex Auth provider setup |
-| `convex/devices.ts` | `generateBindingCredentials`, `claimDeviceByPin`, `claimDeviceByToken`, `unbindDevice` |
-| `src/pages/BindDeviceDrawer.jsx` | Manager UI — device picker, QR display, countdown |
-| `src/components/AddDeviceModal.jsx` | Manager UI — register a new physical TPE in the branch |
+| File                                | What it contains                                                                       |
+| ----------------------------------- | -------------------------------------------------------------------------------------- |
+| `convex/auth.config.ts`             | Trusted JWT issuers (Clerk)                                                            |
+| `convex/auth.ts`                    | Convex Auth provider setup                                                             |
+| `convex/devices.ts`                 | `generateBindingCredentials`, `claimDeviceByPin`, `claimDeviceByToken`, `unbindDevice` |
+| `src/pages/BindDeviceDrawer.jsx`    | Manager UI — device picker, QR display, countdown                                      |
+| `src/components/AddDeviceModal.jsx` | Manager UI — register a new physical TPE in the branch                                 |
 
 For the mobile app's perspective on both flows, see `docs/mobile-integration.md`.

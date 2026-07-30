@@ -8,6 +8,8 @@ export default function AuthLayout() {
       <Stack.Screen name="register" />
       <Stack.Screen name="reg" />
       <Stack.Screen name="bind-device" />
+      <Stack.Screen name="change-password" />
+      <Stack.Screen name="welcome" />
     </Stack>
   );
 }

@@ -13,7 +13,12 @@ import {
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useRouter, useLocalSearchParams } from "expo-router";
-import { ChevronLeft, ChevronRight, Check, ArrowDown } from "lucide-react-native";
+import {
+  ChevronLeft,
+  ChevronRight,
+  Check,
+  ArrowDown,
+} from "lucide-react-native";
 
 import { KAURIDORR_THEME } from "@/constants/colors";
 import { useClientStore } from "@/stores/client-store";
@@ -29,11 +34,23 @@ const T = KAURIDORR_THEME;
 
 const UNIT_QUICK_PICKS = [1, 2, 3, 4, 5, 10, 20];
 
-const FREQUENCIES: { value: CollectionFrequency; label: string; desc: string }[] = [
-  { value: "daily",    label: "Quotidienne",   desc: "Collecte chaque jour ouvrable (lun – sam)" },
-  { value: "weekly",   label: "Hebdomadaire",  desc: "Une fois par semaine, jour fixe" },
-  { value: "biweekly", label: "Bihebdo.",      desc: "Deux fois par semaine" },
-  { value: "monthly",  label: "Mensuelle",     desc: "Le même jour chaque mois" },
+const FREQUENCIES: {
+  value: CollectionFrequency;
+  label: string;
+  desc: string;
+}[] = [
+  {
+    value: "daily",
+    label: "Quotidienne",
+    desc: "Collecte chaque jour ouvrable (lun – sam)",
+  },
+  {
+    value: "weekly",
+    label: "Hebdomadaire",
+    desc: "Une fois par semaine, jour fixe",
+  },
+  { value: "biweekly", label: "Bihebdo.", desc: "Deux fois par semaine" },
+  { value: "monthly", label: "Mensuelle", desc: "Le même jour chaque mois" },
 ];
 
 const DAY_LABELS = ["L", "M", "M", "J", "V", "S", "D"];
@@ -45,13 +62,13 @@ function formatNum(n: number): string {
 }
 
 function getProjection(amount: number) {
-  const weekly  = amount * 6;
+  const weekly = amount * 6;
   const monthly = amount * 26;
   return {
     weekly,
     monthly,
     sixMonths: monthly * 6,
-    oneYear:   monthly * 12,
+    oneYear: monthly * 12,
   };
 }
 
@@ -88,7 +105,13 @@ type Step = 1 | 2 | 3 | 4 | "success";
 
 // ── Shared sub-components ─────────────────────────────────────────────────────
 
-function StepProgressBar({ activeStep, isSuccess }: { activeStep: number; isSuccess: boolean }) {
+function StepProgressBar({
+  activeStep,
+  isSuccess,
+}: {
+  activeStep: number;
+  isSuccess: boolean;
+}) {
   return (
     <View style={styles.progressTrack}>
       {[1, 2, 3, 4].map((s) => (
@@ -96,9 +119,9 @@ function StepProgressBar({ activeStep, isSuccess }: { activeStep: number; isSucc
           key={s}
           style={[
             styles.progressSeg,
-            s < activeStep    && styles.progressDone,
-            s === activeStep  && !isSuccess && styles.progressActive,
-            isSuccess         && styles.progressDone,
+            s < activeStep && styles.progressDone,
+            s === activeStep && !isSuccess && styles.progressActive,
+            isSuccess && styles.progressDone,
           ]}
         />
       ))}
@@ -106,7 +129,15 @@ function StepProgressBar({ activeStep, isSuccess }: { activeStep: number; isSucc
   );
 }
 
-function StepNavRow({ onBack, stepLabel, backLabel }: { onBack: () => void; stepLabel: string; backLabel: string }) {
+function StepNavRow({
+  onBack,
+  stepLabel,
+  backLabel,
+}: {
+  onBack: () => void;
+  stepLabel: string;
+  backLabel: string;
+}) {
   return (
     <View style={styles.navRow}>
       <Pressable style={styles.backBtn} onPress={onBack}>
@@ -120,7 +151,15 @@ function StepNavRow({ onBack, stepLabel, backLabel }: { onBack: () => void; step
   );
 }
 
-function Field({ label, required, children }: { label: string; required?: boolean; children: React.ReactNode }) {
+function Field({
+  label,
+  required,
+  children,
+}: {
+  label: string;
+  required?: boolean;
+  children: React.ReactNode;
+}) {
   return (
     <View style={styles.field}>
       <Text style={styles.fieldLabel}>
@@ -140,31 +179,22 @@ export default function AddClientScreen() {
     clientId,
     name: initialNameParam,
     code: initialCodeParam,
-  } = useLocalSearchParams<{ clientId?: string; name?: string; code?: string }>();
+  } = useLocalSearchParams<{
+    clientId?: string;
+    name?: string;
+    code?: string;
+  }>();
 
-  const addClient     = useClientStore((s) => s.addClient);
-  const updateClient  = useClientStore((s) => s.updateClient);
+  const addClient = useClientStore((s) => s.addClient);
+  const updateClient = useClientStore((s) => s.updateClient);
   const getClientById = useClientStore((s) => s.getClientById);
-  const user          = useAuthStore((s) => s.user);
-  const baseUnit      = useConfigStore((s) => s.baseUnit);
-  const perms         = usePermissions();
+  const user = useAuthStore((s) => s.user);
+  const baseUnit = useConfigStore((s) => s.baseUnit);
+  const perms = usePermissions();
 
   const isEdit = !!clientId;
 
   const actionAllowed = isEdit ? perms.editClient : perms.addClient;
-  if (!actionAllowed) {
-    return (
-      <SafeAreaView style={{ flex: 1, justifyContent: "center", alignItems: "center", backgroundColor: T.bg }}>
-        <Text style={{ fontSize: 32, marginBottom: 12 }}>🔒</Text>
-        <Text style={{ fontSize: 15, fontWeight: "600", color: T.text1, marginBottom: 6 }}>Accès refusé</Text>
-        <Text style={{ fontSize: 13, color: T.text3, textAlign: "center", paddingHorizontal: 32 }}>
-          {isEdit
-            ? "Vous n'avez pas la permission de modifier les clients."
-            : "Vous n'avez pas la permission d'ajouter des clients."}
-        </Text>
-      </SafeAreaView>
-    );
-  }
 
   // ── Step state ────────────────────────────────────────────────────────────────
 
@@ -174,26 +204,26 @@ export default function AddClientScreen() {
   // Form fields use the LOCAL Client field names (name, phone, accountNumber …).
   // The store's addClient / updateClient methods accept these and map them to
   // Convex's fullName / phoneNumber / metadata.* internally.
-  const [name,          setName]          = useState("");
-  const [phone,         setPhone]         = useState("");
+  const [name, setName] = useState("");
+  const [phone, setPhone] = useState("");
   const [accountNumber, setAccountNumber] = useState(""); // → metadata.accountNumber
-  const [locality,      setLocality]      = useState(""); // → metadata.address
-  const [email,         setEmail]         = useState(""); // → metadata.email
-  const [groupName,     setGroupName]     = useState(""); // → metadata.groupName
+  const [locality, setLocality] = useState(""); // → metadata.address
+  const [email, setEmail] = useState(""); // → metadata.email
+  const [groupName, setGroupName] = useState(""); // → metadata.groupName
 
   // Step 2 – Daily commitment (via numpad)
   const [amountText, setAmountText] = useState("0");
   const commitmentAmount = parseInt(amountText, 10) || 0;
 
   // Step 3 – Frequency & goal
-  const [frequency,   setFrequency]   = useState<CollectionFrequency>("daily"); // → metadata.collectionFrequency
-  const [activeDays,  setActiveDays]  = useState<number[]>([0, 1, 2, 3, 4, 5]); // → metadata.collectionDays
-  const [hasGoal,     setHasGoal]     = useState(false);
+  const [frequency, setFrequency] = useState<CollectionFrequency>("daily"); // → metadata.collectionFrequency
+  const [activeDays, setActiveDays] = useState<number[]>([0, 1, 2, 3, 4, 5]); // → metadata.collectionDays
+  const [hasGoal, setHasGoal] = useState(false);
   const [savingsGoal, setSavingsGoal] = useState(""); // → metadata.savingsGoal
 
   // Result / submission
   const [createdClient, setCreatedClient] = useState<Client | null>(null);
-  const [isSubmitting,  setIsSubmitting]  = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   // ── Pre-populate in edit mode or via search params ────────────────────────────
 
@@ -208,9 +238,12 @@ export default function AddClientScreen() {
       setLocality(existing.address ?? "");
       setEmail(existing.email ?? "");
       setGroupName(existing.groupName ?? "");
-      if (existing.commitmentAmount)    setAmountText(String(existing.commitmentAmount));
-      if (existing.collectionFrequency) setFrequency(existing.collectionFrequency);
-      if (existing.collectionDays?.length) setActiveDays(existing.collectionDays);
+      if (existing.commitmentAmount)
+        setAmountText(String(existing.commitmentAmount));
+      if (existing.collectionFrequency)
+        setFrequency(existing.collectionFrequency);
+      if (existing.collectionDays?.length)
+        setActiveDays(existing.collectionDays);
       if (existing.savingsGoal) {
         setHasGoal(true);
         setSavingsGoal(String(existing.savingsGoal));
@@ -224,14 +257,58 @@ export default function AddClientScreen() {
 
   // ── Derived ───────────────────────────────────────────────────────────────────
 
-  const proj = useMemo(() => getProjection(commitmentAmount), [commitmentAmount]);
+  const proj = useMemo(
+    () => getProjection(commitmentAmount),
+    [commitmentAmount],
+  );
   const step1Valid = name.trim().length > 0 && phone.trim().length > 0;
+
+  // Gate placée après tous les hooks (et non avant, comme précédemment) —
+  // un retour anticipé avant des appels de hooks fait que React en appelle
+  // moins sur ce rendu que sur les autres, ce qui viole les Rules of Hooks
+  // et peut désynchroniser l'état entre rendus (react-hooks/rules-of-hooks).
+  if (!actionAllowed) {
+    return (
+      <SafeAreaView
+        style={{
+          flex: 1,
+          justifyContent: "center",
+          alignItems: "center",
+          backgroundColor: T.bg,
+        }}
+      >
+        <Text style={{ fontSize: 32, marginBottom: 12 }}>🔒</Text>
+        <Text
+          style={{
+            fontSize: 15,
+            fontWeight: "600",
+            color: T.text1,
+            marginBottom: 6,
+          }}
+        >
+          Accès refusé
+        </Text>
+        <Text
+          style={{
+            fontSize: 13,
+            color: T.text3,
+            textAlign: "center",
+            paddingHorizontal: 32,
+          }}
+        >
+          {isEdit
+            ? "Vous n'avez pas la permission de modifier les clients."
+            : "Vous n'avez pas la permission d'ajouter des clients."}
+        </Text>
+      </SafeAreaView>
+    );
+  }
 
   // ── Handlers ──────────────────────────────────────────────────────────────────
 
   function toggleDay(idx: number) {
     setActiveDays((prev) =>
-      prev.includes(idx) ? prev.filter((d) => d !== idx) : [...prev, idx]
+      prev.includes(idx) ? prev.filter((d) => d !== idx) : [...prev, idx],
     );
   }
 
@@ -248,15 +325,15 @@ export default function AddClientScreen() {
       // The store maps:  name → fullName,  phone → phoneNumber,
       //   accountNumber / address / groupName / … → metadata.*
       const payload = {
-        name:                name.trim(),
-        phone:               "+226 " + phone.trim(),
-        accountNumber:       accountNumber.trim() || undefined,
-        address:             locality.trim() || undefined,
-        groupName:           groupName.trim() || undefined,
+        name: name.trim(),
+        phone: "+226 " + phone.trim(),
+        accountNumber: accountNumber.trim() || undefined,
+        address: locality.trim() || undefined,
+        groupName: groupName.trim() || undefined,
         commitmentAmount,
         collectionFrequency: frequency,
-        collectionDays:      activeDays,
-        savingsGoal:         !isNaN(goalValue as number) ? goalValue : undefined,
+        collectionDays: activeDays,
+        savingsGoal: !isNaN(goalValue as number) ? goalValue : undefined,
       };
 
       if (isEdit && clientId) {
@@ -276,28 +353,47 @@ export default function AddClientScreen() {
 
   function resetForm() {
     setStep(1);
-    setName(""); setPhone(""); setAccountNumber(""); setLocality("");
-    setEmail(""); setGroupName("");
+    setName("");
+    setPhone("");
+    setAccountNumber("");
+    setLocality("");
+    setEmail("");
+    setGroupName("");
     setAmountText("0");
-    setFrequency("daily"); setActiveDays([0, 1, 2, 3, 4, 5]);
-    setHasGoal(false); setSavingsGoal("");
+    setFrequency("daily");
+    setActiveDays([0, 1, 2, 3, 4, 5]);
+    setHasGoal(false);
+    setSavingsGoal("");
     setCreatedClient(null);
   }
 
   // ── Progress helpers ──────────────────────────────────────────────────────────
 
   const numericStep = step === "success" ? 4 : (step as number);
-  const isSuccess   = step === "success";
+  const isSuccess = step === "success";
 
   // ── STEP 1 ────────────────────────────────────────────────────────────────────
 
   function Step1() {
     return (
-      <KeyboardAvoidingView behavior={Platform.OS === "ios" ? "padding" : "height"} style={{ flex: 1 }}>
+      <KeyboardAvoidingView
+        behavior={Platform.OS === "ios" ? "padding" : "height"}
+        style={{ flex: 1 }}
+      >
         <StepProgressBar activeStep={numericStep} isSuccess={isSuccess} />
-        <StepNavRow onBack={() => router.back()} stepLabel="1 / 4" backLabel="Clients" />
-        <ScrollView style={styles.body} showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled">
-          <Text style={styles.screenTitle}>{isEdit ? "Modifier le client" : "Identité du membre"}</Text>
+        <StepNavRow
+          onBack={() => router.back()}
+          stepLabel="1 / 4"
+          backLabel="Clients"
+        />
+        <ScrollView
+          style={styles.body}
+          showsVerticalScrollIndicator={false}
+          keyboardShouldPersistTaps="handled"
+        >
+          <Text style={styles.screenTitle}>
+            {isEdit ? "Modifier le client" : "Identité du membre"}
+          </Text>
           <Text style={styles.screenSub}>
             {isEdit
               ? "Modifiez les informations du client."
@@ -307,7 +403,10 @@ export default function AddClientScreen() {
           {/* fullName in Convex → collected as `name` locally */}
           <Field label="Nom complet" required>
             <TextInput
-              style={[styles.fieldInput, name.length > 0 && styles.fieldInputFilled]}
+              style={[
+                styles.fieldInput,
+                name.length > 0 && styles.fieldInputFilled,
+              ]}
               placeholder="Aïssata Zongo"
               placeholderTextColor={T.text3}
               value={name}
@@ -323,7 +422,11 @@ export default function AddClientScreen() {
                 <Text style={styles.countryPillText}>🇧🇫 +226</Text>
               </View>
               <TextInput
-                style={[styles.fieldInput, { flex: 1 }, phone.length > 0 && styles.fieldInputFilled]}
+                style={[
+                  styles.fieldInput,
+                  { flex: 1 },
+                  phone.length > 0 && styles.fieldInputFilled,
+                ]}
                 placeholder="70 44 55 66"
                 placeholderTextColor={T.text3}
                 value={phone}
@@ -342,20 +445,28 @@ export default function AddClientScreen() {
           {/* metadata.accountNumber in Convex */}
           <Field label="Code client (optionnel)">
             <TextInput
-              style={[styles.fieldInput, accountNumber.length > 0 && styles.fieldInputFilled]}
+              style={[
+                styles.fieldInput,
+                accountNumber.length > 0 && styles.fieldInputFilled,
+              ]}
               placeholder="ACC228"
               placeholderTextColor={T.text3}
               value={accountNumber}
               onChangeText={setAccountNumber}
               autoCapitalize="characters"
             />
-            <Text style={styles.fieldHintInfo}>Un identifiant unique pour ce client</Text>
+            <Text style={styles.fieldHintInfo}>
+              Un identifiant unique pour ce client
+            </Text>
           </Field>
 
           {/* metadata.address in Convex */}
           <Field label="Quartier / Localité">
             <TextInput
-              style={[styles.fieldInput, locality.length > 0 && styles.fieldInputFilled]}
+              style={[
+                styles.fieldInput,
+                locality.length > 0 && styles.fieldInputFilled,
+              ]}
               placeholder="Tampouy, Ouagadougou"
               placeholderTextColor={T.text3}
               value={locality}
@@ -366,7 +477,10 @@ export default function AddClientScreen() {
           {/* metadata.groupName in Convex */}
           <Field label="Nom du groupe tontine (optionnel)">
             <TextInput
-              style={[styles.fieldInput, groupName.length > 0 && styles.fieldInputFilled]}
+              style={[
+                styles.fieldInput,
+                groupName.length > 0 && styles.fieldInputFilled,
+              ]}
               placeholder="Groupe Koom-Koom"
               placeholderTextColor={T.text3}
               value={groupName}
@@ -393,11 +507,11 @@ export default function AddClientScreen() {
   // ── STEP 2 ────────────────────────────────────────────────────────────────────
 
   function Step2() {
-    const amount    = parseInt(amountText, 10) || 0;
-    const isValid   = amount >= baseUnit;
-    const units     = baseUnit > 0 ? Math.round(amount / baseUnit) : 0;
+    const amount = parseInt(amountText, 10) || 0;
+    const isValid = amount >= baseUnit;
+    const units = baseUnit > 0 ? Math.round(amount / baseUnit) : 0;
     const formatted = amount.toLocaleString("fr-FR");
-    const chips     = UNIT_QUICK_PICKS.map((q) => String(q * baseUnit));
+    const chips = UNIT_QUICK_PICKS.map((q) => String(q * baseUnit));
 
     function handleDigit(d: string) {
       setAmountText((prev) => (prev === "0" ? d : prev + d));
@@ -410,11 +524,20 @@ export default function AddClientScreen() {
     return (
       <View style={{ flex: 1 }}>
         <StepProgressBar activeStep={numericStep} isSuccess={isSuccess} />
-        <StepNavRow onBack={() => setStep(1)} stepLabel="2 / 4" backLabel="Retour" />
+        <StepNavRow
+          onBack={() => setStep(1)}
+          stepLabel="2 / 4"
+          backLabel="Retour"
+        />
 
         <View style={styles.amountDisplay}>
           <Text style={styles.amountLabel}>Épargne quotidienne</Text>
-          <Text style={[styles.amountValue, { color: isValid ? T.orange : T.text3 }]}>
+          <Text
+            style={[
+              styles.amountValue,
+              { color: isValid ? T.orange : T.text3 },
+            ]}
+          >
             {formatted} <Text style={styles.amountCurrency}>FCFA</Text>
           </Text>
           {amount > 0 && (
@@ -438,7 +561,12 @@ export default function AddClientScreen() {
               style={[styles.chip, amountText === val && styles.chipActive]}
               onPress={() => setAmountText(val)}
             >
-              <Text style={[styles.chipText, amountText === val && styles.chipTextActive]}>
+              <Text
+                style={[
+                  styles.chipText,
+                  amountText === val && styles.chipTextActive,
+                ]}
+              >
                 {parseInt(val, 10).toLocaleString("fr-FR")}
               </Text>
             </Pressable>
@@ -463,30 +591,63 @@ export default function AddClientScreen() {
   // ── STEP 3 ────────────────────────────────────────────────────────────────────
 
   function Step3() {
-    const goalNum = hasGoal && savingsGoal
-      ? parseInt(savingsGoal.replace(/\s/g, ""), 10)
-      : NaN;
+    const goalNum =
+      hasGoal && savingsGoal
+        ? parseInt(savingsGoal.replace(/\s/g, ""), 10)
+        : NaN;
     const monthsToGoal =
-      !isNaN(goalNum) && proj.monthly > 0 ? Math.ceil(goalNum / proj.monthly) : null;
+      !isNaN(goalNum) && proj.monthly > 0
+        ? Math.ceil(goalNum / proj.monthly)
+        : null;
 
     return (
-      <KeyboardAvoidingView behavior={Platform.OS === "ios" ? "padding" : "height"} style={{ flex: 1 }}>
+      <KeyboardAvoidingView
+        behavior={Platform.OS === "ios" ? "padding" : "height"}
+        style={{ flex: 1 }}
+      >
         <StepProgressBar activeStep={numericStep} isSuccess={isSuccess} />
-        <StepNavRow onBack={() => setStep(2)} stepLabel="3 / 4" backLabel="Retour" />
-        <ScrollView style={styles.body} showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled">
+        <StepNavRow
+          onBack={() => setStep(2)}
+          stepLabel="3 / 4"
+          backLabel="Retour"
+        />
+        <ScrollView
+          style={styles.body}
+          showsVerticalScrollIndicator={false}
+          keyboardShouldPersistTaps="handled"
+        >
           <Text style={styles.screenTitle}>Fréquence de collecte</Text>
-          <Text style={styles.screenSub}>À quelle fréquence l'agent passera-t-il collecter l'épargne ?</Text>
+          <Text style={styles.screenSub}>
+            À quelle fréquence l&apos;agent passera-t-il collecter l&apos;épargne ?
+          </Text>
 
           {/* metadata.collectionFrequency in Convex */}
           <View style={styles.freqGrid}>
             {FREQUENCIES.map((f) => (
               <Pressable
                 key={f.value}
-                style={[styles.freqCard, frequency === f.value && styles.freqCardActive]}
+                style={[
+                  styles.freqCard,
+                  frequency === f.value && styles.freqCardActive,
+                ]}
                 onPress={() => setFrequency(f.value)}
               >
-                <Text style={[styles.freqName, frequency === f.value && styles.freqNameActive]}>{f.label}</Text>
-                <Text style={[styles.freqDesc, frequency === f.value && styles.freqDescActive]}>{f.desc}</Text>
+                <Text
+                  style={[
+                    styles.freqName,
+                    frequency === f.value && styles.freqNameActive,
+                  ]}
+                >
+                  {f.label}
+                </Text>
+                <Text
+                  style={[
+                    styles.freqDesc,
+                    frequency === f.value && styles.freqDescActive,
+                  ]}
+                >
+                  {f.desc}
+                </Text>
               </Pressable>
             ))}
           </View>
@@ -498,17 +659,26 @@ export default function AddClientScreen() {
               {DAY_LABELS.map((label, idx) => (
                 <Pressable
                   key={idx}
-                  style={[styles.dayBtn, activeDays.includes(idx) && styles.dayBtnActive]}
+                  style={[
+                    styles.dayBtn,
+                    activeDays.includes(idx) && styles.dayBtnActive,
+                  ]}
                   onPress={() => toggleDay(idx)}
                 >
-                  <Text style={[styles.dayBtnText, activeDays.includes(idx) && styles.dayBtnTextActive]}>
+                  <Text
+                    style={[
+                      styles.dayBtnText,
+                      activeDays.includes(idx) && styles.dayBtnTextActive,
+                    ]}
+                  >
                     {label}
                   </Text>
                 </Pressable>
               ))}
             </View>
             <Text style={styles.fieldHintInfo}>
-              {activeDays.length} jour{activeDays.length !== 1 ? "s" : ""} / semaine
+              {activeDays.length} jour{activeDays.length !== 1 ? "s" : ""} /
+              semaine
             </Text>
           </View>
 
@@ -519,7 +689,7 @@ export default function AddClientScreen() {
                 <Text style={{ fontSize: 14 }}>⭐</Text>
               </View>
               <View>
-                <Text style={styles.toggleLabel}>Objectif d'épargne</Text>
+                <Text style={styles.toggleLabel}>Objectif d&apos;épargne</Text>
                 <Text style={styles.toggleSub}>Définir un montant cible</Text>
               </View>
             </View>
@@ -536,7 +706,11 @@ export default function AddClientScreen() {
               <Text style={styles.fieldLabel}>Montant cible (FCFA)</Text>
               <View style={{ position: "relative" }}>
                 <TextInput
-                  style={[styles.fieldInput, savingsGoal.length > 0 && styles.fieldInputFilled, { paddingRight: 50 }]}
+                  style={[
+                    styles.fieldInput,
+                    savingsGoal.length > 0 && styles.fieldInputFilled,
+                    { paddingRight: 50 },
+                  ]}
                   placeholder="Ex. 78 000"
                   placeholderTextColor={T.text3}
                   value={savingsGoal}
@@ -548,7 +722,9 @@ export default function AddClientScreen() {
               {monthsToGoal !== null && (
                 <View style={styles.fieldHintOk}>
                   <Check size={11} color={T.textSuccess} strokeWidth={2} />
-                  <Text style={styles.fieldHintOkText}>Atteint en ~{monthsToGoal} mois à ce rythme</Text>
+                  <Text style={styles.fieldHintOkText}>
+                    Atteint en ~{monthsToGoal} mois à ce rythme
+                  </Text>
                 </View>
               )}
             </View>
@@ -570,15 +746,20 @@ export default function AddClientScreen() {
   // ── STEP 4 – Review ───────────────────────────────────────────────────────────
 
   function Step4() {
-    const goalNum = hasGoal && savingsGoal
-      ? parseInt(savingsGoal.replace(/\s/g, ""), 10)
-      : NaN;
+    const goalNum =
+      hasGoal && savingsGoal
+        ? parseInt(savingsGoal.replace(/\s/g, ""), 10)
+        : NaN;
     const today = formatDate(new Date().toISOString());
 
     return (
       <>
         <StepProgressBar activeStep={numericStep} isSuccess={isSuccess} />
-        <StepNavRow onBack={() => setStep(3)} stepLabel="4 / 4" backLabel="Retour" />
+        <StepNavRow
+          onBack={() => setStep(3)}
+          stepLabel="4 / 4"
+          backLabel="Retour"
+        />
 
         <ScrollView showsVerticalScrollIndicator={false}>
           <View style={styles.reviewHeader}>
@@ -587,16 +768,24 @@ export default function AddClientScreen() {
               <Text style={styles.reviewName}>{name}</Text>
               {accountNumber && (
                 <View style={styles.reviewCodeBadge}>
-                  <Text style={styles.reviewCodeBadgeText}>{accountNumber}</Text>
+                  <Text style={styles.reviewCodeBadgeText}>
+                    {accountNumber}
+                  </Text>
                 </View>
               )}
             </View>
             <Text style={styles.reviewPhone}>
-              +226 {phone}{locality ? ` · ${locality}` : ""}
+              +226 {phone}
+              {locality ? ` · ${locality}` : ""}
             </Text>
             <View style={styles.reviewCommit}>
-              <Text style={styles.reviewCommitAmount}>{formatNum(commitmentAmount)} FCFA</Text>
-              <Text style={styles.reviewCommitPeriod}> / jour · {activeDays.length}j/sem</Text>
+              <Text style={styles.reviewCommitAmount}>
+                {formatNum(commitmentAmount)} FCFA
+              </Text>
+              <Text style={styles.reviewCommitPeriod}>
+                {" "}
+                / jour · {activeDays.length}j/sem
+              </Text>
             </View>
           </View>
 
@@ -605,11 +794,15 @@ export default function AddClientScreen() {
             <View style={styles.reviewCard}>
               <View style={styles.rRow}>
                 <Text style={styles.rLabel}>Montant / jour</Text>
-                <Text style={[styles.rValue, styles.rValueOrange]}>{formatNum(commitmentAmount)} FCFA</Text>
+                <Text style={[styles.rValue, styles.rValueOrange]}>
+                  {formatNum(commitmentAmount)} FCFA
+                </Text>
               </View>
               <View style={styles.rRow}>
                 <Text style={styles.rLabel}>Fréquence</Text>
-                <Text style={styles.rValue}>{freqLabel(frequency)} ({freqDaysLabel(activeDays)})</Text>
+                <Text style={styles.rValue}>
+                  {freqLabel(frequency)} ({freqDaysLabel(activeDays)})
+                </Text>
               </View>
               {groupName ? (
                 <View style={styles.rRow}>
@@ -620,56 +813,76 @@ export default function AddClientScreen() {
               {!isNaN(goalNum) && hasGoal ? (
                 <View style={[styles.rRow, styles.rRowLast]}>
                   <Text style={styles.rLabel}>Objectif</Text>
-                  <Text style={[styles.rValue, styles.rValueGreen]}>{formatNum(goalNum)} FCFA</Text>
+                  <Text style={[styles.rValue, styles.rValueGreen]}>
+                    {formatNum(goalNum)} FCFA
+                  </Text>
                 </View>
               ) : (
                 <View style={[styles.rRow, styles.rRowLast]}>
                   <Text style={styles.rLabel}>Objectif</Text>
-                  <Text style={[styles.rValue, { color: T.text3 }]}>Non défini</Text>
+                  <Text style={[styles.rValue, { color: T.text3 }]}>
+                    Non défini
+                  </Text>
                 </View>
               )}
             </View>
 
-            <Text style={[styles.reviewSectionTitle, { marginTop: 16 }]}>Projections</Text>
+            <Text style={[styles.reviewSectionTitle, { marginTop: 16 }]}>
+              Projections
+            </Text>
             <View style={styles.projChips}>
               <View style={styles.projChip}>
                 <Text style={styles.projChipVal}>{formatNum(proj.weekly)}</Text>
                 <Text style={styles.projChipLbl}>/ semaine</Text>
               </View>
               <View style={styles.projChip}>
-                <Text style={styles.projChipVal}>{formatNum(proj.monthly)}</Text>
+                <Text style={styles.projChipVal}>
+                  {formatNum(proj.monthly)}
+                </Text>
                 <Text style={styles.projChipLbl}>/ mois</Text>
               </View>
               <View style={styles.projChip}>
-                <Text style={styles.projChipVal}>{formatNum(proj.sixMonths)}</Text>
+                <Text style={styles.projChipVal}>
+                  {formatNum(proj.sixMonths)}
+                </Text>
                 <Text style={styles.projChipLbl}>6 mois</Text>
               </View>
               <View style={styles.projChip}>
-                <Text style={styles.projChipVal}>{formatNum(proj.oneYear)}</Text>
+                <Text style={styles.projChipVal}>
+                  {formatNum(proj.oneYear)}
+                </Text>
                 <Text style={styles.projChipLbl}>1 an</Text>
               </View>
             </View>
 
-            <Text style={[styles.reviewSectionTitle, { marginTop: 16 }]}>Agent responsable</Text>
+            <Text style={[styles.reviewSectionTitle, { marginTop: 16 }]}>
+              Agent responsable
+            </Text>
             <View style={styles.reviewCard}>
               <View style={styles.rRow}>
                 <Text style={styles.rLabel}>Agent</Text>
                 <Text style={styles.rValue}>{user?.name ?? "—"}</Text>
               </View>
               <View style={[styles.rRow, styles.rRowLast]}>
-                <Text style={styles.rLabel}>Date d'inscription</Text>
+                <Text style={styles.rLabel}>Date d&apos;inscription</Text>
                 <Text style={styles.rValue}>{today}</Text>
               </View>
             </View>
 
             <Pressable
-              style={[styles.btnMain, { marginTop: 18 }, isSubmitting && styles.btnMainDisabled]}
+              style={[
+                styles.btnMain,
+                { marginTop: 18 },
+                isSubmitting && styles.btnMainDisabled,
+              ]}
               onPress={handleConfirm}
               disabled={isSubmitting}
             >
               <Check size={15} color="white" strokeWidth={2.2} />
               <Text style={styles.btnMainText}>
-                {isSubmitting ? "Inscription en cours…" : "Confirmer l'inscription"}
+                {isSubmitting
+                  ? "Inscription en cours…"
+                  : "Confirmer l'inscription"}
               </Text>
             </Pressable>
 
@@ -685,17 +898,22 @@ export default function AddClientScreen() {
   function SuccessScreen() {
     if (!createdClient) return null;
     const initials = getInitials(createdClient.name);
-    const goalNum  = createdClient.savingsGoal;
+    const goalNum = createdClient.savingsGoal;
 
     return (
-      <ScrollView contentContainerStyle={styles.successContainer} showsVerticalScrollIndicator={false}>
+      <ScrollView
+        contentContainerStyle={styles.successContainer}
+        showsVerticalScrollIndicator={false}
+      >
         <View style={styles.successRing}>
           <Check size={34} color={T.orange} strokeWidth={2.2} />
         </View>
         <Text style={styles.successH}>Membre inscrit !</Text>
         <Text style={styles.successP}>
           {createdClient.name} a été ajouté(e) avec succès
-          {createdClient.groupName ? ` au groupe ${createdClient.groupName}.` : "."}
+          {createdClient.groupName
+            ? ` au groupe ${createdClient.groupName}.`
+            : "."}
         </Text>
 
         <View style={styles.memberCard}>
@@ -706,35 +924,47 @@ export default function AddClientScreen() {
             <View>
               {/* name → mapped from fullName */}
               <Text style={styles.memberName}>{createdClient.name}</Text>
-              <Text style={styles.memberId}>ID membre · {createdClient.id}</Text>
+              <Text style={styles.memberId}>
+                ID membre · {createdClient.id}
+              </Text>
             </View>
           </View>
           {/* phone → mapped from phoneNumber */}
           <View style={styles.rRow}>
             <Text style={styles.rLabel}>Téléphone</Text>
-            <Text style={[styles.rValue, styles.rValueOrange]}>{createdClient.phone}</Text>
+            <Text style={[styles.rValue, styles.rValueOrange]}>
+              {createdClient.phone}
+            </Text>
           </View>
           {createdClient.accountNumber && (
             <View style={styles.rRow}>
               <Text style={styles.rLabel}>Code client</Text>
-              <Text style={[styles.rValue, styles.rValueOrange]}>{createdClient.accountNumber}</Text>
+              <Text style={[styles.rValue, styles.rValueOrange]}>
+                {createdClient.accountNumber}
+              </Text>
             </View>
           )}
           {createdClient.commitmentAmount != null && (
             <View style={styles.rRow}>
               <Text style={styles.rLabel}>Engagement</Text>
-              <Text style={styles.rValue}>{formatNum(createdClient.commitmentAmount)} FCFA / jour</Text>
+              <Text style={styles.rValue}>
+                {formatNum(createdClient.commitmentAmount)} FCFA / jour
+              </Text>
             </View>
           )}
           {goalNum != null && (
             <View style={styles.rRow}>
               <Text style={styles.rLabel}>Objectif</Text>
-              <Text style={[styles.rValue, styles.rValueGreen]}>{formatNum(goalNum)} FCFA</Text>
+              <Text style={[styles.rValue, styles.rValueGreen]}>
+                {formatNum(goalNum)} FCFA
+              </Text>
             </View>
           )}
           <View style={[styles.rRow, styles.rRowLast]}>
             <Text style={styles.rLabel}>Premier dépôt</Text>
-            <Text style={[styles.rValue, { color: T.textWarning }]}>En attente</Text>
+            <Text style={[styles.rValue, { color: T.textWarning }]}>
+              En attente
+            </Text>
           </View>
         </View>
 
@@ -772,10 +1002,10 @@ export default function AddClientScreen() {
 
   return (
     <SafeAreaView style={styles.container} edges={["top"]}>
-      {step === 1         && Step1()}
-      {step === 2         && Step2()}
-      {step === 3         && Step3()}
-      {step === 4         && Step4()}
+      {step === 1 && Step1()}
+      {step === 2 && Step2()}
+      {step === 3 && Step3()}
+      {step === 4 && Step4()}
       {step === "success" && SuccessScreen()}
     </SafeAreaView>
   );
@@ -787,114 +1017,403 @@ const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: T.bg },
 
   progressTrack: { height: 3, flexDirection: "row", backgroundColor: T.bg3 },
-  progressSeg:   { flex: 1, height: 3, backgroundColor: T.border2 },
-  progressDone:  { backgroundColor: T.orange },
-  progressActive:{ backgroundColor: T.orangeMd },
+  progressSeg: { flex: 1, height: 3, backgroundColor: T.border2 },
+  progressDone: { backgroundColor: T.orange },
+  progressActive: { backgroundColor: T.orangeMd },
 
-  navRow:       { flexDirection: "row", alignItems: "center", justifyContent: "space-between", paddingHorizontal: 18, paddingTop: 12 },
-  backBtn:      { flexDirection: "row", alignItems: "center", gap: 4 },
-  backLabel:    { fontSize: 13, color: T.text3 },
-  stepBadge:    { backgroundColor: T.bg2, borderWidth: 0.5, borderColor: T.border, borderRadius: 20, paddingHorizontal: 9, paddingVertical: 3 },
-  stepBadgeText:{ fontSize: 11, fontWeight: "500", color: T.text3 },
+  navRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    paddingHorizontal: 18,
+    paddingTop: 12,
+  },
+  backBtn: { flexDirection: "row", alignItems: "center", gap: 4 },
+  backLabel: { fontSize: 13, color: T.text3 },
+  stepBadge: {
+    backgroundColor: T.bg2,
+    borderWidth: 0.5,
+    borderColor: T.border,
+    borderRadius: 20,
+    paddingHorizontal: 9,
+    paddingVertical: 3,
+  },
+  stepBadgeText: { fontSize: 11, fontWeight: "500", color: T.text3 },
 
-  body:       { flex: 1, paddingHorizontal: 18, paddingTop: 0 },
-  screenTitle:{ fontSize: 20, fontWeight: "600", color: T.text1, letterSpacing: -0.4, lineHeight: 26, marginTop: 14, marginBottom: 4 },
-  screenSub:  { fontSize: 13, color: T.text2, lineHeight: 20, marginBottom: 22 },
+  body: { flex: 1, paddingHorizontal: 18, paddingTop: 0 },
+  screenTitle: {
+    fontSize: 20,
+    fontWeight: "600",
+    color: T.text1,
+    letterSpacing: -0.4,
+    lineHeight: 26,
+    marginTop: 14,
+    marginBottom: 4,
+  },
+  screenSub: { fontSize: 13, color: T.text2, lineHeight: 20, marginBottom: 22 },
 
-  field:           { marginBottom: 14 },
-  fieldLabel:      { fontSize: 11, fontWeight: "500", color: T.text3, textTransform: "uppercase", letterSpacing: 0.55, marginBottom: 6 },
-  fieldInput:      { backgroundColor: T.bg2, borderWidth: 0.5, borderColor: T.border, borderRadius: 11, paddingHorizontal: 13, paddingVertical: 12, fontSize: 14, color: T.text1 },
-  fieldInputFilled:{ borderColor: T.orange, backgroundColor: T.orangeLt },
-  fieldHintOk:     { flexDirection: "row", alignItems: "center", gap: 4, marginTop: 5 },
+  field: { marginBottom: 14 },
+  fieldLabel: {
+    fontSize: 11,
+    fontWeight: "500",
+    color: T.text3,
+    textTransform: "uppercase",
+    letterSpacing: 0.55,
+    marginBottom: 6,
+  },
+  fieldInput: {
+    backgroundColor: T.bg2,
+    borderWidth: 0.5,
+    borderColor: T.border,
+    borderRadius: 11,
+    paddingHorizontal: 13,
+    paddingVertical: 12,
+    fontSize: 14,
+    color: T.text1,
+  },
+  fieldInputFilled: { borderColor: T.orange, backgroundColor: T.orangeLt },
+  fieldHintOk: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 4,
+    marginTop: 5,
+  },
   fieldHintOkText: { fontSize: 11, color: T.textSuccess },
-  fieldHintInfo:   { fontSize: 11, color: T.text3, marginTop: 5 },
+  fieldHintInfo: { fontSize: 11, color: T.text3, marginTop: 5 },
 
-  phoneRow:       { flexDirection: "row", gap: 7 },
-  countryPill:    { flexDirection: "row", alignItems: "center", gap: 4, backgroundColor: T.bg2, borderWidth: 0.5, borderColor: T.border, borderRadius: 11, paddingHorizontal: 10, paddingVertical: 12 },
-  countryPillText:{ fontSize: 13, color: T.text1 },
+  phoneRow: { flexDirection: "row", gap: 7 },
+  countryPill: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 4,
+    backgroundColor: T.bg2,
+    borderWidth: 0.5,
+    borderColor: T.border,
+    borderRadius: 11,
+    paddingHorizontal: 10,
+    paddingVertical: 12,
+  },
+  countryPillText: { fontSize: 13, color: T.text1 },
 
-  ctaWrap:       { paddingHorizontal: 18, paddingBottom: Platform.OS === "ios" ? 8 : 16, paddingTop: 8, backgroundColor: T.bg, borderTopWidth: 0.5, borderTopColor: T.border },
-  btnMain:       { backgroundColor: T.orange, borderRadius: 13, paddingVertical: 14, flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 7 },
-  btnMainDisabled:{ opacity: 0.35 },
-  btnMainText:   { color: "white", fontSize: 14, fontWeight: "500" },
+  ctaWrap: {
+    paddingHorizontal: 18,
+    paddingBottom: Platform.OS === "ios" ? 8 : 16,
+    paddingTop: 8,
+    backgroundColor: T.bg,
+    borderTopWidth: 0.5,
+    borderTopColor: T.border,
+  },
+  btnMain: {
+    backgroundColor: T.orange,
+    borderRadius: 13,
+    paddingVertical: 14,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 7,
+  },
+  btnMainDisabled: { opacity: 0.35 },
+  btnMainText: { color: "white", fontSize: 14, fontWeight: "500" },
 
-  amountDisplay: { flex: 1, alignItems: "center", justifyContent: "center", paddingHorizontal: 18 },
-  amountLabel:   { fontSize: 12, color: T.text3, marginBottom: 6 },
-  amountValue:   { fontSize: 65, fontWeight: "600", letterSpacing: -1.5, lineHeight: 50 },
-  amountCurrency:{ fontSize: 18, fontWeight: "400", color: T.text3 },
-  unitBaseHint:  { fontSize: 11, color: T.text3, marginTop: 6 },
+  amountDisplay: {
+    flex: 1,
+    alignItems: "center",
+    justifyContent: "center",
+    paddingHorizontal: 18,
+  },
+  amountLabel: { fontSize: 12, color: T.text3, marginBottom: 6 },
+  amountValue: {
+    fontSize: 65,
+    fontWeight: "600",
+    letterSpacing: -1.5,
+    lineHeight: 50,
+  },
+  amountCurrency: { fontSize: 18, fontWeight: "400", color: T.text3 },
+  unitBaseHint: { fontSize: 11, color: T.text3, marginTop: 6 },
 
-  chipsRow:      { flexDirection: "row", alignItems: "flex-end", gap: 8, paddingHorizontal: 18, paddingVertical: 18, marginVertical: 2 },
-  chip:          { paddingHorizontal: 14, height: 36, borderRadius: 18, backgroundColor: T.bg2, borderWidth: 0.5, borderColor: T.border, justifyContent: "center", alignItems: "center" },
-  chipActive:    { backgroundColor: T.orangeLt, borderColor: T.orange },
-  chipText:      { fontSize: 14, fontWeight: "600", color: T.text2 },
-  chipTextActive:{ color: T.orangeDk },
+  chipsRow: {
+    flexDirection: "row",
+    alignItems: "flex-end",
+    gap: 8,
+    paddingHorizontal: 18,
+    paddingVertical: 18,
+    marginVertical: 2,
+  },
+  chip: {
+    paddingHorizontal: 14,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: T.bg2,
+    borderWidth: 0.5,
+    borderColor: T.border,
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  chipActive: { backgroundColor: T.orangeLt, borderColor: T.orange },
+  chipText: { fontSize: 14, fontWeight: "600", color: T.text2 },
+  chipTextActive: { color: T.orangeDk },
 
-  freqGrid:      { flexDirection: "row", flexWrap: "wrap", gap: 8, marginBottom: 16 },
-  freqCard:      { width: "47%", borderWidth: 0.5, borderColor: T.border2, borderRadius: 13, padding: 13 },
-  freqCardActive:{ borderColor: T.orange, backgroundColor: T.orangeLt },
-  freqName:      { fontSize: 13, fontWeight: "500", color: T.text1, marginBottom: 3 },
-  freqNameActive:{ color: T.orangeDk },
-  freqDesc:      { fontSize: 10, color: T.text2, lineHeight: 14 },
-  freqDescActive:{ color: T.orangeDk, opacity: 0.7 },
+  freqGrid: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: 8,
+    marginBottom: 16,
+  },
+  freqCard: {
+    width: "47%",
+    borderWidth: 0.5,
+    borderColor: T.border2,
+    borderRadius: 13,
+    padding: 13,
+  },
+  freqCardActive: { borderColor: T.orange, backgroundColor: T.orangeLt },
+  freqName: {
+    fontSize: 13,
+    fontWeight: "500",
+    color: T.text1,
+    marginBottom: 3,
+  },
+  freqNameActive: { color: T.orangeDk },
+  freqDesc: { fontSize: 10, color: T.text2, lineHeight: 14 },
+  freqDescActive: { color: T.orangeDk, opacity: 0.7 },
 
-  daysRow:         { flexDirection: "row", gap: 5, marginTop: 2 },
-  dayBtn:          { flex: 1, paddingVertical: 8, alignItems: "center", borderRadius: 9, backgroundColor: T.bg2, borderWidth: 0.5, borderColor: T.border },
-  dayBtnActive:    { backgroundColor: T.orange, borderColor: T.orange },
-  dayBtnText:      { fontSize: 12, fontWeight: "500", color: T.text3 },
-  dayBtnTextActive:{ color: "white" },
+  daysRow: { flexDirection: "row", gap: 5, marginTop: 2 },
+  dayBtn: {
+    flex: 1,
+    paddingVertical: 8,
+    alignItems: "center",
+    borderRadius: 9,
+    backgroundColor: T.bg2,
+    borderWidth: 0.5,
+    borderColor: T.border,
+  },
+  dayBtnActive: { backgroundColor: T.orange, borderColor: T.orange },
+  dayBtnText: { fontSize: 12, fontWeight: "500", color: T.text3 },
+  dayBtnTextActive: { color: "white" },
 
-  goalToggle:     { flexDirection: "row", alignItems: "center", justifyContent: "space-between", paddingHorizontal: 14, paddingVertical: 13, backgroundColor: T.bg2, borderWidth: 0.5, borderColor: T.border, borderRadius: 12, marginBottom: 12 },
+  goalToggle: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    paddingHorizontal: 14,
+    paddingVertical: 13,
+    backgroundColor: T.bg2,
+    borderWidth: 0.5,
+    borderColor: T.border,
+    borderRadius: 12,
+    marginBottom: 12,
+  },
   goalToggleLeft: { flexDirection: "row", alignItems: "center", gap: 10 },
-  goalToggleIcon: { width: 30, height: 30, borderRadius: 8, backgroundColor: T.orangeLt, justifyContent: "center", alignItems: "center" },
-  toggleLabel:    { fontSize: 13, fontWeight: "500", color: T.text1 },
-  toggleSub:      { fontSize: 11, color: T.text3 },
-  inputSuffix:    { position: "absolute", right: 13, top: "50%", marginTop: -9, fontSize: 12, color: T.text3 },
+  goalToggleIcon: {
+    width: 30,
+    height: 30,
+    borderRadius: 8,
+    backgroundColor: T.orangeLt,
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  toggleLabel: { fontSize: 13, fontWeight: "500", color: T.text1 },
+  toggleSub: { fontSize: 11, color: T.text3 },
+  inputSuffix: {
+    position: "absolute",
+    right: 13,
+    top: "50%",
+    marginTop: -9,
+    fontSize: 12,
+    color: T.text3,
+  },
 
-  reviewHeader:        { backgroundColor: T.orange, paddingHorizontal: 18, paddingTop: 20, paddingBottom: 24 },
-  reviewLabel:         { fontSize: 12, color: "rgba(255,255,255,0.65)", marginBottom: 4 },
-  reviewName:          { fontSize: 22, fontWeight: "600", color: "white", letterSpacing: -0.44 },
-  reviewNameRow:       { flexDirection: "row", alignItems: "center", gap: 10, marginTop: 4 },
-  reviewCodeBadge:     { backgroundColor: "rgba(255,255,255,0.2)", paddingHorizontal: 10, paddingVertical: 4, borderRadius: 6, borderWidth: 1, borderColor: "rgba(255,255,255,0.3)" },
+  reviewHeader: {
+    backgroundColor: T.orange,
+    paddingHorizontal: 18,
+    paddingTop: 20,
+    paddingBottom: 24,
+  },
+  reviewLabel: {
+    fontSize: 12,
+    color: "rgba(255,255,255,0.65)",
+    marginBottom: 4,
+  },
+  reviewName: {
+    fontSize: 22,
+    fontWeight: "600",
+    color: "white",
+    letterSpacing: -0.44,
+  },
+  reviewNameRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 10,
+    marginTop: 4,
+  },
+  reviewCodeBadge: {
+    backgroundColor: "rgba(255,255,255,0.2)",
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 6,
+    borderWidth: 1,
+    borderColor: "rgba(255,255,255,0.3)",
+  },
   reviewCodeBadgeText: { fontSize: 11, fontWeight: "600", color: "white" },
-  reviewPhone:         { fontSize: 13, color: "rgba(255,255,255,0.6)", marginTop: 2 },
-  reviewCommit:        { flexDirection: "row", alignItems: "center", backgroundColor: "rgba(255,255,255,0.18)", borderRadius: 20, paddingHorizontal: 12, paddingVertical: 5, alignSelf: "flex-start", marginTop: 10 },
-  reviewCommitAmount:  { fontSize: 13, fontWeight: "600", color: "white" },
-  reviewCommitPeriod:  { fontSize: 11, color: "rgba(255,255,255,0.65)" },
-  reviewBody:          { paddingHorizontal: 18, paddingTop: 16 },
-  reviewSectionTitle:  { fontSize: 11, fontWeight: "500", color: T.text3, textTransform: "uppercase", letterSpacing: 0.55, marginBottom: 8 },
-  reviewCard:          { backgroundColor: T.bg2, borderWidth: 0.5, borderColor: T.border, borderRadius: 14, overflow: "hidden" },
+  reviewPhone: { fontSize: 13, color: "rgba(255,255,255,0.6)", marginTop: 2 },
+  reviewCommit: {
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: "rgba(255,255,255,0.18)",
+    borderRadius: 20,
+    paddingHorizontal: 12,
+    paddingVertical: 5,
+    alignSelf: "flex-start",
+    marginTop: 10,
+  },
+  reviewCommitAmount: { fontSize: 13, fontWeight: "600", color: "white" },
+  reviewCommitPeriod: { fontSize: 11, color: "rgba(255,255,255,0.65)" },
+  reviewBody: { paddingHorizontal: 18, paddingTop: 16 },
+  reviewSectionTitle: {
+    fontSize: 11,
+    fontWeight: "500",
+    color: T.text3,
+    textTransform: "uppercase",
+    letterSpacing: 0.55,
+    marginBottom: 8,
+  },
+  reviewCard: {
+    backgroundColor: T.bg2,
+    borderWidth: 0.5,
+    borderColor: T.border,
+    borderRadius: 14,
+    overflow: "hidden",
+  },
 
-  rRow:        { flexDirection: "row", justifyContent: "space-between", alignItems: "center", paddingHorizontal: 14, paddingVertical: 10, borderBottomWidth: 0.5, borderBottomColor: T.border },
-  rRowLast:    { borderBottomWidth: 0 },
-  rLabel:      { fontSize: 12, color: T.text2, flex: 1 },
-  rValue:      { fontSize: 13, fontWeight: "500", color: T.text1, flexShrink: 1, textAlign: "right", marginLeft: 8 },
-  rValueOrange:{ color: T.orange },
+  rRow: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    paddingHorizontal: 14,
+    paddingVertical: 10,
+    borderBottomWidth: 0.5,
+    borderBottomColor: T.border,
+  },
+  rRowLast: { borderBottomWidth: 0 },
+  rLabel: { fontSize: 12, color: T.text2, flex: 1 },
+  rValue: {
+    fontSize: 13,
+    fontWeight: "500",
+    color: T.text1,
+    flexShrink: 1,
+    textAlign: "right",
+    marginLeft: 8,
+  },
+  rValueOrange: { color: T.orange },
   rValueGreen: { color: T.green },
 
-  projChips:   { flexDirection: "row", flexWrap: "wrap", gap: 6, marginBottom: 4 },
-  projChip:    { paddingHorizontal: 10, paddingVertical: 5, borderRadius: 8, backgroundColor: T.bg2, borderWidth: 0.5, borderColor: T.border, alignItems: "center" },
+  projChips: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: 6,
+    marginBottom: 4,
+  },
+  projChip: {
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+    borderRadius: 8,
+    backgroundColor: T.bg2,
+    borderWidth: 0.5,
+    borderColor: T.border,
+    alignItems: "center",
+  },
   projChipVal: { fontSize: 12, fontWeight: "600", color: T.text1 },
   projChipLbl: { fontSize: 10, color: T.text3 },
 
-  successContainer:{ alignItems: "center", paddingHorizontal: 22, paddingTop: 48, paddingBottom: 28 },
-  successRing:     { width: 76, height: 76, borderRadius: 38, backgroundColor: T.orangeLt, justifyContent: "center", alignItems: "center", marginBottom: 20 },
-  successH:        { fontSize: 22, fontWeight: "600", color: T.text1, letterSpacing: -0.44, marginBottom: 6 },
-  successP:        { fontSize: 13, color: T.text2, lineHeight: 21, marginBottom: 22, textAlign: "center" },
+  successContainer: {
+    alignItems: "center",
+    paddingHorizontal: 22,
+    paddingTop: 48,
+    paddingBottom: 28,
+  },
+  successRing: {
+    width: 76,
+    height: 76,
+    borderRadius: 38,
+    backgroundColor: T.orangeLt,
+    justifyContent: "center",
+    alignItems: "center",
+    marginBottom: 20,
+  },
+  successH: {
+    fontSize: 22,
+    fontWeight: "600",
+    color: T.text1,
+    letterSpacing: -0.44,
+    marginBottom: 6,
+  },
+  successP: {
+    fontSize: 13,
+    color: T.text2,
+    lineHeight: 21,
+    marginBottom: 22,
+    textAlign: "center",
+  },
 
-  memberCard:    { width: "100%", backgroundColor: T.bg2, borderWidth: 0.5, borderColor: T.border, borderRadius: 16, overflow: "hidden", marginBottom: 16 },
-  memberCardTop: { backgroundColor: T.orange, paddingHorizontal: 16, paddingVertical: 14, flexDirection: "row", alignItems: "center", gap: 12 },
-  memberAv:      { width: 44, height: 44, borderRadius: 22, backgroundColor: "rgba(255,255,255,0.25)", justifyContent: "center", alignItems: "center" },
-  memberAvText:  { fontSize: 16, fontWeight: "600", color: "white" },
-  memberName:    { fontSize: 16, fontWeight: "600", color: "white" },
-  memberId:      { fontSize: 11, color: "rgba(255,255,255,0.6)" },
+  memberCard: {
+    width: "100%",
+    backgroundColor: T.bg2,
+    borderWidth: 0.5,
+    borderColor: T.border,
+    borderRadius: 16,
+    overflow: "hidden",
+    marginBottom: 16,
+  },
+  memberCardTop: {
+    backgroundColor: T.orange,
+    paddingHorizontal: 16,
+    paddingVertical: 14,
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 12,
+  },
+  memberAv: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: "rgba(255,255,255,0.25)",
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  memberAvText: { fontSize: 16, fontWeight: "600", color: "white" },
+  memberName: { fontSize: 16, fontWeight: "600", color: "white" },
+  memberId: { fontSize: 11, color: "rgba(255,255,255,0.6)" },
 
-  actionPair:    { flexDirection: "row", gap: 8, width: "100%" },
-  btnOutline:    { flex: 1, flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 5, paddingVertical: 13, borderRadius: 13, borderWidth: 0.5, borderColor: T.border2, backgroundColor: T.bg },
-  btnOutlineText:{ fontSize: 13, fontWeight: "500", color: T.text1 },
-  btnOrange:     { flex: 1, alignItems: "center", justifyContent: "center", paddingVertical: 13, borderRadius: 13, backgroundColor: T.orange },
+  actionPair: { flexDirection: "row", gap: 8, width: "100%" },
+  btnOutline: {
+    flex: 1,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 5,
+    paddingVertical: 13,
+    borderRadius: 13,
+    borderWidth: 0.5,
+    borderColor: T.border2,
+    backgroundColor: T.bg,
+  },
+  btnOutlineText: { fontSize: 13, fontWeight: "500", color: T.text1 },
+  btnOrange: {
+    flex: 1,
+    alignItems: "center",
+    justifyContent: "center",
+    paddingVertical: 13,
+    borderRadius: 13,
+    backgroundColor: T.orange,
+  },
   btnOrangeText: { fontSize: 13, fontWeight: "500", color: "white" },
 
-  applyBtn:    { backgroundColor: T.orange, borderRadius: 11, paddingHorizontal: 16, paddingVertical: 12, justifyContent: "center" },
-  applyBtnText:{ color: "white", fontSize: 13, fontWeight: "600" },
+  applyBtn: {
+    backgroundColor: T.orange,
+    borderRadius: 11,
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    justifyContent: "center",
+  },
+  applyBtnText: { color: "white", fontSize: 13, fontWeight: "600" },
 });

@@ -5,6 +5,7 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
 import { generateId } from "@/utils/id-generator";
 import { isConnected } from "@/utils/network";
 import { convex } from "@/lib/convex";
+import { withAuthRetry } from "@/lib/withAuthRetry";
 import { api } from "@/convex/_generated/api";
 import { Id } from "@/convex/_generated/dataModel";
 import { Transaction } from "@/types/transaction";
@@ -25,7 +26,7 @@ function sortByTimestampDesc(a: Transaction, b: Transaction): number {
  */
 export function mergeTransactionsSorted(
   synced: Transaction[],
-  pending: Transaction[]
+  pending: Transaction[],
 ): Transaction[] {
   const byId = new Map<string, Transaction>();
   for (const t of synced) byId.set(t.id, t);
@@ -42,9 +43,9 @@ export function mergeTransactionsSorted(
  * `clientName` is resolved from the client store when available; it falls back
  * to the id string so the UI always has something to display.
  */
-function convexRowToTransaction(
+export function convexRowToTransaction(
   row: any,
-  clientNameResolver?: (id: string) => string | undefined
+  clientNameResolver?: (id: string) => string | undefined,
 ): Transaction {
   const clientName =
     clientNameResolver?.(row.customerId) ?? row.customerId ?? "—";
@@ -102,7 +103,8 @@ export const useTransactionStore = create<TransactionStoreState>()(
       loadDevMocks: async () => {
         if (!DEV_MOCKS_ENABLED) return;
         if (get().transactions.length > 0) return;
-        const { mockTransactions } = await import("@/__dev__/mocks/transactions");
+        const { mockTransactions } =
+          await import("@/__dev__/mocks/transactions");
         set({ transactions: mockTransactions, pendingTransactions: [] });
       },
 
@@ -111,12 +113,16 @@ export const useTransactionStore = create<TransactionStoreState>()(
       importTransactions: (txList) => {
         set((state) => {
           const existingIds = new Set(
-            [...state.transactions, ...state.pendingTransactions].map((t) => t.id)
+            [...state.transactions, ...state.pendingTransactions].map(
+              (t) => t.id,
+            ),
           );
           const newTxs = txList.filter((t) => !existingIds.has(t.id));
           if (newTxs.length === 0) return state;
           return {
-            transactions: [...newTxs, ...state.transactions].sort(sortByTimestampDesc),
+            transactions: [...newTxs, ...state.transactions].sort(
+              sortByTimestampDesc,
+            ),
           };
         });
       },
@@ -132,22 +138,24 @@ export const useTransactionStore = create<TransactionStoreState>()(
             return;
           }
 
-          const rows = await convex.query(api.transactions.list, {
-            branchId: branchId as Id<"branches">,
-          });
+          // `transactions.list` derives the branch from the caller's own
+          // identity server-side — it takes no arguments.
+          const rows = await withAuthRetry(() =>
+            convex.query(api.transactions.list, {}),
+          );
 
           const clientStore = useClientStore.getState();
           const clientNameResolver = (id: string) =>
             clientStore.getClientById(id)?.name;
 
           const fromServer: Transaction[] = rows.map((row: any) =>
-            convexRowToTransaction(row, clientNameResolver)
+            convexRowToTransaction(row, clientNameResolver),
           );
 
           set((state) => {
             const serverIds = new Set(fromServer.map((t) => t.id));
             const stillPending = state.pendingTransactions.filter(
-              (p) => !serverIds.has(p.id)
+              (p) => !serverIds.has(p.id),
             );
             return {
               transactions: fromServer,
@@ -206,39 +214,46 @@ export const useTransactionStore = create<TransactionStoreState>()(
 
           if (online) {
             const authStore = useAuthStore.getState();
-            const branchId = authStore.user?.branchId;
-            const currency = authStore.user?.currency ?? "FCFA";
             const tpeId = authStore.user?.device?.serialNumber ?? "web";
 
             let serverIdStr: string | null = null;
+            let serverNewBalance: number | null = null;
 
-            if (branchId && authStore.user?.id) {
-              try {
-                const serverId = await convex.mutation(api.transactions.create, {
-                  amount: transactionData.amount,
-                  currency,
-                  customerId: transactionData.clientId as Id<"customers">,
-                  agentId: authStore.user!.id as Id<"users">,
-                  branchId: branchId as Id<"branches">,
-                  tpeId,
-                  type: transactionData.type,
-                  timestamp: now,
-                });
-                serverIdStr = serverId as string;
-              } catch (mutErr) {
-                // Customer not yet synced or other transient error — fall
-                // through to the pending queue.
-                console.warn("Transaction sync deferred:", mutErr);
-              }
+            try {
+              // createDeposit/createWithdrawal dérivent l'agent et l'agence
+              // du token côté serveur (pas de agentId/branchId à fournir) et
+              // mettent à jour le solde du client de façon atomique dans la
+              // même mutation — voir convex/transactions.ts.
+              const createFn =
+                transactionData.type === "deposit"
+                  ? api.transactions.createDeposit
+                  : api.transactions.createWithdrawal;
+              const result = await convex.mutation(createFn, {
+                customerId: transactionData.clientId as Id<"customers">,
+                amount: transactionData.amount,
+                tpeId,
+              });
+              serverIdStr = result.transactionId as string;
+              serverNewBalance = result.newBalance;
+            } catch (mutErr) {
+              // Customer not yet synced, solde insuffisant ou autre erreur
+              // transitoire — bascule vers la file d'attente.
+              console.warn("Transaction sync deferred:", mutErr);
             }
 
-            // Balance is updated atomically on the server; mirror locally.
-            await clientStore.updateClientBalance(
-              transactionData.clientId,
-              balanceDelta
-            );
+            if (serverIdStr && serverNewBalance !== null) {
+              // Le solde vient d'être mis à jour de façon atomique côté
+              // serveur — on reflète cette valeur faisant autorité plutôt que
+              // de rappliquer le delta localement (clientStore.updateClientBalance
+              // ferait un second appel Convex qui doublerait le changement).
+              useClientStore.setState((state) => ({
+                clients: state.clients.map((c) =>
+                  c.id === transactionData.clientId
+                    ? { ...c, balance: serverNewBalance!, syncStatus: "synced" as const }
+                    : c,
+                ),
+              }));
 
-            if (serverIdStr) {
               // Use the server-assigned id so the local record matches Convex.
               const syncedTransaction: Transaction = {
                 ...newTransaction,
@@ -252,8 +267,15 @@ export const useTransactionStore = create<TransactionStoreState>()(
               return syncedTransaction;
             } else {
               // Queued as pending — keep local id for reconciliation.
+              await clientStore.updateClientBalance(
+                transactionData.clientId,
+                balanceDelta,
+              );
               set((state) => ({
-                pendingTransactions: [newTransaction, ...state.pendingTransactions],
+                pendingTransactions: [
+                  newTransaction,
+                  ...state.pendingTransactions,
+                ],
                 isLoading: false,
               }));
             }
@@ -261,10 +283,13 @@ export const useTransactionStore = create<TransactionStoreState>()(
             // Offline path — update local balance, queue for later sync.
             await clientStore.updateClientBalance(
               transactionData.clientId,
-              balanceDelta
+              balanceDelta,
             );
             set((state) => ({
-              pendingTransactions: [newTransaction, ...state.pendingTransactions],
+              pendingTransactions: [
+                newTransaction,
+                ...state.pendingTransactions,
+              ],
               isLoading: false,
             }));
           }
@@ -311,7 +336,6 @@ export const useTransactionStore = create<TransactionStoreState>()(
         set({ isLoading: true, error: null, transactionSyncFailures: 0 });
         try {
           const authStore = useAuthStore.getState();
-          const currency = authStore.user?.currency ?? "FCFA";
           const tpeId = authStore.user?.device?.serialNumber ?? "web";
           const agentConvexId = authStore.user?.id;
 
@@ -323,22 +347,33 @@ export const useTransactionStore = create<TransactionStoreState>()(
 
           for (const tx of pending) {
             try {
-              const serverId = await convex.mutation(api.transactions.create, {
-                amount: tx.amount,
-                currency: currency ?? "FCFA",
+              const createFn =
+                tx.type === "deposit"
+                  ? api.transactions.createDeposit
+                  : api.transactions.createWithdrawal;
+              const result = await convex.mutation(createFn, {
                 customerId: tx.clientId as Id<"customers">,
-                agentId: agentConvexId as Id<"users">,
-                branchId: branchId as Id<"branches">,
+                amount: tx.amount,
                 tpeId: tpeId ?? "web",
-                type: tx.type,
-                timestamp: new Date(tx.date).getTime(),
               });
 
               toMove.push({
                 ...tx,
-                id: serverId as string,
+                id: result.transactionId as string,
                 status: "completed",
               });
+              // Le solde local a été mis à jour de façon optimiste (delta)
+              // au moment de la mise en file d'attente hors-ligne — on le
+              // recale ici sur la valeur faisant autorité renvoyée par le
+              // serveur, pour éviter toute dérive après plusieurs opérations
+              // en attente.
+              useClientStore.setState((state) => ({
+                clients: state.clients.map((c) =>
+                  c.id === tx.clientId
+                    ? { ...c, balance: result.newBalance, syncStatus: "synced" as const }
+                    : c,
+                ),
+              }));
             } catch (err) {
               failures++;
               stillPending.push(tx);
@@ -347,7 +382,9 @@ export const useTransactionStore = create<TransactionStoreState>()(
           }
 
           set((state) => ({
-            transactions: [...toMove, ...state.transactions].sort(sortByTimestampDesc),
+            transactions: [...toMove, ...state.transactions].sort(
+              sortByTimestampDesc,
+            ),
             pendingTransactions: stillPending,
             isLoading: false,
             transactionSyncFailures: failures,
@@ -392,6 +429,6 @@ export const useTransactionStore = create<TransactionStoreState>()(
           state.transactionSyncFailures = 0;
         }
       },
-    }
-  )
+    },
+  ),
 );

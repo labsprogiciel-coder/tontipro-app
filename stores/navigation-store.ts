@@ -34,6 +34,6 @@ export const useNavigationStore = create<NavigationState>()(
     {
       name: NAVIGATION_PERSISTENCE_KEY,
       storage: createJSONStorage(() => AsyncStorage),
-    }
-  )
+    },
+  ),
 );

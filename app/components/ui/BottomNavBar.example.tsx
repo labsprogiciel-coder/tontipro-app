@@ -9,41 +9,45 @@
  *   npx expo install react-native-safe-area-context react-native-screens
  */
 
-import React, { useState } from 'react';
-import { View, Text, StyleSheet } from 'react-native';
-import { SafeAreaProvider } from 'react-native-safe-area-context';
-import { NavigationContainer } from '@react-navigation/native';
-import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
-import BottomNavBar, { TabKey } from './BottomNavBar';
+import React, { useState } from "react";
+import { View, Text, StyleSheet } from "react-native";
+import { SafeAreaProvider } from "react-native-safe-area-context";
+import { NavigationContainer } from "@react-navigation/native";
+import { createBottomTabNavigator } from "@react-navigation/bottom-tabs";
+import BottomNavBar, { TabKey } from "./BottomNavBar";
 
 // ─── Placeholder screens ─────────────────────────────────────────────────────
-const placeholder = (label: string) => () => (
-  <View style={s.screen}>
-    <Text style={s.screenText}>{label}</Text>
-  </View>
-);
+const placeholder = (label: string) => {
+  const PlaceholderScreen = () => (
+    <View style={s.screen}>
+      <Text style={s.screenText}>{label}</Text>
+    </View>
+  );
+  PlaceholderScreen.displayName = `Placeholder(${label})`;
+  return PlaceholderScreen;
+};
 
-const HomeScreen     = placeholder('Tableau de bord');
-const ClientsScreen  = placeholder('Liste des clients');
-const HistoryScreen  = placeholder('Historique');
-const ProfileScreen  = placeholder('Profil agent');
+const HomeScreen = placeholder("Tableau de bord");
+const ClientsScreen = placeholder("Liste des clients");
+const HistoryScreen = placeholder("Historique");
+const ProfileScreen = placeholder("Profil agent");
 
 // ─── Tab navigator ───────────────────────────────────────────────────────────
 const Tab = createBottomTabNavigator();
 
 // Maps React Navigation route names → our TabKey type
 const ROUTE_TO_TAB: Record<string, TabKey> = {
-  Home:    'home',
-  Clients: 'clients',
-  History: 'history',
-  Reports: 'reports',
+  Home: "home",
+  Clients: "clients",
+  History: "history",
+  Reports: "reports",
 };
 
 const TAB_TO_ROUTE: Record<TabKey, string> = {
-  home:    'Home',
-  clients: 'Clients',
-  history: 'History',
-  reports: 'reports',
+  home: "Home",
+  clients: "Clients",
+  history: "History",
+  reports: "reports",
 };
 
 export default function App() {
@@ -55,7 +59,7 @@ export default function App() {
           tabBar={(props) => {
             // Derive active tab key from current route name
             const routeName = props.state.routes[props.state.index].name;
-            const activeTab = ROUTE_TO_TAB[routeName] ?? 'home';
+            const activeTab = ROUTE_TO_TAB[routeName] ?? "home";
 
             return (
               <BottomNavBar
@@ -65,13 +69,13 @@ export default function App() {
                 }}
                 onAddPress={() => {
                   // Navigate to new-client flow (modal or stack screen)
-                  props.navigation.navigate('NewClient' as never);
+                  props.navigation.navigate("NewClient" as never);
                 }}
               />
             );
           }}
         >
-          <Tab.Screen name="Home"    component={HomeScreen}    />
+          <Tab.Screen name="Home" component={HomeScreen} />
           <Tab.Screen name="Clients" component={ClientsScreen} />
           <Tab.Screen name="History" component={HistoryScreen} />
           <Tab.Screen name="Profile" component={ProfileScreen} />
@@ -106,13 +110,13 @@ export default function App() {
 const s = StyleSheet.create({
   screen: {
     flex: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: '#f5f4f0',
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: "#f5f4f0",
   },
   screenText: {
     fontSize: 18,
-    fontWeight: '500',
-    color: '#1a1a18',
+    fontWeight: "500",
+    color: "#1a1a18",
   },
 });

@@ -3,8 +3,8 @@ import { createJSONStorage, persist } from "zustand/middleware";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 
 interface ConfigState {
-  baseUnit: number;       // minimum savings unit in FCFA
-  maxMultiplier: number;  // maximum number of units a client can take
+  baseUnit: number; // minimum savings unit in FCFA
+  maxMultiplier: number; // maximum number of units a client can take
   setBaseUnit: (n: number) => void;
   setMaxMultiplier: (n: number) => void;
 }
@@ -20,6 +20,6 @@ export const useConfigStore = create<ConfigState>()(
     {
       name: "kauridorr-config",
       storage: createJSONStorage(() => AsyncStorage),
-    }
-  )
+    },
+  ),
 );

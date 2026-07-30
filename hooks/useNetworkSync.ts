@@ -37,10 +37,11 @@ export function useNetworkSync() {
         // ✅ Sync non bloquante en arrière-plan
         const syncAll = async () => {
           try {
-            const syncTransactions = useTransactionStore.getState().syncPendingTransactions;
+            const syncTransactions =
+              useTransactionStore.getState().syncPendingTransactions;
             const syncClients = useClientStore.getState().syncPendingClients;
             const branchId = useAuthStore.getState().user?.branchId;
-            
+
             // Clients d'abord (FK `transactions.client_id`), puis transactions + soldes serveur
             await syncClients();
             if (branchId) {

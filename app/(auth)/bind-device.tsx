@@ -14,10 +14,15 @@ import {
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useRouter } from "expo-router";
-import { CameraView, useCameraPermissions, BarcodeScanningResult } from "expo-camera";
+import {
+  CameraView,
+  useCameraPermissions,
+  BarcodeScanningResult,
+} from "expo-camera";
 import { Camera, Check, ChevronLeft, QrCode, Hash } from "lucide-react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useMutation, useQuery } from "convex/react";
+import { useAuthStore } from "@/stores/auth-store";
 import { api } from "@/convex/_generated/api";
 import { Id } from "@/convex/_generated/dataModel";
 import { convex } from "@/lib/convex";
@@ -29,14 +34,21 @@ import { KAURIDORR_THEME as T } from "@/constants/colors";
 type ClaimMutationResult = { deviceId: Id<"devices"> };
 
 /** Full device info fetched after a successful claim */
-type ClaimResult = { deviceId: Id<"devices">; deviceSerial: string; deviceModel: string };
+type ClaimResult = {
+  deviceId: Id<"devices">;
+  deviceSerial: string;
+  deviceModel: string;
+};
 
 function mapError(e: unknown): string {
   const msg = (e as Error)?.message ?? "";
-  if (msg.includes("expired"))   return "Code expiré — demandez un nouveau code à votre responsable";
-  if (msg.includes("already"))   return "Cet appareil est déjà attribué";
-  if (msg.includes("Invalid"))   return "Code non reconnu — vérifiez puis réessayez";
-  if (msg.includes("branch"))    return "Appareil hors agence — ce QR code appartient à une autre agence";
+  if (msg.includes("expired"))
+    return "Code expiré — demandez un nouveau code à votre responsable";
+  if (msg.includes("already")) return "Cet appareil est déjà attribué";
+  if (msg.includes("Invalid"))
+    return "Code non reconnu — vérifiez puis réessayez";
+  if (msg.includes("branch"))
+    return "Appareil hors agence — ce QR code appartient à une autre agence";
   return "Une erreur est survenue — réessayez";
 }
 
@@ -106,9 +118,19 @@ function QrTab({
   useEffect(() => {
     const anim = Animated.loop(
       Animated.sequence([
-        Animated.timing(scanLineAnim, { toValue: 1, duration: 1800, easing: Easing.inOut(Easing.ease), useNativeDriver: true }),
-        Animated.timing(scanLineAnim, { toValue: 0, duration: 1800, easing: Easing.inOut(Easing.ease), useNativeDriver: true }),
-      ])
+        Animated.timing(scanLineAnim, {
+          toValue: 1,
+          duration: 1800,
+          easing: Easing.inOut(Easing.ease),
+          useNativeDriver: true,
+        }),
+        Animated.timing(scanLineAnim, {
+          toValue: 0,
+          duration: 1800,
+          easing: Easing.inOut(Easing.ease),
+          useNativeDriver: true,
+        }),
+      ]),
     );
     anim.start();
     return () => anim.stop();
@@ -120,49 +142,64 @@ function QrTab({
     }
   }, [permission]);
 
-  const handleBarcodeScanned = useCallback(async (result: BarcodeScanningResult) => {
-    if (hasScanned.current || phase === "loading") return;
-    hasScanned.current = true;
-    setError(null);
+  const handleBarcodeScanned = useCallback(
+    async (result: BarcodeScanningResult) => {
+      if (hasScanned.current || phase === "loading") return;
+      hasScanned.current = true;
+      setError(null);
 
-    let payload: { token?: string; deviceSerial?: string; branchId?: string } = {};
-    try {
-      payload = JSON.parse(result.data);
-    } catch {
-      setError("QR invalide — format non reconnu");
-      hasScanned.current = false;
-      return;
-    }
+      let payload: {
+        token?: string;
+        deviceSerial?: string;
+        branchId?: string;
+      } = {};
+      try {
+        payload = JSON.parse(result.data);
+      } catch {
+        setError("QR invalide — format non reconnu");
+        hasScanned.current = false;
+        return;
+      }
 
-    if (!payload.token) {
-      setError("QR invalide — champ token manquant");
-      hasScanned.current = false;
-      return;
-    }
+      if (!payload.token) {
+        setError("QR invalide — champ token manquant");
+        hasScanned.current = false;
+        return;
+      }
 
-    // Branch isolation: validate before claiming (per mobile-integration.md)
-    if (payload.branchId && me?.branchId && payload.branchId !== me.branchId) {
-      setError("Ce QR code appartient à une autre agence.");
-      hasScanned.current = false;
-      return;
-    }
+      // Branch isolation: validate before claiming (per mobile-integration.md)
+      if (
+        payload.branchId &&
+        me?.branchId &&
+        payload.branchId !== me.branchId
+      ) {
+        setError("Ce QR code appartient à une autre agence.");
+        hasScanned.current = false;
+        return;
+      }
 
-    setPhase("loading");
-    try {
-      const { deviceId } = await claimByTokenMutation({ token: payload.token });
-      // Fetch the full device record to display serial + model
-      const device = await convex.query(api.devices.getById, { id: deviceId });
-      onSuccess({
-        deviceId,
-        deviceSerial: device?.serialNumber ?? payload.deviceSerial ?? "—",
-        deviceModel: device?.model ?? "—",
-      });
-    } catch (e) {
-      setError(mapError(e));
-      setPhase("idle");
-      hasScanned.current = false;
-    }
-  }, [phase, onSuccess, me, claimByTokenMutation]);
+      setPhase("loading");
+      try {
+        const { deviceId } = await claimByTokenMutation({
+          token: payload.token,
+        });
+        // Fetch the full device record to display serial + model
+        const device = await convex.query(api.devices.getById, {
+          id: deviceId,
+        });
+        onSuccess({
+          deviceId,
+          deviceSerial: device?.serialNumber ?? payload.deviceSerial ?? "—",
+          deviceModel: device?.model ?? "—",
+        });
+      } catch (e) {
+        setError(mapError(e));
+        setPhase("idle");
+        hasScanned.current = false;
+      }
+    },
+    [phase, onSuccess, me, claimByTokenMutation],
+  );
 
   const scanLineTranslate = scanLineAnim.interpolate({
     inputRange: [0, 1],
@@ -185,7 +222,8 @@ function QrTab({
         </View>
         <Text style={s.permTitle}>Accès à la caméra requis</Text>
         <Text style={s.permDesc}>
-          Pour scanner le QR code de liaison, l'application a besoin d'accéder à votre caméra.
+          Pour scanner le QR code de liaison, l&apos;application a besoin d&apos;accéder à
+          votre caméra.
         </Text>
         <Pressable style={s.btnMain} onPress={requestPermission}>
           <Text style={s.btnMainTxt}>Autoriser la caméra</Text>
@@ -203,7 +241,9 @@ function QrTab({
         style={StyleSheet.absoluteFill}
         facing="back"
         barcodeScannerSettings={{ barcodeTypes: ["qr"] }}
-        onBarcodeScanned={phase !== "loading" ? handleBarcodeScanned : undefined}
+        onBarcodeScanned={
+          phase !== "loading" ? handleBarcodeScanned : undefined
+        }
       />
 
       {/* Dark overlay with cut-out illusion */}
@@ -211,7 +251,9 @@ function QrTab({
         {/* Instruction */}
         <View style={s.qrInstruction}>
           <QrCode size={16} color="white" />
-          <Text style={s.qrInstructionTxt}>Placez le QR code dans le cadre</Text>
+          <Text style={s.qrInstructionTxt}>
+            Placez le QR code dans le cadre
+          </Text>
         </View>
 
         {/* Scan frame */}
@@ -225,7 +267,12 @@ function QrTab({
               <ActivityIndicator color={T.orange} size="large" />
             </View>
           ) : (
-            <Animated.View style={[s.scanLine, { transform: [{ translateY: scanLineTranslate }] }]} />
+            <Animated.View
+              style={[
+                s.scanLine,
+                { transform: [{ translateY: scanLineTranslate }] },
+              ]}
+            />
           )}
         </View>
 
@@ -257,80 +304,95 @@ function PinTab({ onSuccess }: { onSuccess: (r: ClaimResult) => void }) {
 
   const pin = digits.join("");
 
-  const submit = useCallback(async (code: string) => {
-    if (hasSubmitted.current) return;
-    hasSubmitted.current = true;
-    Keyboard.dismiss();
-    setError(null);
-    setPhase("loading");
-    try {
-      const { deviceId } = await claimByPinMutation({ pin: code });
-      // Fetch the full device record to display serial + model
-      const device = await convex.query(api.devices.getById, { id: deviceId });
-      onSuccess({
-        deviceId,
-        deviceSerial: device?.serialNumber ?? "—",
-        deviceModel: device?.model ?? "—",
-      });
-    } catch (e) {
-      setError(mapError(e));
-      setPhase("idle");
-      setDigits(Array(PIN_LENGTH).fill(""));
-      hasSubmitted.current = false;
-      setTimeout(() => inputRefs.current[0]?.focus(), 80);
-    }
-  }, [onSuccess, claimByPinMutation]);
-
-  const handleChange = useCallback((text: string, index: number) => {
-    const cleaned = text.replace(/\D/g, "");
-
-    // Paste: fill all boxes at once
-    if (cleaned.length > 1) {
-      const next = cleaned.slice(0, PIN_LENGTH).split("");
-      while (next.length < PIN_LENGTH) next.push("");
-      setDigits(next);
-      const filled = next.filter(Boolean).length;
-      const focusIdx = Math.min(filled, PIN_LENGTH - 1);
-      inputRefs.current[focusIdx]?.focus();
-      if (filled === PIN_LENGTH) {
-        submit(next.join(""));
+  const submit = useCallback(
+    async (code: string) => {
+      if (hasSubmitted.current) return;
+      hasSubmitted.current = true;
+      Keyboard.dismiss();
+      setError(null);
+      setPhase("loading");
+      try {
+        const { deviceId } = await claimByPinMutation({ pin: code });
+        // Fetch the full device record to display serial + model
+        const device = await convex.query(api.devices.getById, {
+          id: deviceId,
+        });
+        onSuccess({
+          deviceId,
+          deviceSerial: device?.serialNumber ?? "—",
+          deviceModel: device?.model ?? "—",
+        });
+      } catch (e) {
+        setError(mapError(e));
+        setPhase("idle");
+        setDigits(Array(PIN_LENGTH).fill(""));
+        hasSubmitted.current = false;
+        setTimeout(() => inputRefs.current[0]?.focus(), 80);
       }
-      return;
-    }
+    },
+    [onSuccess, claimByPinMutation],
+  );
 
-    const next = [...digits];
-    next[index] = cleaned.slice(-1);
-    setDigits(next);
+  const handleChange = useCallback(
+    (text: string, index: number) => {
+      const cleaned = text.replace(/\D/g, "");
 
-    if (cleaned) {
-      if (index < PIN_LENGTH - 1) {
-        inputRefs.current[index + 1]?.focus();
-      } else {
-        const code = next.join("");
-        if (code.length === PIN_LENGTH) submit(code);
+      // Paste: fill all boxes at once
+      if (cleaned.length > 1) {
+        const next = cleaned.slice(0, PIN_LENGTH).split("");
+        while (next.length < PIN_LENGTH) next.push("");
+        setDigits(next);
+        const filled = next.filter(Boolean).length;
+        const focusIdx = Math.min(filled, PIN_LENGTH - 1);
+        inputRefs.current[focusIdx]?.focus();
+        if (filled === PIN_LENGTH) {
+          submit(next.join(""));
+        }
+        return;
       }
-    }
-  }, [digits, submit]);
 
-  const handleKeyPress = useCallback(({ nativeEvent }: { nativeEvent: { key: string } }, index: number) => {
-    if (nativeEvent.key === "Backspace" && !digits[index] && index > 0) {
       const next = [...digits];
-      next[index - 1] = "";
+      next[index] = cleaned.slice(-1);
       setDigits(next);
-      inputRefs.current[index - 1]?.focus();
-    }
-  }, [digits]);
+
+      if (cleaned) {
+        if (index < PIN_LENGTH - 1) {
+          inputRefs.current[index + 1]?.focus();
+        } else {
+          const code = next.join("");
+          if (code.length === PIN_LENGTH) submit(code);
+        }
+      }
+    },
+    [digits, submit],
+  );
+
+  const handleKeyPress = useCallback(
+    ({ nativeEvent }: { nativeEvent: { key: string } }, index: number) => {
+      if (nativeEvent.key === "Backspace" && !digits[index] && index > 0) {
+        const next = [...digits];
+        next[index - 1] = "";
+        setDigits(next);
+        inputRefs.current[index - 1]?.focus();
+      }
+    },
+    [digits],
+  );
 
   return (
     <View style={s.pinTabWrap}>
       <Text style={s.pinTitle}>Saisir le code PIN</Text>
-      <Text style={s.pinSub}>Entrez le code à 6 chiffres fourni par votre responsable.</Text>
+      <Text style={s.pinSub}>
+        Entrez le code à 6 chiffres fourni par votre responsable.
+      </Text>
 
       <View style={s.pinBoxRow}>
         {digits.map((d, i) => (
           <TextInput
             key={i}
-            ref={(el) => { inputRefs.current[i] = el; }}
+            ref={(el) => {
+              inputRefs.current[i] = el;
+            }}
             style={[
               s.pinBox,
               d ? s.pinBoxFilled : undefined,
@@ -363,7 +425,7 @@ function PinTab({ onSuccess }: { onSuccess: (r: ClaimResult) => void }) {
       )}
 
       <Text style={s.pinHelper}>
-        Vous n'avez pas de code ?{" "}
+        Vous n&apos;avez pas de code ?{" "}
         <Text style={s.pinHelperBold}>Contactez votre responsable.</Text>
       </Text>
     </View>
@@ -377,6 +439,15 @@ export default function BindDeviceScreen() {
   const [activeTab, setActiveTab] = useState<Tab>("qr");
   const [result, setResult] = useState<ClaimResult | null>(null);
 
+  const user = useAuthStore((s) => s.user);
+
+  // Si première connexion → rediriger vers verify-device
+  useEffect(() => {
+    if (user?.mustChangePassword) {
+      router.replace("/(auth)/verify-device" as any);
+    }
+  }, [user, router]);
+
   const handleSuccess = useCallback((r: ClaimResult) => {
     setResult(r);
   }, []);
@@ -388,7 +459,10 @@ export default function BindDeviceScreen() {
   if (result) {
     return (
       <SafeAreaView style={s.root}>
-        <SuccessView result={result} onHome={() => router.replace("/dashboard")} />
+        <SuccessView
+          result={result}
+          onHome={() => router.replace("/dashboard")}
+        />
       </SafeAreaView>
     );
   }
@@ -400,7 +474,7 @@ export default function BindDeviceScreen() {
         <Pressable style={s.backBtn} onPress={() => router.back()}>
           <ChevronLeft size={20} color={T.text3} />
         </Pressable>
-        <Text style={s.headerTitle}>Lier l'appareil</Text>
+        <Text style={s.headerTitle}>Lier l&apos;appareil</Text>
         <View style={{ width: 32 }} />
       </View>
 
@@ -455,7 +529,12 @@ const s = StyleSheet.create({
     borderBottomColor: T.border,
   },
   backBtn: { width: 32, height: 32, justifyContent: "center" },
-  headerTitle: { fontSize: 16, fontWeight: "600", color: T.text1, letterSpacing: -0.2 },
+  headerTitle: {
+    fontSize: 16,
+    fontWeight: "600",
+    color: T.text1,
+    letterSpacing: -0.2,
+  },
 
   // Tab bar
   tabBar: {
@@ -507,10 +586,34 @@ const s = StyleSheet.create({
     height: 28,
     borderColor: T.orange,
   },
-  cornerTL: { top: 0, left: 0, borderTopWidth: 3, borderLeftWidth: 3, borderTopLeftRadius: 6 },
-  cornerTR: { top: 0, right: 0, borderTopWidth: 3, borderRightWidth: 3, borderTopRightRadius: 6 },
-  cornerBL: { bottom: 0, left: 0, borderBottomWidth: 3, borderLeftWidth: 3, borderBottomLeftRadius: 6 },
-  cornerBR: { bottom: 0, right: 0, borderBottomWidth: 3, borderRightWidth: 3, borderBottomRightRadius: 6 },
+  cornerTL: {
+    top: 0,
+    left: 0,
+    borderTopWidth: 3,
+    borderLeftWidth: 3,
+    borderTopLeftRadius: 6,
+  },
+  cornerTR: {
+    top: 0,
+    right: 0,
+    borderTopWidth: 3,
+    borderRightWidth: 3,
+    borderTopRightRadius: 6,
+  },
+  cornerBL: {
+    bottom: 0,
+    left: 0,
+    borderBottomWidth: 3,
+    borderLeftWidth: 3,
+    borderBottomLeftRadius: 6,
+  },
+  cornerBR: {
+    bottom: 0,
+    right: 0,
+    borderBottomWidth: 3,
+    borderRightWidth: 3,
+    borderBottomRightRadius: 6,
+  },
   scanLine: {
     position: "absolute",
     left: 12,
@@ -534,8 +637,17 @@ const s = StyleSheet.create({
     paddingVertical: 10,
     maxWidth: 280,
   },
-  errorBadgeTxt: { fontSize: 13, color: T.textDanger, textAlign: "center", lineHeight: 18 },
-  qrHelper: { fontSize: 12, color: "rgba(255,255,255,0.65)", textAlign: "center" },
+  errorBadgeTxt: {
+    fontSize: 13,
+    color: T.textDanger,
+    textAlign: "center",
+    lineHeight: 18,
+  },
+  qrHelper: {
+    fontSize: 12,
+    color: "rgba(255,255,255,0.65)",
+    textAlign: "center",
+  },
 
   // Camera permission
   permissionWrap: {
@@ -554,8 +666,19 @@ const s = StyleSheet.create({
     alignItems: "center",
     marginBottom: 8,
   },
-  permTitle: { fontSize: 18, fontWeight: "600", color: T.text1, textAlign: "center" },
-  permDesc: { fontSize: 13, color: T.text2, textAlign: "center", lineHeight: 20, marginBottom: 4 },
+  permTitle: {
+    fontSize: 18,
+    fontWeight: "600",
+    color: T.text1,
+    textAlign: "center",
+  },
+  permDesc: {
+    fontSize: 13,
+    color: T.text2,
+    textAlign: "center",
+    lineHeight: 20,
+    marginBottom: 4,
+  },
   linkBtn: { paddingVertical: 8, marginTop: 4 },
   linkBtnTxt: { fontSize: 13, color: T.orange, fontWeight: "500" },
 
@@ -566,8 +689,20 @@ const s = StyleSheet.create({
     paddingTop: 36,
     paddingHorizontal: 22,
   },
-  pinTitle: { fontSize: 18, fontWeight: "600", color: T.text1, letterSpacing: -0.3, marginBottom: 6 },
-  pinSub: { fontSize: 13, color: T.text2, textAlign: "center", lineHeight: 20, marginBottom: 28 },
+  pinTitle: {
+    fontSize: 18,
+    fontWeight: "600",
+    color: T.text1,
+    letterSpacing: -0.3,
+    marginBottom: 6,
+  },
+  pinSub: {
+    fontSize: 13,
+    color: T.text2,
+    textAlign: "center",
+    lineHeight: 20,
+    marginBottom: 28,
+  },
   pinBoxRow: { flexDirection: "row", gap: 10, marginBottom: 20 },
   pinBox: {
     width: 46,
@@ -582,7 +717,12 @@ const s = StyleSheet.create({
   },
   pinBoxFilled: { borderColor: T.orange, backgroundColor: T.orangeLt },
   pinBoxError: { borderColor: T.textDanger, backgroundColor: T.bgDanger },
-  pinLoadRow: { flexDirection: "row", alignItems: "center", gap: 8, marginTop: 4 },
+  pinLoadRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+    marginTop: 4,
+  },
   pinLoadTxt: { fontSize: 13, color: T.text3 },
   errorInline: {
     backgroundColor: T.bgDanger,
@@ -592,8 +732,19 @@ const s = StyleSheet.create({
     marginTop: 4,
     maxWidth: 300,
   },
-  errorInlineTxt: { fontSize: 13, color: T.textDanger, textAlign: "center", lineHeight: 18 },
-  pinHelper: { fontSize: 12, color: T.text3, textAlign: "center", marginTop: 24, lineHeight: 18 },
+  errorInlineTxt: {
+    fontSize: 13,
+    color: T.textDanger,
+    textAlign: "center",
+    lineHeight: 18,
+  },
+  pinHelper: {
+    fontSize: 12,
+    color: T.text3,
+    textAlign: "center",
+    marginTop: 24,
+    lineHeight: 18,
+  },
   pinHelperBold: { fontWeight: "600", color: T.text2 },
 
   // CTA
@@ -625,8 +776,19 @@ const s = StyleSheet.create({
     justifyContent: "center",
     marginBottom: 8,
   },
-  successH: { fontSize: 22, fontWeight: "600", color: T.text1, letterSpacing: -0.4 },
-  successP: { fontSize: 13, color: T.text2, textAlign: "center", lineHeight: 20, marginBottom: 8 },
+  successH: {
+    fontSize: 22,
+    fontWeight: "600",
+    color: T.text1,
+    letterSpacing: -0.4,
+  },
+  successP: {
+    fontSize: 13,
+    color: T.text2,
+    textAlign: "center",
+    lineHeight: 20,
+    marginBottom: 8,
+  },
   deviceCard: {
     width: "100%",
     backgroundColor: T.bg2,

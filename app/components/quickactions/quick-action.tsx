@@ -1,6 +1,6 @@
-import React from 'react';
-import { Pressable, View, Text, StyleSheet, ViewStyle } from 'react-native';
-import { LucideIcon } from 'lucide-react-native';
+import React from "react";
+import { Pressable, View, Text, StyleSheet, ViewStyle } from "react-native";
+import { LucideIcon } from "lucide-react-native";
 
 interface ActionButtonProps {
   label: string;
@@ -21,7 +21,7 @@ const ActionButton: React.FC<ActionButtonProps> = ({
   buttonBg,
   style,
   disabled,
-  onClick
+  onClick,
 }) => (
   <Pressable
     onPress={disabled ? undefined : onClick}
@@ -34,11 +34,7 @@ const ActionButton: React.FC<ActionButtonProps> = ({
     ]}
   >
     <View style={[styles.iconContainer, { backgroundColor: bgVariant }]}>
-      <Icon
-        size={18}
-        color={iconColor}
-        strokeWidth={2.5}
-      />
+      <Icon size={18} color={iconColor} strokeWidth={2.5} />
     </View>
     <Text style={styles.btnLabel}>{label}</Text>
   </Pressable>
@@ -46,13 +42,13 @@ const ActionButton: React.FC<ActionButtonProps> = ({
 
 const styles = StyleSheet.create({
   btn: {
-    backgroundColor: '#ffffff', // Default: --color-background-primary
+    backgroundColor: "#ffffff", // Default: --color-background-primary
     borderWidth: 0.5,
-    borderColor: 'rgba(0,0,0,0.1)',
+    borderColor: "rgba(0,0,0,0.1)",
     borderRadius: 12,
     paddingVertical: 12,
-    alignItems: 'center',
-    width: '23%', // 4-column layout
+    alignItems: "center",
+    width: "23%", // 4-column layout
     // Add a very subtle shadow to match the card feel
     shadowColor: "#000",
     shadowOffset: { width: 0, height: 1 },
@@ -64,20 +60,20 @@ const styles = StyleSheet.create({
     width: 34,
     height: 34,
     borderRadius: 10,
-    justifyContent: 'center',
-    alignItems: 'center',
+    justifyContent: "center",
+    alignItems: "center",
     marginBottom: 6,
   },
   btnLabel: {
     fontSize: 10,
-    color: '#5f5e5a', // --color-text-secondary
-    textAlign: 'center',
-    fontWeight: '600',
-    textTransform: 'capitalize'
+    color: "#5f5e5a", // --color-text-secondary
+    textAlign: "center",
+    fontWeight: "600",
+    textTransform: "capitalize",
   },
   pressed: {
     opacity: 0.8,
-    backgroundColor: '#f5f4f0',
+    backgroundColor: "#f5f4f0",
   },
   disabledBtn: {
     opacity: 0.4,

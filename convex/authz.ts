@@ -14,7 +14,7 @@ export const authz = {
       },
       can: async (_ctx: any, _subject: string, _permission: string) => {
         // Stub: always allows — real authz lives in Kauri backend
-        return true
+        return true;
       },
     };
   },

@@ -1,6 +1,6 @@
-import React from 'react';
-import { View, Text, StyleSheet } from 'react-native';
-import { LucideIcon } from 'lucide-react-native';
+import React from "react";
+import { View, Text, StyleSheet } from "react-native";
+import { LucideIcon } from "lucide-react-native";
 
 interface MetricPillProps {
   label: string;
@@ -15,17 +15,13 @@ const MetricPill: React.FC<MetricPillProps> = ({
   value,
   unit,
   trend,
-  icon: Icon
+  icon: Icon,
 }) => (
   <View style={styles.pill}>
     <View style={styles.headerRow}>
       <Text style={styles.label}>{label}</Text>
       {Icon && (
-        <Icon
-          size={12}
-          color="rgba(255,255,255,0.7)"
-          strokeWidth={2.5}
-        />
+        <Icon size={12} color="rgba(255,255,255,0.7)" strokeWidth={2.5} />
       )}
     </View>
 
@@ -33,54 +29,50 @@ const MetricPill: React.FC<MetricPillProps> = ({
 
     <View style={styles.footerRow}>
       {unit && <Text style={styles.subText}>{unit}</Text>}
-      {trend && (
-        <Text style={[styles.subText, styles.trendText]}>
-          {trend}
-        </Text>
-      )}
+      {trend && <Text style={[styles.subText, styles.trendText]}>{trend}</Text>}
     </View>
   </View>
 );
 
 const styles = StyleSheet.create({
   pill: {
-    backgroundColor: 'rgba(255,255,255,0.18)', // --color-background-info/warning glass effect
+    backgroundColor: "rgba(255,255,255,0.18)", // --color-background-info/warning glass effect
     borderRadius: 12,
     padding: 10,
     flex: 1,
     minHeight: 80,
-    justifyContent: 'space-between',
+    justifyContent: "space-between",
   },
   headerRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
     marginBottom: 4,
   },
   label: {
     fontSize: 10,
-    color: 'rgba(255,255,255,0.75)',
-    fontWeight: '500'
+    color: "rgba(255,255,255,0.75)",
+    fontWeight: "500",
   },
   value: {
     fontSize: 18,
-    fontWeight: '600',
-    color: 'white'
+    fontWeight: "600",
+    color: "white",
   },
   footerRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     marginTop: 2,
     gap: 6,
   },
   subText: {
     fontSize: 10,
-    color: 'rgba(255,255,255,0.6)'
+    color: "rgba(255,255,255,0.6)",
   },
   trendText: {
-    fontWeight: '600',
-    color: 'rgba(255,255,255,0.9)',
-  }
+    fontWeight: "600",
+    color: "rgba(255,255,255,0.9)",
+  },
 });
 
 export default MetricPill;

@@ -15,7 +15,7 @@ export async function isConnected(): Promise<boolean> {
  * @returns Unsubscribe function
  */
 export function subscribeToNetworkChanges(
-  onChange: (isConnected: boolean) => void
+  onChange: (isConnected: boolean) => void,
 ): () => void {
   return NetInfo.addEventListener((state) => {
     onChange(state.isConnected ?? false);

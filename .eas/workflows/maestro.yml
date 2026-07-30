@@ -34,6 +34,6 @@ jobs:
     image: latest
     params:
       build_id: ${{ needs.android_repack.outputs.build_id || needs.android_build.outputs.build_id }}
-      flow_path: ['.maestro/preview-smoke.yaml']
-      
+      flow_path: [".maestro/preview-smoke.yaml"]
+
   # repeat the same get build -> build/repack -> maestro flow for iOS

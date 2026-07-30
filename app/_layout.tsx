@@ -1,6 +1,12 @@
 // app/_layout.tsx
 import { useCallback, useEffect, useState } from "react";
-import { ActivityIndicator, Platform, StatusBar, StyleSheet, View } from "react-native";
+import {
+  ActivityIndicator,
+  Platform,
+  StatusBar,
+  StyleSheet,
+  View,
+} from "react-native";
 import { useFonts } from "expo-font";
 import { Stack, useRouter, useSegments } from "expo-router";
 import * as SplashScreen from "expo-splash-screen";
@@ -15,6 +21,7 @@ import { colors } from "@/constants/colors";
 import ErrorBoundary from "@/app/error-boundary";
 import { useNavigationStore } from "@/stores/navigation-store";
 import { useAuthStore } from "@/stores/auth-store";
+import { useAppLockStore } from "@/stores/app-lock-store";
 import { api } from "@/convex/_generated/api";
 
 /**
@@ -39,11 +46,18 @@ const storageAdapter = {
 
 const _storageCache = new Map<string, string>();
 
-// Hydrate cache on module load
-AsyncStorage.getAllKeys().then((keys) => {
+// Hydrate cache on module load. `ConvexAuthProvider` reads `storageAdapter`
+// synchronously on mount and settles "authenticated: false" for good if that
+// first read misses — so nothing may render it before this promise resolves,
+// or a real session on a cold start gets treated as logged out.
+const storageHydration = AsyncStorage.getAllKeys().then((keys) => {
   const convexKeys = keys.filter((k) => k.startsWith("convex"));
   return Promise.all(
-    convexKeys.map((k) => AsyncStorage.getItem(k).then((v) => { if (v) _storageCache.set(k, v); }))
+    convexKeys.map((k) =>
+      AsyncStorage.getItem(k).then((v) => {
+        if (v) _storageCache.set(k, v);
+      }),
+    ),
   );
 });
 
@@ -55,7 +69,10 @@ SplashScreen.preventAutoHideAsync();
 
 export default function RootLayout() {
   const [loaded, error] = useFonts({});
-  const [isNavigationReady, setIsNavigationReady] = useState(Platform.OS === "web");
+  const [isNavigationReady, setIsNavigationReady] = useState(
+    Platform.OS === "web",
+  );
+  const [isAuthStorageReady, setIsAuthStorageReady] = useState(false);
 
   const clearNavigationState = useCallback(() => {
     useNavigationStore.getState().clearNavigationState();
@@ -77,12 +94,16 @@ export default function RootLayout() {
   }, []);
 
   useEffect(() => {
-    if (loaded && isNavigationReady) {
+    storageHydration.then(() => setIsAuthStorageReady(true));
+  }, []);
+
+  useEffect(() => {
+    if (loaded && isNavigationReady && isAuthStorageReady) {
       SplashScreen.hideAsync();
     }
-  }, [loaded, isNavigationReady]);
+  }, [loaded, isNavigationReady, isAuthStorageReady]);
 
-  if (!loaded || !isNavigationReady) {
+  if (!loaded || !isNavigationReady || !isAuthStorageReady) {
     return (
       <View style={styles.loadingContainer}>
         <ActivityIndicator size="large" color={colors.primary} />
@@ -111,12 +132,14 @@ export default function RootLayout() {
 function RootLayoutNav() {
   const router = useRouter();
   const segments = useSegments();
-  const { isAuthenticated: convexAuthed, isLoading: convexLoading } = useConvexAuth();
+  const { isAuthenticated: convexAuthed, isLoading: convexLoading } =
+    useConvexAuth();
   const convexUser = useQuery(api.users.currentUser);
 
   const isAuthenticated = useAuthStore((s) => s.isAuthenticated);
   const isInitialized = useAuthStore((s) => s.isInitialized);
   const setConvexUser = useAuthStore((s) => s.setConvexUser);
+  const isUnlocked = useAppLockStore((s) => s.isUnlocked);
 
   // Sync Convex auth state → Zustand store
   useEffect(() => {
@@ -131,7 +154,11 @@ function RootLayoutNav() {
       // Authenticated via Convex but no matching user profile (e.g. record
       // deleted server-side). Don't leave the app in limbo — mark
       // initialized so the navigation guard can route to login.
-      useAuthStore.setState({ isAuthenticated: false, user: null, isInitialized: true });
+      useAuthStore.setState({
+        isAuthenticated: false,
+        user: null,
+        isInitialized: true,
+      });
     } else if (!convexAuthed) {
       // Not authenticated via Convex — check local PIN for offline fallback
       // Keep existing state if already authenticated via PIN
@@ -148,30 +175,108 @@ function RootLayoutNav() {
     }
   }, [convexLoading, isInitialized]);
 
-  // Navigation guard — only runs after Stack is mounted
+  // Navigation guard — only runs after Stack is mounted.
+  // Only fires from the auth *entry* screens (login/register/splash) — the
+  // other (auth) screens (bind-device, verify-device, change-password,
+  // welcome) manage their own transitions once the user is authenticated,
+  // and redirecting to bind-device from bind-device itself (or similar)
+  // would re-trigger this effect every time `segments` changes reference,
+  // causing an infinite "Maximum update depth exceeded" loop.
   useEffect(() => {
     if (!isInitialized) return;
 
     const inAuthGroup = segments[0] === "(auth)";
+    const inAppGroup = segments[0] === "(app)";
+    const currentAuthScreen = segments[1];
+    const isAuthEntryScreen =
+      !currentAuthScreen || ["login", "register", "splash"].includes(currentAuthScreen);
+    const user = useAuthStore.getState().user;
 
-    if (isAuthenticated && inAuthGroup) {
-      // Check if device binding is needed
-      const user = useAuthStore.getState().user;
-      if (user && user.device === null && user.branchId) {
+    // Verrou dur : tant que mustChangePassword est true côté serveur, aucun
+    // écran de (app) n'est accessible — même via un état de navigation
+    // persisté ou une redirection qui aurait mal tourné (voir le bug de
+    // boucle change-password ↔ verify-device corrigé récemment). L'agent
+    // n'obtient l'accès qu'une fois confirmPasswordChange (convex/users.ts)
+    // effectivement passé mustChangePassword à false.
+    if (isAuthenticated && user?.mustChangePassword && inAppGroup) {
+      // @ts-ignore
+      router.replace({
+        pathname: "/(auth)/welcome",
+        params: {
+          orgName: user.organization?.name ?? "Kauri",
+          next: "change-password",
+        },
+      });
+      return;
+    }
+
+    // Porte de déverrouillage : redemandée à chaque cold start (voir
+    // stores/app-lock-store.ts, non persisté — `isUnlocked` repart toujours
+    // à `false` au démarrage du process JS). Une session Convex/Zustand déjà
+    // valide ne suffit plus à elle seule pour accéder à (app)/* ; l'agent
+    // doit retaper son code (en ligne ou hors-ligne) via login.tsx. Filet de
+    // sécurité pour un accès direct à (app)/* (deep link, état de navigation
+    // restauré) — le cas normal (cold start atterrissant sur /login) est
+    // couvert par le `else` plus bas, qui évite simplement de forwarder.
+    if (isAuthenticated && !isUnlocked && inAppGroup) {
+      // @ts-ignore
+      router.replace("/login");
+      return;
+    }
+
+    if (isAuthenticated && inAuthGroup && isAuthEntryScreen) {
+      // Doit rester en phase avec la logique de login.tsx/register.tsx : sinon
+      // ce guard global route vers /dashboard une fraction de seconde avant
+      // que l'écran de login n'ait eu le temps de rediriger vers welcome →
+      // change-password, et gagne la course (welcome/change-password ne
+      // s'affichent jamais).
+      if (user?.mustChangePassword) {
+        // @ts-ignore
+        router.replace({
+          pathname: "/(auth)/welcome",
+          params: {
+            orgName: user.organization?.name ?? "Kauri",
+            next: "change-password",
+          },
+        });
+      } else if (user && user.device === null && user.branchId) {
         // @ts-ignore
         router.replace("/(auth)/bind-device");
-      } else {
+      } else if (isUnlocked) {
+        // Mot de passe déjà changé, device présent : écran de bienvenue
+        // (nom de l'agence + agent) puis enchaînement automatique vers le
+        // dashboard — voir welcome.tsx.
         // @ts-ignore
-        router.replace("/dashboard");
+        router.replace({
+          pathname: "/(auth)/welcome",
+          params: { orgName: user?.organization?.name ?? "Kauri" },
+        });
+      } else if (currentAuthScreen === "splash") {
+        // !isUnlocked et aucune des conditions ci-dessus : il faut l'UI de
+        // déverrouillage, que seul login.tsx affiche — splash.tsx n'est
+        // qu'un spinner sans UI propre (voir son commentaire). Un agent déjà
+        // authentifié (session persistée) qui redémarre l'app atterrit sur
+        // splash avec isUnlocked toujours à false (non persisté) ; sans cette
+        // branche, aucune redirection ne se déclenche et l'app reste bloquée
+        // indéfiniment sur le spinner de splash.
+        // @ts-ignore
+        router.replace("/login");
       }
-    } else if (!isAuthenticated && !inAuthGroup) {
-
+      // else : déjà sur login, !isUnlocked — on ne forwarde pas, login.tsx
+      // affiche son mode déverrouillage (isUnlockMode) tant qu'on y reste.
+    } else if (
+      !isAuthenticated &&
+      (!inAuthGroup || currentAuthScreen === "splash")
+    ) {
+      // splash.tsx n'a aucune logique de redirection propre (voir son
+      // commentaire) : sans cette branche, un utilisateur non authentifié qui
+      // atterrit sur la route initiale "(auth)/splash" reste bloqué
+      // indéfiniment (aucune des conditions ci-dessus ne matche puisque
+      // inAuthGroup est vrai), et l'app ne démarre jamais.
       // @ts-ignore
       router.replace("/login");
     }
-  }, [isAuthenticated, isInitialized, segments]);
-
-  
+  }, [isAuthenticated, isInitialized, isUnlocked, segments]);
 
   return (
     <Stack screenOptions={{ headerShown: false }}>

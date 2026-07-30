@@ -12,21 +12,32 @@ import {
   View,
 } from "react-native";
 import { useRouter, useLocalSearchParams } from "expo-router";
-import { CameraView, useCameraPermissions, BarcodeScanningResult } from "expo-camera";
-import { ChevronLeft, ScanLine, Flashlight, KeyboardIcon, Camera, ShieldCheck } from "lucide-react-native";
+import {
+  CameraView,
+  useCameraPermissions,
+  BarcodeScanningResult,
+} from "expo-camera";
+import {
+  ChevronLeft,
+  ScanLine,
+  Flashlight,
+  KeyboardIcon,
+  Camera,
+  ShieldCheck,
+} from "lucide-react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { colors } from "@/constants/colors";
 
-const ID_BARCODE_TYPES: ("pdf417" | "code128" | "code39" | "qr" | "aztec" | "ean13" | "datamatrix")[] = [
-  "pdf417",
-  "code128",
-  "code39",
-  "qr",
-  "aztec",
-  "ean13",
-  "datamatrix",
-];
+const ID_BARCODE_TYPES: (
+  | "pdf417"
+  | "code128"
+  | "code39"
+  | "qr"
+  | "aztec"
+  | "ean13"
+  | "datamatrix"
+)[] = ["pdf417", "code128", "code39", "qr", "aztec", "ean13", "datamatrix"];
 
 export default function ScanIDScreen() {
   const router = useRouter();
@@ -56,25 +67,28 @@ export default function ScanIDScreen() {
           easing: Easing.inOut(Easing.ease),
           useNativeDriver: true,
         }),
-      ])
+      ]),
     );
     animation.start();
     return () => animation.stop();
   }, [scanLineAnim]);
 
-  const handleBarcodeScanned = useCallback((result: BarcodeScanningResult) => {
-    if (hasScanned.current) return;
-    hasScanned.current = true;
+  const handleBarcodeScanned = useCallback(
+    (result: BarcodeScanningResult) => {
+      if (hasScanned.current) return;
+      hasScanned.current = true;
 
-    const data = result.data;
-    console.log("[ScanID] Barcode scanned:", result.type, data);
-    setScannedData(data);
+      const data = result.data;
+      console.log("[ScanID] Barcode scanned:", result.type, data);
+      setScannedData(data);
 
-    router.back();
-    setTimeout(() => {
-      router.setParams({ scannedId: data });
-    }, 100);
-  }, [router]);
+      router.back();
+      setTimeout(() => {
+        router.setParams({ scannedId: data });
+      }, 100);
+    },
+    [router],
+  );
 
   const handleManualSubmit = useCallback(() => {
     if (!manualId.trim()) {
@@ -108,9 +122,12 @@ export default function ScanIDScreen() {
           <View style={styles.webIconContainer}>
             <ShieldCheck size={48} color={colors.primary} />
           </View>
-          <Text style={styles.webTitle}>{"Scanner une pièce d\u2019identité"}</Text>
+          <Text style={styles.webTitle}>
+            {"Scanner une pièce d\u2019identité"}
+          </Text>
           <Text style={styles.webSubtitle}>
-            {"La caméra n\u2019est pas disponible sur cette plateforme."}{"\n"}
+            {"La caméra n\u2019est pas disponible sur cette plateforme."}
+            {"\n"}
             {"Entrez le numéro d\u2019identité manuellement."}
           </Text>
 
@@ -160,16 +177,24 @@ export default function ScanIDScreen() {
           </View>
           <Text style={styles.permissionTitle}>Accès à la caméra requis</Text>
           <Text style={styles.permissionDesc}>
-            {"Pour scanner une pièce d\u2019identité, l\u2019application a besoin d\u2019accéder à votre caméra."}
+            {
+              "Pour scanner une pièce d\u2019identité, l\u2019application a besoin d\u2019accéder à votre caméra."
+            }
           </Text>
           <Pressable
-            style={({ pressed }) => [styles.permissionBtn, pressed && { opacity: 0.85 }]}
+            style={({ pressed }) => [
+              styles.permissionBtn,
+              pressed && { opacity: 0.85 },
+            ]}
             onPress={requestPermission}
           >
             <Text style={styles.permissionBtnText}>Autoriser la caméra</Text>
           </Pressable>
           <Pressable
-            style={({ pressed }) => [styles.manualEntryLink, pressed && { opacity: 0.6 }]}
+            style={({ pressed }) => [
+              styles.manualEntryLink,
+              pressed && { opacity: 0.6 },
+            ]}
             onPress={() => setShowManualEntry(true)}
           >
             <Text style={styles.manualEntryText}>Saisir manuellement</Text>
@@ -214,7 +239,10 @@ export default function ScanIDScreen() {
     return (
       <View style={[styles.container, { paddingTop: insets.top }]}>
         <View style={styles.webHeader}>
-          <Pressable style={styles.backBtn} onPress={() => setShowManualEntry(false)}>
+          <Pressable
+            style={styles.backBtn}
+            onPress={() => setShowManualEntry(false)}
+          >
             <ChevronLeft size={24} color={colors.text} />
           </Pressable>
           <Text style={styles.webHeaderTitle}>Saisie manuelle</Text>
@@ -271,12 +299,17 @@ export default function ScanIDScreen() {
           <Pressable style={styles.topBarBtn} onPress={() => router.back()}>
             <ChevronLeft size={24} color="#fff" />
           </Pressable>
-          <Text style={styles.topBarTitle}>{"Scanner la pièce d\u2019identité"}</Text>
+          <Text style={styles.topBarTitle}>
+            {"Scanner la pièce d\u2019identité"}
+          </Text>
           <Pressable
             style={[styles.topBarBtn, torchEnabled && styles.topBarBtnActive]}
             onPress={() => setTorchEnabled((v) => !v)}
           >
-            <Flashlight size={20} color={torchEnabled ? colors.warning : "#fff"} />
+            <Flashlight
+              size={20}
+              color={torchEnabled ? colors.warning : "#fff"}
+            />
           </Pressable>
         </View>
 
@@ -300,7 +333,9 @@ export default function ScanIDScreen() {
           <View style={styles.instructionCard}>
             <ScanLine size={20} color={colors.primary} />
             <Text style={styles.instructionText}>
-              {"Placez le code-barres de la pièce d\u2019identité dans le cadre"}
+              {
+                "Placez le code-barres de la pièce d\u2019identité dans le cadre"
+              }
             </Text>
           </View>
 

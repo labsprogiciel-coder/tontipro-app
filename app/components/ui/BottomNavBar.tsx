@@ -22,7 +22,7 @@
  * Wrap your app root with <SafeAreaProvider> from that package.
  */
 
-import React, { useRef, useEffect } from 'react';
+import React, { useRef, useEffect } from "react";
 import {
   View,
   Text,
@@ -31,19 +31,19 @@ import {
   Animated,
   Platform,
   Dimensions,
-} from 'react-native';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
+} from "react-native";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 // ─── Brand tokens ────────────────────────────────────────────────────────────
-const ORANGE      = '#D85A30';
-const ORANGE_DARK = '#993C1D';
-const ORANGE_LIGHT = '#FAE8E0';
-const BG          = '#FFFFFF';
-const BORDER      = 'rgba(0,0,0,0.09)';
-const TEXT_MUTED  = '#888780';
+const ORANGE = "#D85A30";
+const ORANGE_DARK = "#993C1D";
+const ORANGE_LIGHT = "#FAE8E0";
+const BG = "#FFFFFF";
+const BORDER = "rgba(0,0,0,0.09)";
+const TEXT_MUTED = "#888780";
 
 // ─── Tab definition ──────────────────────────────────────────────────────────
-export type TabKey = 'home' | 'clients' | 'history' | 'reports';
+export type TabKey = "home" | "clients" | "history" | "reports";
 
 interface Tab {
   key: TabKey;
@@ -58,13 +58,20 @@ interface Tab {
 function IconHome({ active }: { active: boolean }) {
   const c = active ? ORANGE : TEXT_MUTED;
   return (
-    <View style={{ width: 22, height: 22, alignItems: 'center', justifyContent: 'center' }}>
+    <View
+      style={{
+        width: 22,
+        height: 22,
+        alignItems: "center",
+        justifyContent: "center",
+      }}
+    >
       {/* 2×2 grid of squares = dashboard icon */}
-      <View style={{ flexDirection: 'row', gap: 3 }}>
+      <View style={{ flexDirection: "row", gap: 3 }}>
         <View style={[styles.iconSquare, { backgroundColor: c }]} />
         <View style={[styles.iconSquare, { backgroundColor: c }]} />
       </View>
-      <View style={{ flexDirection: 'row', gap: 3, marginTop: 3 }}>
+      <View style={{ flexDirection: "row", gap: 3, marginTop: 3 }}>
         <View style={[styles.iconSquare, { backgroundColor: c }]} />
         <View style={[styles.iconSquare, { backgroundColor: c }]} />
       </View>
@@ -75,17 +82,33 @@ function IconHome({ active }: { active: boolean }) {
 function IconClients({ active }: { active: boolean }) {
   const c = active ? ORANGE : TEXT_MUTED;
   return (
-    <View style={{ width: 22, height: 22, alignItems: 'center', justifyContent: 'center' }}>
+    <View
+      style={{
+        width: 22,
+        height: 22,
+        alignItems: "center",
+        justifyContent: "center",
+      }}
+    >
       {/* Head */}
-      <View style={{
-        width: 10, height: 10, borderRadius: 5,
-        backgroundColor: c, marginBottom: 2,
-      }} />
+      <View
+        style={{
+          width: 10,
+          height: 10,
+          borderRadius: 5,
+          backgroundColor: c,
+          marginBottom: 2,
+        }}
+      />
       {/* Shoulders arc */}
-      <View style={{
-        width: 18, height: 7, borderRadius: 9,
-        backgroundColor: c,
-      }} />
+      <View
+        style={{
+          width: 18,
+          height: 7,
+          borderRadius: 9,
+          backgroundColor: c,
+        }}
+      />
     </View>
   );
 }
@@ -93,12 +116,27 @@ function IconClients({ active }: { active: boolean }) {
 function IconHistory({ active }: { active: boolean }) {
   const c = active ? ORANGE : TEXT_MUTED;
   return (
-    <View style={{ width: 22, height: 22, alignItems: 'center', justifyContent: 'center' }}>
-      <View style={{ flexDirection: 'row', alignItems: 'flex-end', gap: 3 }}>
-        <View style={{ width: 4, height: 8,  borderRadius: 2, backgroundColor: c }} />
-        <View style={{ width: 4, height: 14, borderRadius: 2, backgroundColor: c }} />
-        <View style={{ width: 4, height: 11, borderRadius: 2, backgroundColor: c }} />
-        <View style={{ width: 4, height: 18, borderRadius: 2, backgroundColor: c }} />
+    <View
+      style={{
+        width: 22,
+        height: 22,
+        alignItems: "center",
+        justifyContent: "center",
+      }}
+    >
+      <View style={{ flexDirection: "row", alignItems: "flex-end", gap: 3 }}>
+        <View
+          style={{ width: 4, height: 8, borderRadius: 2, backgroundColor: c }}
+        />
+        <View
+          style={{ width: 4, height: 14, borderRadius: 2, backgroundColor: c }}
+        />
+        <View
+          style={{ width: 4, height: 11, borderRadius: 2, backgroundColor: c }}
+        />
+        <View
+          style={{ width: 4, height: 18, borderRadius: 2, backgroundColor: c }}
+        />
       </View>
     </View>
   );
@@ -108,16 +146,68 @@ function IconReports({ active }: { active: boolean }) {
   const c = active ? ORANGE : TEXT_MUTED;
   // Trending line chart: base line + 3 nodes at ascending heights + connecting bars
   return (
-    <View style={{ width: 22, height: 22, alignItems: 'center', justifyContent: 'center' }}>
+    <View
+      style={{
+        width: 22,
+        height: 22,
+        alignItems: "center",
+        justifyContent: "center",
+      }}
+    >
       {/* Nodes */}
-      <View style={{ position: 'absolute', flexDirection: 'row', alignItems: 'flex-end', gap: 5, bottom: 3 }}>
-        <View style={{ width: 4, height: 4, borderRadius: 2, backgroundColor: c }} />
-        <View style={{ width: 4, height: 4, borderRadius: 2, backgroundColor: c, marginBottom: 5 }} />
-        <View style={{ width: 4, height: 4, borderRadius: 2, backgroundColor: c, marginBottom: 10 }} />
-        <View style={{ width: 4, height: 4, borderRadius: 2, backgroundColor: c, marginBottom: 15 }} />
+      <View
+        style={{
+          position: "absolute",
+          flexDirection: "row",
+          alignItems: "flex-end",
+          gap: 5,
+          bottom: 3,
+        }}
+      >
+        <View
+          style={{ width: 4, height: 4, borderRadius: 2, backgroundColor: c }}
+        />
+        <View
+          style={{
+            width: 4,
+            height: 4,
+            borderRadius: 2,
+            backgroundColor: c,
+            marginBottom: 5,
+          }}
+        />
+        <View
+          style={{
+            width: 4,
+            height: 4,
+            borderRadius: 2,
+            backgroundColor: c,
+            marginBottom: 10,
+          }}
+        />
+        <View
+          style={{
+            width: 4,
+            height: 4,
+            borderRadius: 2,
+            backgroundColor: c,
+            marginBottom: 15,
+          }}
+        />
       </View>
       {/* Baseline */}
-      <View style={{ position: 'absolute', bottom: 2, left: 0, right: 0, height: 1.5, borderRadius: 1, backgroundColor: c, opacity: 0.3 }} />
+      <View
+        style={{
+          position: "absolute",
+          bottom: 2,
+          left: 0,
+          right: 0,
+          height: 1.5,
+          borderRadius: 1,
+          backgroundColor: c,
+          opacity: 0.3,
+        }}
+      />
     </View>
   );
 }
@@ -125,22 +215,37 @@ function IconReports({ active }: { active: boolean }) {
 function IconProfile({ active }: { active: boolean }) {
   const c = active ? ORANGE : TEXT_MUTED;
   return (
-    <View style={{ width: 22, height: 22, alignItems: 'center', justifyContent: 'center' }}>
+    <View
+      style={{
+        width: 22,
+        height: 22,
+        alignItems: "center",
+        justifyContent: "center",
+      }}
+    >
       {/* Head */}
-      <View style={{
-        width: 9, height: 9, borderRadius: 4.5,
-        backgroundColor: c, marginBottom: 2,
-      }} />
+      <View
+        style={{
+          width: 9,
+          height: 9,
+          borderRadius: 4.5,
+          backgroundColor: c,
+          marginBottom: 2,
+        }}
+      />
       {/* Body / shoulders */}
-      <View style={{
-        width: 16, height: 6,
-        borderTopLeftRadius: 8, borderTopRightRadius: 8,
-        backgroundColor: c,
-      }} />
+      <View
+        style={{
+          width: 16,
+          height: 6,
+          borderTopLeftRadius: 8,
+          borderTopRightRadius: 8,
+          backgroundColor: c,
+        }}
+      />
     </View>
   );
 }
-
 
 // ─── FAB (center action button) ──────────────────────────────────────────────
 interface FABProps {
@@ -196,7 +301,7 @@ interface TabButtonProps {
 
 function TabButton({ tab, active, onPress }: TabButtonProps) {
   // Animated scale + opacity on activation
-  const scale   = useRef(new Animated.Value(active ? 1 : 0.92)).current;
+  const scale = useRef(new Animated.Value(active ? 1 : 0.92)).current;
   const opacity = useRef(new Animated.Value(active ? 1 : 0.55)).current;
   // Dot indicator below active tab
   const dotScale = useRef(new Animated.Value(active ? 1 : 0)).current;
@@ -232,11 +337,13 @@ function TabButton({ tab, active, onPress }: TabButtonProps) {
       accessibilityState={{ selected: active }}
       style={styles.tabButton}
     >
-      <Animated.View style={[
-        styles.tabInner,
-        active && styles.tabInnerActive,
-        { transform: [{ scale }], opacity },
-      ]}>
+      <Animated.View
+        style={[
+          styles.tabInner,
+          active && styles.tabInnerActive,
+          { transform: [{ scale }], opacity },
+        ]}
+      >
         {tab.icon(active)}
         <Text style={[styles.tabLabel, active && styles.tabLabelActive]}>
           {tab.label}
@@ -244,7 +351,9 @@ function TabButton({ tab, active, onPress }: TabButtonProps) {
       </Animated.View>
 
       {/* Active indicator dot */}
-      <Animated.View style={[styles.activeDot, { transform: [{ scale: dotScale }] }]} />
+      <Animated.View
+        style={[styles.activeDot, { transform: [{ scale: dotScale }] }]}
+      />
     </TouchableOpacity>
   );
 }
@@ -259,24 +368,24 @@ interface BottomNavBarProps {
 
 const TABS: Tab[] = [
   {
-    key: 'home',
-    label: 'Accueil',
+    key: "home",
+    label: "Accueil",
     icon: (active) => <IconHome active={active} />,
   },
   {
-    key: 'clients',
-    label: 'Clients',
+    key: "clients",
+    label: "Clients",
     icon: (active) => <IconClients active={active} />,
   },
   // FAB slot goes here (rendered separately)
   {
-    key: 'history',
-    label: 'Historique',
+    key: "history",
+    label: "Historique",
     icon: (active) => <IconHistory active={active} />,
   },
   {
-    key: 'reports',
-    label: 'Rapports',
+    key: "reports",
+    label: "Rapports",
     icon: (active) => <IconReports active={active} />,
   },
 ];
@@ -287,14 +396,16 @@ export default function BottomNavBar({
   onAddPress,
 }: BottomNavBarProps) {
   const insets = useSafeAreaInsets();
-  const leftTabs  = TABS.slice(0, 2);   // home, clients
-  const rightTabs = TABS.slice(2);       // history, profile
+  const leftTabs = TABS.slice(0, 2); // home, clients
+  const rightTabs = TABS.slice(2); // history, profile
 
   return (
-    <View style={[
-      styles.container,
-      { paddingBottom: insets.bottom > 0 ? insets.bottom : 10 },
-    ]}>
+    <View
+      style={[
+        styles.container,
+        { paddingBottom: insets.bottom > 0 ? insets.bottom : 10 },
+      ]}
+    >
       {/* Left group */}
       <View style={styles.tabGroup}>
         {leftTabs.map((tab) => (
@@ -306,7 +417,6 @@ export default function BottomNavBar({
           />
         ))}
       </View>
-
 
       {/* Right group */}
       <View style={styles.tabGroup}>
@@ -324,12 +434,12 @@ export default function BottomNavBar({
 }
 
 // ─── Styles ───────────────────────────────────────────────────────────────────
-const { width: SCREEN_WIDTH } = Dimensions.get('window');
+const { width: SCREEN_WIDTH } = Dimensions.get("window");
 
 const styles = StyleSheet.create({
   container: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     backgroundColor: BG,
     borderTopWidth: 0.5,
     borderTopColor: BORDER,
@@ -338,7 +448,7 @@ const styles = StyleSheet.create({
     // Elevation for Android
     elevation: 12,
     // Shadow for iOS
-    shadowColor: '#000',
+    shadowColor: "#000",
     shadowOffset: { width: 0, height: -2 },
     shadowOpacity: 0.06,
     shadowRadius: 8,
@@ -346,20 +456,20 @@ const styles = StyleSheet.create({
 
   tabGroup: {
     flex: 1,
-    flexDirection: 'row',
+    flexDirection: "row",
   },
 
   tabButton: {
     flex: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
+    alignItems: "center",
+    justifyContent: "center",
     paddingVertical: 4,
     paddingHorizontal: 4,
     minHeight: 48, // minimum tap target
   },
 
   tabInner: {
-    alignItems: 'center',
+    alignItems: "center",
     gap: 3,
     paddingHorizontal: 6,
     paddingVertical: 4,
@@ -373,9 +483,9 @@ const styles = StyleSheet.create({
 
   tabLabel: {
     fontSize: 10,
-    fontWeight: '500',
+    fontWeight: "500",
     color: TEXT_MUTED,
-    textAlign: 'center',
+    textAlign: "center",
     includeFontPadding: false,
   },
 
@@ -395,8 +505,8 @@ const styles = StyleSheet.create({
   fabTouchArea: {
     width: 64,
     height: 64,
-    alignItems: 'center',
-    justifyContent: 'center',
+    alignItems: "center",
+    justifyContent: "center",
     // lift fab above bar
     marginTop: -28,
   },
@@ -406,8 +516,8 @@ const styles = StyleSheet.create({
     height: 52,
     borderRadius: 26,
     backgroundColor: ORANGE,
-    alignItems: 'center',
-    justifyContent: 'center',
+    alignItems: "center",
+    justifyContent: "center",
     // iOS shadow
     shadowColor: ORANGE,
     shadowOffset: { width: 0, height: 4 },
@@ -418,19 +528,19 @@ const styles = StyleSheet.create({
   },
 
   plusH: {
-    position: 'absolute',
+    position: "absolute",
     width: 20,
     height: 2.5,
     borderRadius: 1.5,
-    backgroundColor: '#FFF',
+    backgroundColor: "#FFF",
   },
 
   plusV: {
-    position: 'absolute',
+    position: "absolute",
     width: 2.5,
     height: 20,
     borderRadius: 1.5,
-    backgroundColor: '#FFF',
+    backgroundColor: "#FFF",
   },
 
   // ── Icon sub-shapes ──

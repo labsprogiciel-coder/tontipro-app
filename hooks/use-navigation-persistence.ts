@@ -25,9 +25,9 @@ export function useNavigationPersistence() {
       return;
     }
 
-    const shouldRestore = 
-      currentRoute && 
-      currentRoute !== "/" && 
+    const shouldRestore =
+      currentRoute &&
+      currentRoute !== "/" &&
       currentRoute !== "/(auth)/splash" &&
       !currentRoute.startsWith("/(auth)") &&
       pathname !== currentRoute;
@@ -38,13 +38,13 @@ export function useNavigationPersistence() {
         router.replace({
           pathname: currentRoute,
           params: storedParams,
-        });
+        } as any);
       } catch (error) {
         console.error("Failed to restore navigation state:", error);
         useNavigationStore.getState().clearNavigationState();
       }
     }
-    
+
     hasRestoredRef.current = true;
   }, []);
 

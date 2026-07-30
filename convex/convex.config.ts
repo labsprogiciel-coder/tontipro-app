@@ -1,6 +1,6 @@
 // convex/convex.config.ts
-import { defineApp } from 'convex/server'
+import { defineApp } from "convex/server";
 
-const app = defineApp()
+const app = defineApp();
 
-export default app
+export default app;

@@ -33,7 +33,8 @@ const SuccessReceipt = ({
     <View style={styles.receipt}>
       <View style={[styles.receiptHeader, { backgroundColor: headerBg }]}>
         <Text style={styles.receiptAmount}>
-          {prefix}{amount} <Text style={styles.receiptCurrency}>FCFA</Text>
+          {prefix}
+          {amount} <Text style={styles.receiptCurrency}>FCFA</Text>
         </Text>
         <Text style={styles.receiptSubtext}>
           {label} · {date ?? "—"}
@@ -47,7 +48,9 @@ const SuccessReceipt = ({
       {balanceAfter ? (
         <View style={styles.row}>
           <Text style={styles.rowLabel}>Solde après</Text>
-          <Text style={[styles.rowValue, { color: isDep ? T.green : T.orange }]}>
+          <Text
+            style={[styles.rowValue, { color: isDep ? T.green : T.orange }]}
+          >
             {balanceAfter} FCFA
           </Text>
         </View>
@@ -76,9 +79,18 @@ const styles = StyleSheet.create({
     marginBottom: 20,
   },
   receiptHeader: { padding: 16, alignItems: "center" },
-  receiptAmount: { color: "#fff", fontSize: 28, fontWeight: "600", letterSpacing: -0.02 * 28 },
+  receiptAmount: {
+    color: "#fff",
+    fontSize: 28,
+    fontWeight: "600",
+    letterSpacing: -0.02 * 28,
+  },
   receiptCurrency: { fontSize: 14, fontWeight: "400", opacity: 0.75 },
-  receiptSubtext: { fontSize: 11, color: "rgba(255,255,255,0.65)", marginTop: 2 },
+  receiptSubtext: {
+    fontSize: 11,
+    color: "rgba(255,255,255,0.65)",
+    marginTop: 2,
+  },
   row: {
     flexDirection: "row",
     justifyContent: "space-between",

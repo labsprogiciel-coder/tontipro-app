@@ -1,8 +1,8 @@
-import type { Doc, Id } from './_generated/dataModel'
-import type { MutationCtx } from './_generated/server'
+import type { Doc, Id } from "./_generated/dataModel";
+import type { MutationCtx } from "./_generated/server";
 
 /** Team doc with optional parentTeamId (for nested teams) */
-type TeamDoc = Doc<'teams'> & { parentTeamId?: Id<'teams'> }
+type TeamDoc = Doc<"teams"> & { parentTeamId?: Id<"teams"> };
 
 /**
  * Ensure a slug is unique by appending a number if needed
@@ -10,23 +10,23 @@ type TeamDoc = Doc<'teams'> & { parentTeamId?: Id<'teams'> }
 export async function ensureUniqueSlug(
   ctx: MutationCtx,
   baseSlug: string,
-  excludeId?: Id<'organizations'>
+  excludeId?: Id<"organizations">,
 ): Promise<string> {
-  let slug = baseSlug
-  let counter = 1
+  let slug = baseSlug;
+  let counter = 1;
 
   while (true) {
     const existing = await ctx.db
-      .query('organizations')
-      .withIndex('by_slug', (q) => q.eq('slug', slug))
-      .unique()
+      .query("organizations")
+      .withIndex("by_slug", (q) => q.eq("slug", slug))
+      .unique();
 
     if (!existing || existing._id === excludeId) {
-      return slug
+      return slug;
     }
 
-    slug = `${baseSlug}-${counter}`
-    counter++
+    slug = `${baseSlug}-${counter}`;
+    counter++;
   }
 }
 
@@ -36,27 +36,27 @@ export async function ensureUniqueSlug(
  */
 export async function ensureUniqueTeamSlug(
   ctx: MutationCtx,
-  organizationId: Id<'organizations'>,
+  organizationId: Id<"organizations">,
   baseSlug: string,
-  excludeId?: Id<'teams'>
+  excludeId?: Id<"teams">,
 ): Promise<string> {
-  let slug = baseSlug
-  let counter = 1
+  let slug = baseSlug;
+  let counter = 1;
 
   while (true) {
     const existing = await ctx.db
-      .query('teams')
-      .withIndex('by_organization_and_slug', (q) =>
-        q.eq('organizationId', organizationId).eq('slug', slug)
+      .query("teams")
+      .withIndex("by_organization_and_slug", (q) =>
+        q.eq("organizationId", organizationId).eq("slug", slug),
       )
-      .first()
+      .first();
 
     if (!existing || existing._id === excludeId) {
-      return slug
+      return slug;
     }
 
-    slug = `${baseSlug}-${counter}`
-    counter++
+    slug = `${baseSlug}-${counter}`;
+    counter++;
   }
 }
 
@@ -66,26 +66,26 @@ export async function ensureUniqueTeamSlug(
  */
 export async function getTeamAncestorIds(
   ctx: MutationCtx,
-  teamId: Id<'teams'> | null
-): Promise<Set<Id<'teams'>>> {
-  const seen = new Set<Id<'teams'>>()
-  if (!teamId) return seen
-  let current: Id<'teams'> | null = teamId
+  teamId: Id<"teams"> | null,
+): Promise<Set<Id<"teams">>> {
+  const seen = new Set<Id<"teams">>();
+  if (!teamId) return seen;
+  let current: Id<"teams"> | null = teamId;
   while (current) {
-    const team: Doc<'teams'> | null = await ctx.db.get(current)
-    if (!team) break
-    const parentId: Id<'teams'> | undefined = (team as TeamDoc).parentTeamId
-    if (!parentId) break
-    if (seen.has(parentId)) break
-    seen.add(parentId)
-    current = parentId
+    const team: Doc<"teams"> | null = await ctx.db.get(current);
+    if (!team) break;
+    const parentId: Id<"teams"> | undefined = (team as TeamDoc).parentTeamId;
+    if (!parentId) break;
+    if (seen.has(parentId)) break;
+    seen.add(parentId);
+    current = parentId;
   }
-  return seen
+  return seen;
 }
 
 /**
  * Check if an invitation has expired
  */
-export function isInvitationExpired(invitation: Doc<'invitations'>): boolean {
-  return invitation.expiresAt < Date.now()
+export function isInvitationExpired(invitation: Doc<"invitations">): boolean {
+  return invitation.expiresAt < Date.now();
 }

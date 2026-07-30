@@ -3,21 +3,41 @@ import { KAURIDORR_THEME } from "@/constants/colors";
 
 const T = KAURIDORR_THEME;
 
-const TransactionToggle = ({ activeType, setType }) => (
+type TransactionToggleType = "deposit" | "withdraw";
+
+interface TransactionToggleProps {
+  activeType: TransactionToggleType;
+  setType: (type: TransactionToggleType) => void;
+}
+
+const TransactionToggle = ({ activeType, setType }: TransactionToggleProps) => (
   <View style={styles.toggleContainer}>
     <TouchableOpacity
       onPress={() => setType("deposit")}
       style={[styles.opt, activeType === "deposit" && styles.optActiveDeposit]}
     >
-      <Text style={[styles.optText, activeType === "deposit" && styles.optTextActive]}>
+      <Text
+        style={[
+          styles.optText,
+          activeType === "deposit" && styles.optTextActive,
+        ]}
+      >
         ↓ Dépôt
       </Text>
     </TouchableOpacity>
     <TouchableOpacity
       onPress={() => setType("withdraw")}
-      style={[styles.opt, activeType === "withdraw" && styles.optActiveWithdraw]}
+      style={[
+        styles.opt,
+        activeType === "withdraw" && styles.optActiveWithdraw,
+      ]}
     >
-      <Text style={[styles.optText, activeType === "withdraw" && styles.optTextActive]}>
+      <Text
+        style={[
+          styles.optText,
+          activeType === "withdraw" && styles.optTextActive,
+        ]}
+      >
         ↑ Retrait
       </Text>
     </TouchableOpacity>

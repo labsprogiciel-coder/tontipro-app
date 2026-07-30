@@ -40,7 +40,7 @@ export const HistoryScreen: React.FC = () => {
   // Merge synced + pending into one deduplicated, sorted list.
   const mergedTransactions = useMemo(
     () => mergeTransactionsSorted(transactions, pendingTransactions),
-    [transactions, pendingTransactions]
+    [transactions, pendingTransactions],
   );
 
   const filteredTransactions = useMemo(() => {
@@ -65,8 +65,7 @@ export const HistoryScreen: React.FC = () => {
 
     // Secondary sort so the user can flip between newest / oldest.
     result.sort((a, b) => {
-      const diff =
-        new Date(a.date).getTime() - new Date(b.date).getTime();
+      const diff = new Date(a.date).getTime() - new Date(b.date).getTime();
       return sortOrder === "desc" ? -diff : diff;
     });
 
@@ -97,10 +96,9 @@ export const HistoryScreen: React.FC = () => {
 
   const getMultiplier = (
     clientId: string,
-    amount: number
+    amount: number,
   ): number | undefined => {
-    const commitment = clients.find((c) => c.id === clientId)
-      ?.commitmentAmount;
+    const commitment = clients.find((c) => c.id === clientId)?.commitmentAmount;
     if (!commitment || commitment <= 0) return undefined;
     const m = Math.round(amount / commitment);
     return m >= 1 ? m : undefined;
@@ -147,8 +145,7 @@ export const HistoryScreen: React.FC = () => {
                   style={[
                     styles.multiplierText,
                     {
-                      color:
-                        t.type === "deposit" ? T.textSuccess : T.orangeDk,
+                      color: t.type === "deposit" ? T.textSuccess : T.orangeDk,
                     },
                   ]}
                 >
@@ -187,9 +184,7 @@ export const HistoryScreen: React.FC = () => {
         </View>
         <TouchableOpacity
           style={styles.sortBtn}
-          onPress={() =>
-            setSortOrder((o) => (o === "desc" ? "asc" : "desc"))
-          }
+          onPress={() => setSortOrder((o) => (o === "desc" ? "asc" : "desc"))}
         >
           {sortOrder === "desc" ? (
             <ArrowDown size={13} color={T.orange} strokeWidth={2} />
@@ -402,13 +397,21 @@ const styles = StyleSheet.create({
   left: { gap: 4, flex: 1 },
   right: { alignItems: "flex-end", gap: 4 },
   amountRow: { flexDirection: "row", alignItems: "center", gap: 6 },
-  multiplierBadge: { paddingHorizontal: 6, paddingVertical: 2, borderRadius: 6 },
+  multiplierBadge: {
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: 6,
+  },
   multiplierText: { fontSize: 10, fontWeight: "700" },
   name: { fontSize: 14, fontWeight: "600", color: T.text1 },
   sub: { fontSize: 12, color: T.text3 },
   amount: { fontSize: 15, fontWeight: "700" },
 
-  emptyContainer: { alignItems: "center", marginTop: 60, paddingHorizontal: 32 },
+  emptyContainer: {
+    alignItems: "center",
+    marginTop: 60,
+    paddingHorizontal: 32,
+  },
   emptyIconCircle: {
     width: 72,
     height: 72,
@@ -419,7 +422,12 @@ const styles = StyleSheet.create({
     marginBottom: 16,
   },
   emptyIcon: { fontSize: 30 },
-  emptyTitle: { fontSize: 18, fontWeight: "700", color: T.text1, marginBottom: 8 },
+  emptyTitle: {
+    fontSize: 18,
+    fontWeight: "700",
+    color: T.text1,
+    marginBottom: 8,
+  },
   emptySubtitle: {
     fontSize: 13,
     color: T.text3,

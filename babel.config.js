@@ -3,7 +3,7 @@ module.exports = function (api) {
   return {
     presets: [
       [
-        'babel-preset-expo',
+        "babel-preset-expo",
         {
           unstable_transformImportMeta: true,
         },
@@ -19,12 +19,17 @@ module.exports = function (api) {
           visitor: {
             ImportExpression(path) {
               const leadingComments = path.node.source.leadingComments || [];
-              if (leadingComments.some((c) => c.value.includes('webpackIgnore'))) {
+              if (
+                leadingComments.some((c) => c.value.includes("webpackIgnore"))
+              ) {
                 path.replaceWith(
                   t.callExpression(
-                    t.memberExpression(t.identifier('Promise'), t.identifier('resolve')),
-                    [t.nullLiteral()]
-                  )
+                    t.memberExpression(
+                      t.identifier("Promise"),
+                      t.identifier("resolve"),
+                    ),
+                    [t.nullLiteral()],
+                  ),
                 );
               }
             },
@@ -34,4 +39,3 @@ module.exports = function (api) {
     ],
   };
 };
-
