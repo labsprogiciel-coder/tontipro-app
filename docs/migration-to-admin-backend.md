@@ -70,7 +70,7 @@ last column is the closest thing the admin backend has today.
 | Activation | `otp.checkActivationCode`, `otp.resendActivationCode` | Activation code issued by IT from the dashboard (`staff.issueActivationCode`) or CLI (`users:issueActivationCode`) |
 | Agents | None left: the app's agent screens were removed (phase 4) | `staff.create`, `staff.setStatus`, `staff.setRole`, `staff.get` (all `staff:manage`); `admin.listAgents` (not branch-scoped) |
 | Customers | None left (phase 2) | `customers.list`, `createProspect`, `update` (branch-scoped) |
-| Transactions | `transactions.createWithdrawal` (deposits and history done) | `transactions.collectCash` (deposit; see phase 3), `listByAgent`, `listByBranch`, `reverseTransaction` |
+| Transactions | `transactions.createWithdrawal` (deposits and history done) | `transactions.createDeposit`, `list`, `listMineInRange`, `listByAgent`, `listByBranch`, `reverseTransaction` |
 
 The admin backend also has read queries for the dashboard (`admin.*`) and
 `disbursements.*` / `reconciliation.*`. Reuse their tables and permissions; do
