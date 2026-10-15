@@ -79,6 +79,12 @@
         "projectId": "7501fec2-3ee8-4253-8aa4-2cdfe04f58c0"
       }
     },
-    "owner": "labo-progiciel"
+    "owner": "labo-progiciel",
+    "runtimeVersion": {
+      "policy": "fingerprint"
+    },
+    "updates": {
+      "url": "https://u.expo.dev/7501fec2-3ee8-4253-8aa4-2cdfe04f58c0"
+    }
   }
 }
