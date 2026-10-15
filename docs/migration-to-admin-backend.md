@@ -90,8 +90,10 @@ not copy the mobile schema over.
    only typed to sign in on a device. The agent then picks a 4-digit PIN kept
    on the device (`app/(auth)/set-pin.tsx`, hashed in SecureStore); each
    launch asks for it, online or offline. It never signs in to the server.
-4. **Data move.** The mobile deployment holds real or test customers and
-   transactions. Decide whether to export/import them or start clean.
+4. **Data move.** Decided: **start clean.** The old mobile deployment
+   (`posh-nightingale-973`) holds test data only, so nothing is exported or
+   imported. Staff are created on the dashboard; customers and transactions
+   start empty on the admin backend.
 
 ## Phases
 
@@ -176,9 +178,10 @@ all `staff:manage` (IT admin).
 
 ### Phase 5 - Cutover
 
-- Run the data move (decision 4), switch the production env file, release via
-  EAS, then remove the old `convex/` directory from the mobile repo and use the
-  admin repo's generated API.
+- Switch the production env file, release via EAS, then remove the old
+  `convex/` directory from the mobile repo and use the admin repo's generated
+  API. No data move (decision 4): once no build points at
+  `posh-nightingale-973`, the old deployment can be deleted.
 - Delete leftovers: Clerk dependencies, `otp.ts` flows, unused
   `claimDevice*` references. Rewrite `docs/device-auth-vs-binding.md` and
   `docs/mobile-integration.md` for the new flow: both still describe Clerk
