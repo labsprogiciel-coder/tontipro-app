@@ -11,7 +11,6 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { useRouter } from "expo-router";
 import { useQuery } from "convex/react";
 import * as adminApi from "@/lib/admin-api";
-import { api } from "@/convex/_generated/api";
 import {
   TrendingUp,
   Users,
@@ -115,7 +114,7 @@ const AgentDashboard: React.FC = () => {
   // app/_layout.tsx already worked reliably while the imperative loads here
   // kept failing forever after the first race.
   const customersData = useQuery(adminApi.listCustomers);
-  const transactionsData = useQuery(api.transactions.list);
+  const transactionsData = useQuery(adminApi.listMyTransactions, {});
 
   // Clients ajoutés hors-ligne restent en local (syncStatus "pending") tant
   // qu'ils n'ont pas été synchronisés — pas encore dans `customersData`, donc
@@ -140,7 +139,7 @@ const AgentDashboard: React.FC = () => {
   const transactions = useMemo(() => {
     const clientNameResolver = (id: string) =>
       clients.find((c) => c.id === id)?.name;
-    return (transactionsData ?? []).map((row: any) =>
+    return (transactionsData ?? []).map((row) =>
       convexRowToTransaction(row, clientNameResolver),
     );
   }, [transactionsData, clients]);

@@ -6,8 +6,7 @@ import { generateId } from "@/utils/id-generator";
 import { isConnected } from "@/utils/network";
 import { convex } from "@/lib/convex";
 import { withAuthRetry } from "@/lib/withAuthRetry";
-import { api } from "@/convex/_generated/api";
-import { Id } from "@/convex/_generated/dataModel";
+import * as adminApi from "@/lib/admin-api";
 import { Transaction } from "@/types/transaction";
 import { useClientStore } from "./client-store";
 import { useAuthStore } from "./auth-store";
@@ -17,6 +16,7 @@ import {
   balanceDelta,
   isLocalClient,
   isPermanentSyncError,
+  isRetryLaterSyncError,
   onClientIdRemapped,
   registerPendingDeltaProvider,
   syncErrorMessage,
@@ -53,28 +53,39 @@ export function mergeTransactionsSorted(
 
 // ─── Convex row → Transaction ─────────────────────────────────────────────────
 
+/** Withdrawals wait on the direct-debit vs supervisor-approval decision. */
+export const WITHDRAWALS_UNAVAILABLE =
+  "Les retraits ne sont pas encore disponibles dans l'application.";
+
 /**
- * Map a raw Convex document to the app-level Transaction type.
- * `clientName` is resolved from the client store when available; it falls back
- * to the id string so the UI always has something to display.
+ * Map an admin backend transaction row to the app-level Transaction type.
+ * The server's `clientId` is the app's idempotency key (`clientRef` here);
+ * the app's `clientId` is the customer. Every server row is a deposit for now.
  */
 export function convexRowToTransaction(
-  row: any,
+  row: Partial<adminApi.AdminTransaction> & {
+    _id: string;
+    customerId: string;
+    amount: number;
+    timestamp: number;
+    status: "completed" | "reversed";
+    agentId?: string;
+  },
   clientNameResolver?: (id: string) => string | undefined,
 ): Transaction {
   const clientName =
-    clientNameResolver?.(row.customerId) ?? row.customerId ?? "—";
+    row.customerName ?? clientNameResolver?.(row.customerId) ?? "—";
   return {
-    id: row._id as string,
-    clientId: row.customerId as string,
+    id: row._id,
+    clientId: row.customerId,
     clientName,
     amount: row.amount,
-    type: row.type as "deposit" | "withdrawal",
+    type: "deposit",
     date: new Date(row.timestamp).toISOString(),
-    status: row.status as "completed" | "pending" | "reversed",
-    agentId: row.agentId as string | undefined,
-    notes: row.notes,
-    clientRef: row.clientRef,
+    status: row.status,
+    agentId: row.agentId,
+    notes: row.reversalReason ?? undefined,
+    clientRef: row.clientId ?? undefined,
   };
 }
 
@@ -157,17 +168,16 @@ export const useTransactionStore = create<TransactionStoreState>()(
             return;
           }
 
-          // `transactions.list` derives the branch from the caller's own
-          // identity server-side — it takes no arguments.
+          // The caller's own collections; the server knows who is asking
           const rows = await withAuthRetry(() =>
-            convex.query(api.transactions.list, {}),
+            convex.query(adminApi.listMyTransactions, {}),
           );
 
           const clientStore = useClientStore.getState();
           const clientNameResolver = (id: string) =>
             clientStore.getClientById(id)?.name;
 
-          const fromServer: Transaction[] = rows.map((row: any) =>
+          const fromServer: Transaction[] = rows.map((row) =>
             convexRowToTransaction(row, clientNameResolver),
           );
 
@@ -203,16 +213,12 @@ export const useTransactionStore = create<TransactionStoreState>()(
       addTransaction: async (transactionData) => {
         set({ isLoading: true, error: null });
         try {
+          if (transactionData.type === "withdrawal") {
+            throw new Error(WITHDRAWALS_UNAVAILABLE);
+          }
           const clientStore = useClientStore.getState();
           const client = clientStore.getClientById(transactionData.clientId);
           if (!client) throw new Error("Client not found");
-
-          if (
-            transactionData.type === "withdrawal" &&
-            client.balance < transactionData.amount
-          ) {
-            throw new Error("Insufficient balance");
-          }
 
           const online = await isConnected();
           const now = Date.now();
@@ -234,31 +240,24 @@ export const useTransactionStore = create<TransactionStoreState>()(
           // A client created on this device has no Convex id yet: queue until
           // syncPendingClients has created it and remapped the id.
           if (online && !isLocalClient(client)) {
-            const tpeId =
-              useAuthStore.getState().user?.device?.serialNumber ?? "web";
             try {
-              // createDeposit/createWithdrawal dérivent l'agent et l'agence
-              // du token côté serveur et mettent à jour le solde du client de
-              // façon atomique — voir convex/transactions.ts. Le clientRef
-              // rend un rejeu (réponse perdue → file d'attente) sans effet.
-              const createFn =
-                transactionData.type === "deposit"
-                  ? api.transactions.createDeposit
-                  : api.transactions.createWithdrawal;
-              const result = await convex.mutation(createFn, {
-                customerId: transactionData.clientId as Id<"customers">,
+              // The server takes the agent, branch, time and TPE (the bound
+              // device) from the session. The clientRef makes a replay
+              // (lost response → queue) return the same deposit.
+              const transactionId = await convex.mutation(adminApi.createDeposit, {
+                customerId: transactionData.clientId,
                 amount: transactionData.amount,
-                tpeId,
-                clientRef: newTransaction.clientRef,
+                clientId: newTransaction.clientRef!,
               });
 
-              // Reflect the authoritative server balance (plus anything still
-              // queued for this client) rather than re-applying the delta.
-              setServerBalance(transactionData.clientId, result.newBalance);
+              await clientStore.updateClientBalance(
+                transactionData.clientId,
+                balanceDelta(newTransaction),
+              );
 
               const syncedTransaction: Transaction = {
                 ...newTransaction,
-                id: result.transactionId as string,
+                id: transactionId,
                 status: "completed",
               };
               set((state) => ({
@@ -267,9 +266,9 @@ export const useTransactionStore = create<TransactionStoreState>()(
               }));
               return syncedTransaction;
             } catch (mutErr) {
-              // Rejet définitif (solde insuffisant côté serveur, client
-              // inconnu…) : on remonte l'erreur, rien n'est mis en file.
-              if (isPermanentSyncError(mutErr)) {
+              // Refused (client unknown, day closed, no TPE…): say so now,
+              // nothing is queued — the agent is still with the customer.
+              if (isPermanentSyncError(mutErr) || isRetryLaterSyncError(mutErr)) {
                 throw new Error(syncErrorMessage(mutErr));
               }
               // Erreur transitoire — bascule vers la file d'attente.
@@ -396,9 +395,11 @@ async function syncPendingOnce(): Promise<void> {
   }
 
   store.setState({ isLoading: true, error: null });
-  const tpeId = useAuthStore.getState().user?.device?.serialNumber ?? "web";
   let transient = 0;
   let rejected = 0;
+  // Refused for now (day closed, no TPE): count and reasons
+  let waitingCount = 0;
+  const waiting = new Set<string>();
 
   for (const tx of queue) {
     const client = useClientStore.getState().getClientById(tx.clientId);
@@ -406,21 +407,21 @@ async function syncPendingOnce(): Promise<void> {
     if (client && isLocalClient(client)) continue;
 
     try {
-      const createFn =
-        tx.type === "deposit"
-          ? api.transactions.createDeposit
-          : api.transactions.createWithdrawal;
-      const result = await convex.mutation(createFn, {
-        customerId: tx.clientId as Id<"customers">,
+      // Queued before withdrawals were turned off: the server has no
+      // withdrawal yet, so it can't be replayed.
+      if (tx.type === "withdrawal") throw new Error(WITHDRAWALS_UNAVAILABLE);
+      const transactionId = await convex.mutation(adminApi.createDeposit, {
+        customerId: tx.clientId,
         amount: tx.amount,
-        tpeId,
         // Transactions queued before clientRef existed use their local id.
-        clientRef: tx.clientRef ?? tx.id,
+        clientId: tx.clientRef ?? tx.id,
       });
 
+      // The local balance already counts this deposit (applied when it was
+      // queued); it only moves from "pending" to "synced".
       const synced: Transaction = {
         ...tx,
-        id: result.transactionId as string,
+        id: transactionId,
         status: "completed",
       };
       // Committed one by one so an interrupted sync resumes where it stopped.
@@ -433,9 +434,17 @@ async function syncPendingOnce(): Promise<void> {
           ...state.transactions.filter((t) => t.id !== synced.id),
         ].sort(sortByTimestampDesc),
       }));
-      setServerBalance(tx.clientId, result.newBalance);
     } catch (err) {
-      if (isPermanentSyncError(err)) {
+      if (isRetryLaterSyncError(err)) {
+        // Stays queued as is; the next sync tries again
+        waitingCount++;
+        waiting.add(syncErrorMessage(err));
+        continue;
+      }
+      if (
+        isPermanentSyncError(err) ||
+        (err instanceof Error && err.message === WITHDRAWALS_UNAVAILABLE)
+      ) {
         // Le serveur a refusé l'opération (solde insuffisant, client
         // inconnu…) : la rejouer ne changera rien. On la sort de la file,
         // on annule son effet sur le solde local et on la garde visible.
@@ -464,25 +473,13 @@ async function syncPendingOnce(): Promise<void> {
     rejected > 0 && `${rejected} transaction(s) rejetée(s) par le serveur`,
     transient > 0 &&
       `${transient} transaction(s) n'ont pas pu être synchronisée(s)`,
+    ...waiting,
   ].filter(Boolean);
   store.setState({
     isLoading: false,
-    transactionSyncFailures: transient + rejected,
+    transactionSyncFailures: transient + rejected + waitingCount,
     error: messages.length > 0 ? messages.join(" · ") : null,
   });
-}
-
-/**
- * Set a client's displayed balance from an authoritative server value, plus
- * the net effect of its transactions still waiting in the queue.
- */
-function setServerBalance(clientId: string, serverBalance: number) {
-  const pendingDelta = pendingBalanceDeltas().get(clientId) ?? 0;
-  useClientStore.setState((state) => ({
-    clients: state.clients.map((c) =>
-      c.id === clientId ? { ...c, balance: serverBalance + pendingDelta } : c,
-    ),
-  }));
 }
 
 function pendingBalanceDeltas(): Map<string, number> {

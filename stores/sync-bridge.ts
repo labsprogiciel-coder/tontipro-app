@@ -32,18 +32,47 @@ export function balanceDelta(tx: Pick<Transaction, "type" | "amount">): number {
   return tx.type === "deposit" ? tx.amount : -tx.amount;
 }
 
+// Refusal codes of the admin backend's transactions.createDeposit. The first
+// two lift on their own (the next day, or once IT binds a TPE), so a queued
+// deposit refused with them stays queued; the others never will.
+const RETRY_LATER_CODES = new Set(["DAY_CLOSED", "NO_DEVICE"]);
+const SYNC_MESSAGES: Record<string, string> = {
+  DAY_CLOSED: "Caisse du jour clôturée : l'opération sera envoyée demain.",
+  NO_DEVICE: "Aucun TPE actif n'est lié à votre compte. Contactez votre administrateur.",
+  INVALID_AMOUNT: "Montant invalide.",
+  CUSTOMER_NOT_FOUND: "Client introuvable dans votre agence.",
+  DUPLICATE_CLIENT_ID: "Opération en double refusée par le serveur.",
+  INVALID_CLIENT_ID: "Opération invalide.",
+  FORBIDDEN: "Vous n'avez pas l'autorisation pour cette opération.",
+};
+
+function errorCode(error: unknown): string | null {
+  if (!(error instanceof ConvexError)) return null;
+  const data = error.data as { code?: string } | string;
+  return typeof data === "string" ? data : (data?.code ?? null);
+}
+
 /**
- * A ConvexError is a deliberate rejection by the server (insufficient
- * balance, unknown customer…): retrying will never succeed. Anything else
- * (network, auth refresh, redacted "Server Error") is treated as transient.
+ * The server refused the operation for good (unknown customer, invalid
+ * amount…): retrying will never succeed. Network failures, auth refreshes,
+ * redacted "Server Error" and the retry-later codes are not permanent.
  */
 export function isPermanentSyncError(
   error: unknown,
 ): error is ConvexError<{ code: string; message: string }> {
-  return error instanceof ConvexError;
+  const code = errorCode(error);
+  return error instanceof ConvexError && !(code && RETRY_LATER_CODES.has(code));
+}
+
+/** Refused for now (day closed, no TPE bound): keep it queued and say why. */
+export function isRetryLaterSyncError(error: unknown): boolean {
+  const code = errorCode(error);
+  return code !== null && RETRY_LATER_CODES.has(code);
 }
 
 export function syncErrorMessage(error: unknown): string {
+  const code = errorCode(error);
+  if (code && SYNC_MESSAGES[code]) return SYNC_MESSAGES[code];
   if (error instanceof ConvexError) {
     const data = error.data as { message?: string } | string;
     if (typeof data === "string") return data;

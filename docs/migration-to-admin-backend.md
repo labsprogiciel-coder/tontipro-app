@@ -70,7 +70,7 @@ last column is the closest thing the admin backend has today.
 | Activation | `otp.checkActivationCode`, `otp.resendActivationCode` | Activation code issued by IT from the dashboard (`staff.issueActivationCode`) or CLI (`users:issueActivationCode`) |
 | Agents | None left: the app's agent screens were removed (phase 4) | `staff.create`, `staff.setStatus`, `staff.setRole`, `staff.get` (all `staff:manage`); `admin.listAgents` (not branch-scoped) |
 | Customers | None left (phase 2) | `customers.list`, `createProspect`, `update` (branch-scoped) |
-| Transactions | `transactions.list`, `transactions.listMineInRange`, `transactions.createDeposit`, `transactions.createWithdrawal` | `transactions.collectCash` (deposit; see phase 3), `listByAgent`, `listByBranch`, `reverseTransaction` |
+| Transactions | `transactions.createWithdrawal` (deposits and history done) | `transactions.createDeposit`, `list`, `listMineInRange`, `listByAgent`, `listByBranch`, `reverseTransaction` |
 
 The admin backend also has read queries for the dashboard (`admin.*`) and
 `disbursements.*` / `reconciliation.*`. Reuse their tables and permissions; do
@@ -133,21 +133,21 @@ Done: backend in TontiPro-Admin#19, app in #14.
 
 ### Phase 3 - Transactions
 
-- Port `createDeposit`, `createWithdrawal`, `list`, `listMineInRange`.
-  Require `transactions:collect`, set `agentId` from the session (never from
-  arguments), and set the terminal from the agent's bound device so every
-  collection traces to one TPE.
-- Admin `transactions.collectCash` is the starting point for deposits. It
-  already requires `transactions:collect` and takes `agentId` from the
-  session, but it takes `tpeId` from the client (only checking it is bound to
-  the caller) and has neither the settled-day rule nor an idempotency key.
-- Admin `transactions.listByAgent` returns any agent's transactions to any
-  signed-in user. Restrict it to the caller (or `transactions:audit`) before
-  the app relies on it.
-- Keep the "cannot post to a day already settled" rule from
-  `reconciliation.ts`.
-- Offline queue (`transaction-store`) must send an idempotency key; add one
-  server-side before enabling replay.
+Deposits and history done: backend TontiPro-Admin#21, app #15.
+
+- `transaction-store` records deposits with `transactions:createDeposit`
+  (`customerId`, `amount`, `clientId`). The `clientId` is the UUID made when
+  the collection is recorded and kept across retries, so a replay returns the
+  stored deposit. The TPE, agent, branch and time come from the server.
+- History comes from `transactions:list` / `listMineInRange` (own) and
+  `listByBranch` (supervisor/accountant reports).
+- Refusals: `DAY_CLOSED` and `NO_DEVICE` keep the deposit queued with a
+  message (they lift the next day / once IT binds a TPE); the others move it
+  to "rejected" and undo its effect on the local balance. Online, every
+  refusal is shown at once and nothing is queued.
+- **Withdrawals are off** in the app (`withdrawal: false` for every role)
+  until the backend has them: direct debit or a supervisor-approved
+  `disbursements` request (TontiPro-Admin#13).
 
 ### Phase 4 - Agent management
 

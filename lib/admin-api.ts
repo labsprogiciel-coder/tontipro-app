@@ -132,3 +132,52 @@ export const resetPassword = makeFunctionReference<
   { phone: string; code: string; newPassword: string },
   null
 >("passwordReset:resetPassword");
+
+// ── Transactions (admin convex/transactions.ts) ──────────────────────────────
+
+/** One of the signed-in agent's collections (transactions:list / listMineInRange). */
+export type AdminTransaction = {
+  _id: string;
+  /** UUID the app generated when it recorded the collection (idempotency key) */
+  clientId: string | null;
+  customerId: string;
+  customerName: string;
+  amount: number;
+  currency: string;
+  tpeId: string;
+  status: "completed" | "reversed";
+  reversalReason: string | null;
+  timestamp: number;
+};
+
+/** The caller's own collections, newest first; [] when signed out */
+export const listMyTransactions = makeFunctionReference<
+  "query",
+  { limit?: number },
+  AdminTransaction[]
+>("transactions:list");
+
+/** The caller's own collections with from <= timestamp < to (ms) */
+export const listMyTransactionsInRange = makeFunctionReference<
+  "query",
+  { from: number; to: number },
+  AdminTransaction[]
+>("transactions:listMineInRange");
+
+/** A branch's raw transaction rows; needs transactions:audit (supervisor, accountant) */
+export const listBranchTransactions = makeFunctionReference<
+  "query",
+  { branchId: string },
+  (Omit<AdminTransaction, "customerName"> & { agentId: string })[]
+>("transactions:listByBranch");
+
+/**
+ * Record a cash deposit. Agent, branch, time and TPE (the agent's bound
+ * device) are set by the server; replaying the same `clientId` returns the
+ * deposit already stored. Returns the transaction ID.
+ */
+export const createDeposit = makeFunctionReference<
+  "mutation",
+  { customerId: string; amount: number; clientId: string },
+  string
+>("transactions:createDeposit");

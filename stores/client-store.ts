@@ -440,7 +440,7 @@ export const useClientStore = create<ClientStoreState>()(
 
       updateClientBalance: async (id, amount) => {
         // Local display only. The server balance changes exclusively through
-        // createDeposit/createWithdrawal (atomic with the transaction row), so
+        // createDeposit, from collections recorded on the server, so
         // this never talks to Convex and never marks the client pending.
         set((state) => ({
           clients: state.clients.map((client) =>

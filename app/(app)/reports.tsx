@@ -25,7 +25,7 @@ import {
   useTransactionStore,
 } from "@/stores/transaction-store";
 import { Transaction } from "@/types/transaction";
-import { api } from "@/convex/_generated/api";
+import * as adminApi from "@/lib/admin-api";
 import { shareCsv, toCsv } from "@/utils/csv-export";
 
 import { SPACE } from "@/constants/spacing";
@@ -293,8 +293,8 @@ function peakLabel(
 // ─── Report data ──────────────────────────────────────────────────────────────
 
 // Max rows per query (server clamps: listMineInRange 2000, listByBranch 1000).
-const MINE_LIMIT = 2000;
-const BRANCH_LIMIT = 1000;
+// Above this many rows a period is flagged as possibly incomplete
+const ROW_WARNING = 2000;
 
 type ReportScope = "mine" | "branch";
 
@@ -308,21 +308,28 @@ type ReportScope = "mine" | "branch";
 function useReportData(period: Period, scope: ReportScope) {
   const start = periodStartMs(period);
   const prev = prevPeriodRange(period);
-  const limit = scope === "mine" ? MINE_LIMIT : BRANCH_LIMIT;
+  const branchId = useAuthStore((s) => s.user?.branchId);
 
-  // useQueries (not useQuery) so a failing query — e.g. a backend that
-  // predates listMineInRange — degrades to the local fallback instead of
-  // throwing into the screen.
+  // useQueries (not useQuery) so a failing query — e.g. a role without
+  // transactions:audit — degrades to the local fallback instead of throwing
+  // into the screen. The branch query returns the whole branch; both periods
+  // are cut from it below.
   const queries = useMemo(() => {
-    const query =
-      scope === "mine"
-        ? api.transactions.listMineInRange
-        : api.transactions.listByBranch;
+    if (scope === "branch" && branchId) {
+      const branch = { query: adminApi.listBranchTransactions, args: { branchId } };
+      return { cur: branch, prev: branch };
+    }
     return {
-      cur: { query, args: { from: start, limit } },
-      prev: { query, args: { from: prev.start, to: prev.end - 1, limit } },
+      cur: {
+        query: adminApi.listMyTransactionsInRange,
+        args: { from: start, to: Number.MAX_SAFE_INTEGER },
+      },
+      prev: {
+        query: adminApi.listMyTransactionsInRange,
+        args: { from: prev.start, to: prev.end },
+      },
     };
-  }, [scope, start, prev.start, prev.end, limit]);
+  }, [scope, branchId, start, prev.start, prev.end]);
   const results = useQueries(queries);
   const failed = [results.cur, results.prev].some((r) => r instanceof Error);
   const curRows = failed ? undefined : (results.cur as any[] | undefined);
@@ -343,11 +350,14 @@ function useReportData(period: Period, scope: ReportScope) {
 
     const partial = curRows === undefined || prevRows === undefined;
     const truncated =
-      (curRows?.length ?? 0) >= limit || (prevRows?.length ?? 0) >= limit;
+      (curRows?.length ?? 0) >= ROW_WARNING || (prevRows?.length ?? 0) >= ROW_WARNING;
 
+    // The branch query answers both periods with the same rows
     const server = partial
       ? stored
-      : [...toTxs(curRows as any[]), ...toTxs(prevRows as any[])];
+      : curRows === prevRows
+        ? toTxs(curRows as any[])
+        : [...toTxs(curRows as any[]), ...toTxs(prevRows as any[])];
     const all = mergeTransactionsSorted(server, pending).filter(
       (t) => t.status !== "reversed",
     );
@@ -373,7 +383,6 @@ function useReportData(period: Period, scope: ReportScope) {
     start,
     prev.start,
     prev.end,
-    limit,
   ]);
 }
 
