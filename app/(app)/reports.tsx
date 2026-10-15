@@ -24,7 +24,6 @@ import {
   mergeTransactionsSorted,
   useTransactionStore,
 } from "@/stores/transaction-store";
-import { useAgentStore } from "@/stores/agent-store";
 import { Transaction } from "@/types/transaction";
 import { api } from "@/convex/_generated/api";
 import { shareCsv, toCsv } from "@/utils/csv-export";
@@ -1444,7 +1443,6 @@ function AdminView() {
   const [activeTab, setTab] = useState<AdminTab>("global");
 
   const clients = useClientStore((s) => s.clients);
-  const roster = useAgentStore((s) => s.agents);
   const {
     current: filtered,
     previous: prevFiltered,
@@ -1504,32 +1502,17 @@ function AdminView() {
     return map;
   }, [filtered]);
 
-  // Branch roster (only admins/supervisors may load it) plus every agent who
-  // appears in the period's transactions — accountants and IT admins have no
-  // roster, but the branch query names each transaction's agent.
-  const agentRows = useMemo(() => {
-    const rows = new Map<
-      string,
-      { id: string; name: string; suspended: boolean }
-    >();
-    for (const a of roster) {
-      rows.set(a._id, {
-        id: a._id,
-        name: a.fullName,
-        suspended: a.status === "suspended",
-      });
-    }
-    for (const id of agentStatsMap.keys()) {
-      if (!rows.has(id)) {
-        rows.set(id, {
-          id,
-          name: agentNames.get(id) ?? "Agent inconnu",
-          suspended: false,
-        });
-      }
-    }
-    return [...rows.values()];
-  }, [roster, agentStatsMap, agentNames]);
+  // Every agent who appears in the period's transactions; the branch query
+  // names each one. The staff roster lives on the dashboard, not in the app.
+  const agentRows = useMemo(
+    () =>
+      [...agentStatsMap.keys()].map((id) => ({
+        id,
+        name: agentNames.get(id) ?? "Agent inconnu",
+        suspended: false,
+      })),
+    [agentStatsMap, agentNames],
+  );
 
   const sortedAgents = useMemo(
     () =>

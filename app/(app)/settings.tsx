@@ -31,7 +31,6 @@ import {
   DatabaseBackup,
   AlertTriangle,
   Download,
-  Users2,
 } from "lucide-react-native";
 
 import { LAYOUT, SPACE } from "@/constants/spacing";
@@ -163,9 +162,9 @@ const SettingsScreen = () => {
             </View>
             <Pressable
               style={styles.editBtn}
-              onPress={() => router.push("/(app)/profile-edit")}
+              onPress={() => router.push("/(app)/profile")}
             >
-              <Text style={styles.editBtnText}>Modifier</Text>
+              <Text style={styles.editBtnText}>Voir</Text>
             </Pressable>
           </View>
         </View>
@@ -190,12 +189,6 @@ const SettingsScreen = () => {
               trackColor={{ false: "#d0cfc8", true: "#D85A30" }}
             />
           </View>
-          <View style={styles.divider} />
-          <SettingItem
-            icon={Users2}
-            label="Membres"
-            onPress={() => router.push("/(app)/agents" as never)}
-          />
         </View>
         {/* Sync & Offline - CRITICAL for your market */}
         <Text style={styles.sectionLabel}>Données & Synchronisation</Text>

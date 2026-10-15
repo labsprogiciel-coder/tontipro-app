@@ -57,7 +57,7 @@ last column is the closest thing the admin backend has today.
 | Session / profile | `users.update`, `users.changePassword` (`users.currentUser` replaced by `users.me`) | `users.me` (profile, roles, `device`, `can`). No self-service profile edit or password change; forgotten passwords use an admin-issued reset code (`staff.issueResetCode` → `passwordReset.resetPassword`) |
 | Login eligibility | `users.checkLoginEligibility`, `users.verifyLoginPassword`, `users.linkAgentAccount`, `users.clearStaleActivationAccount` | None needed: Convex Auth `signIn("password", …)` with `flow: "signIn"` / `"signUp"` + `code` |
 | Activation | `otp.checkActivationCode`, `otp.resendActivationCode` | Activation code issued by IT from the dashboard (`staff.issueActivationCode`) or CLI (`users:issueActivationCode`) |
-| Agents | `users.create`, `users.suspend`, `users.listByBranch` | `staff.create`, `staff.setStatus`, `staff.setRole`, `staff.get` (all `staff:manage`); `admin.listAgents` (not branch-scoped) |
+| Agents | None left: the app's agent screens were removed (phase 4) | `staff.create`, `staff.setStatus`, `staff.setRole`, `staff.get` (all `staff:manage`); `admin.listAgents` (not branch-scoped) |
 | Customers | `customers.list`, `customers.createProspect`, `customers.update` | `admin.listCustomers` (read-only, all branches) |
 | Transactions | `transactions.list`, `transactions.listMineInRange`, `transactions.createDeposit`, `transactions.createWithdrawal` | `transactions.collectCash` (deposit; see phase 3), `listByAgent`, `listByBranch`, `reverseTransaction` |
 
@@ -132,14 +132,17 @@ Each phase ends with the app working for the screens it covers.
 
 ### Phase 4 - Agent management
 
-- Mostly done on the admin side: `staff.create`, `staff.setRole`,
-  `staff.setStatus` (suspend/reactivate, signs the person out), `staff.get`
-  and the activation/reset codes, all gated by `staff:manage` (IT admin), with
-  a UI on the dashboard's Agents page.
-- `users.update` (profile edit) has no equivalent yet; `listByBranch` maps to
-  `admin.listAgents`, which is not branch-scoped.
-- Prefer deleting these screens from the mobile app: staff management lives
-  on the dashboard.
+Done in the app (#16). Staff management lives on the dashboard only:
+`staff.create`, `setRole`, `setStatus`, `get` and the activation/reset codes,
+all `staff:manage` (IT admin).
+
+- Removed the app's agents screens and `stores/agent-store.ts`, so
+  `users.create`, `users.suspend` and `users.listByBranch` are no longer called.
+- The profile screen (`app/(app)/profile.tsx`) is read-only and tells the
+  agent to ask IT for changes. No `users.update` on the backend.
+- Reports list the agents that appear in the period's transactions instead of
+  the branch roster. A supervisor team view would need a read-only,
+  branch-scoped backend query (new issue if wanted).
 
 ### Phase 5 - Cutover
 

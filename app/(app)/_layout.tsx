@@ -64,8 +64,7 @@ export default function AppLayout() {
       <Tabs.Screen name="transactions" />
       <Tabs.Screen name="reports" />
       <Tabs.Screen name="settings" />
-      <Tabs.Screen name="profile-edit" />
-      <Tabs.Screen name="agents" />
+      <Tabs.Screen name="profile" />
       <Tabs.Screen name="data" />
     </Tabs>
   );
