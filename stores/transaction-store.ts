@@ -55,11 +55,18 @@ export function mergeTransactionsSorted(
 // ─── Convex row → Transaction ─────────────────────────────────────────────────
 
 /**
- * Withdrawals are never queued: cash leaves the agent's hands, so the server
- * must confirm the customer's balance first.
+ * Largest withdrawal paid out without the server's confirmation. Same value
+ * as the admin backend's OFFLINE_WITHDRAWAL_CAP, which refuses larger replays.
  */
-export const WITHDRAWAL_NEEDS_NETWORK =
-  "Les retraits se font en ligne uniquement : reconnectez-vous puis réessayez.";
+export const OFFLINE_WITHDRAWAL_CAP = 25_000;
+/** Offline withdrawals need balances loaded from the server this recently. */
+export const OFFLINE_BALANCE_MAX_AGE_MS = 8 * 60 * 60 * 1000;
+
+const fcfa = (n: number) => `${n.toLocaleString("fr-FR")} FCFA`;
+export const OFFLINE_WITHDRAWAL_TOO_LARGE = `Hors ligne, un retrait ne peut pas dépasser ${fcfa(OFFLINE_WITHDRAWAL_CAP)}.`;
+export const OFFLINE_BALANCES_STALE =
+  "Soldes non actualisés depuis plus de 8 h : reconnectez-vous pour actualiser avant un retrait hors ligne.";
+export const WITHDRAWAL_OVER_BALANCE = "Solde du client insuffisant pour ce retrait.";
 /** The withdrawal may or may not be stored: never pay out on this. */
 export const WITHDRAWAL_UNCONFIRMED =
   "Retrait non confirmé : ne remettez pas l'argent. Vérifiez l'historique du client avant de réessayer.";
@@ -238,10 +245,17 @@ export const useTransactionStore = create<TransactionStoreState>()(
               transactionData.clientId,
               balanceDelta(withdrawal),
             );
-            set((state) => ({
-              transactions: [withdrawal, ...state.transactions],
-              isLoading: false,
-            }));
+            set((state) =>
+              withdrawal.status === "pending"
+                ? {
+                    pendingTransactions: [...state.pendingTransactions, withdrawal],
+                    isLoading: false,
+                  }
+                : {
+                    transactions: [withdrawal, ...state.transactions],
+                    isLoading: false,
+                  },
+            );
             return withdrawal;
           }
 
@@ -399,11 +413,35 @@ export const useTransactionStore = create<TransactionStoreState>()(
 // ─── Withdrawals ──────────────────────────────────────────────────────────────
 
 /**
- * Record a withdrawal on the server and return it as completed, or throw a
- * French message for the agent. Never queued (see WITHDRAWAL_NEEDS_NETWORK).
- * A failed call is retried once with the same clientRef: if the first one was
- * stored and only its response was lost, the server returns that row instead
- * of debiting twice.
+ * Why an offline withdrawal can't be paid out, or null if it can: at most
+ * OFFLINE_WITHDRAWAL_CAP, within the local balance (which already counts
+ * this device's queued movements), and balances loaded from the server in
+ * the last 8 hours, so the local balance is not too stale.
+ */
+export function offlineWithdrawalRefusal(
+  client: Pick<Client, "balance">,
+  amount: number,
+  balancesFetchedAt: number | null,
+  now: number,
+): string | null {
+  if (amount > OFFLINE_WITHDRAWAL_CAP) return OFFLINE_WITHDRAWAL_TOO_LARGE;
+  if (balancesFetchedAt === null || now - balancesFetchedAt > OFFLINE_BALANCE_MAX_AGE_MS) {
+    return OFFLINE_BALANCES_STALE;
+  }
+  if (amount > client.balance) return WITHDRAWAL_OVER_BALANCE;
+  return null;
+}
+
+/**
+ * Record a withdrawal and return it, or throw a French message for the agent
+ * (who must then not pay out).
+ *
+ * Online, the server confirms it against the customer's balance; a failed
+ * call is retried once with the same clientRef, so a lost response can't
+ * debit twice. Offline (or if both calls fail, or the client isn't on the
+ * server yet), it is queued as "pending" within the offline limits, and the
+ * sync replays it with `offline: true`: the cash is already handed over, so
+ * the server records it even if it overdraws the account.
  */
 async function recordWithdrawal(
   client: Client,
@@ -411,34 +449,45 @@ async function recordWithdrawal(
   online: boolean,
   now: number,
 ): Promise<Transaction> {
-  if (!online || isLocalClient(client)) throw new Error(WITHDRAWAL_NEEDS_NETWORK);
-  const clientRef = Crypto.randomUUID();
-  const args = { customerId: client.id, amount, clientId: clientRef };
-
-  let transactionId: string | null = null;
-  for (let attempt = 0; transactionId === null; attempt++) {
-    try {
-      transactionId = await convex.mutation(adminApi.createWithdrawal, args);
-    } catch (err) {
-      if (isPermanentSyncError(err) || isRetryLaterSyncError(err)) {
-        throw new Error(syncErrorMessage(err));
-      }
-      console.warn("Withdrawal attempt failed:", err);
-      if (attempt >= 1) throw new Error(WITHDRAWAL_UNCONFIRMED);
-    }
-  }
-
-  return {
-    id: transactionId,
-    clientRef,
+  const withdrawal: Transaction = {
+    id: generateId("TR"),
+    clientRef: Crypto.randomUUID(),
     clientId: client.id,
     clientName: client.name,
     amount,
     type: "withdrawal",
     date: new Date(now).toISOString(),
-    status: "completed",
+    status: "pending",
     agentId: useAuthStore.getState().user?.id,
   };
+
+  let attempted = false;
+  if (online && !isLocalClient(client)) {
+    const args = { customerId: client.id, amount, clientId: withdrawal.clientRef! };
+    for (let attempt = 0; attempt < 2; attempt++) {
+      try {
+        attempted = true;
+        const id = await convex.mutation(adminApi.createWithdrawal, args);
+        return { ...withdrawal, id, status: "completed" };
+      } catch (err) {
+        if (isPermanentSyncError(err) || isRetryLaterSyncError(err)) {
+          throw new Error(syncErrorMessage(err));
+        }
+        console.warn("Withdrawal attempt failed:", err);
+      }
+    }
+  }
+
+  const refusal = offlineWithdrawalRefusal(
+    client,
+    amount,
+    useClientStore.getState().balancesFetchedAt,
+    now,
+  );
+  // A call that may have reached the server must not be reported as refused
+  // without warning: the agent checks the history before trying again.
+  if (refusal) throw new Error(attempted ? WITHDRAWAL_UNCONFIRMED : refusal);
+  return withdrawal;
 }
 
 // ─── Offline queue replay ─────────────────────────────────────────────────────
@@ -474,15 +523,18 @@ async function syncPendingOnce(): Promise<void> {
     if (client && isLocalClient(client)) continue;
 
     try {
-      // Withdrawals are online-only; one queued by an older version is not
-      // replayed, since the cash may never have been handed over.
-      if (tx.type === "withdrawal") throw new Error(WITHDRAWAL_NEEDS_NETWORK);
-      const transactionId = await convex.mutation(adminApi.createDeposit, {
+      const args = {
         customerId: tx.clientId,
         amount: tx.amount,
         // Transactions queued before clientRef existed use their local id.
         clientId: tx.clientRef ?? tx.id,
-      });
+      };
+      // A queued withdrawal was paid out offline: the server records it even
+      // past the customer's balance (flagged as an overdraft)
+      const transactionId =
+        tx.type === "withdrawal"
+          ? await convex.mutation(adminApi.createWithdrawal, { ...args, offline: true })
+          : await convex.mutation(adminApi.createDeposit, args);
 
       // The local balance already counts this deposit (applied when it was
       // queued); it only moves from "pending" to "synced".
@@ -509,8 +561,7 @@ async function syncPendingOnce(): Promise<void> {
         continue;
       }
       if (
-        isPermanentSyncError(err) ||
-        (err instanceof Error && err.message === WITHDRAWAL_NEEDS_NETWORK)
+        isPermanentSyncError(err)
       ) {
         // Le serveur a refusé l'opération (solde insuffisant, client
         // inconnu…) : la rejouer ne changera rien. On la sort de la file,

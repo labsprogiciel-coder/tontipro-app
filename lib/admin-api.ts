@@ -140,6 +140,8 @@ export const resetPassword = makeFunctionReference<
 export type AdminTransaction = {
   _id: string;
   type: "deposit" | "withdrawal";
+  /** An offline withdrawal that took the customer's balance below zero */
+  overdraft: boolean;
   /** UUID the app generated when it recorded the collection (idempotency key) */
   clientId: string | null;
   customerId: string;
@@ -173,7 +175,7 @@ export const listMyTransactionsInRange = makeFunctionReference<
 export const listBranchTransactions = makeFunctionReference<
   "query",
   { branchId: string },
-  (Omit<AdminTransaction, "customerName" | "type"> & {
+  (Omit<AdminTransaction, "customerName" | "type" | "overdraft"> & {
     agentId: string;
     type?: AdminTransaction["type"];
   })[]
@@ -193,10 +195,12 @@ export const createDeposit = makeFunctionReference<
 /**
  * Pay cash out of a customer's savings: a direct debit, no approval step.
  * Same rules as createDeposit, plus a ConvexError `INSUFFICIENT_BALANCE` when
- * the amount exceeds the customer's server-side balance.
+ * the amount exceeds the customer's server-side balance. `offline: true`
+ * replays a withdrawal queued offline: never refused for the balance (stored
+ * as an overdraft instead), but `OFFLINE_LIMIT` above 25 000.
  */
 export const createWithdrawal = makeFunctionReference<
   "mutation",
-  { customerId: string; amount: number; clientId: string },
+  { customerId: string; amount: number; clientId: string; offline?: boolean },
   string
 >("transactions:createWithdrawal");

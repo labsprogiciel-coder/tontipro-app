@@ -134,6 +134,8 @@ function reportRefusal(error: unknown, clientName: string): boolean {
 
 interface ClientStoreState {
   clients: Client[];
+  /** When balances were last loaded from the server (ms), for offline withdrawals */
+  balancesFetchedAt: number | null;
   isLoading: boolean;
   isLoadingClients: boolean;
   error: string | null;
@@ -181,6 +183,7 @@ export const useClientStore = create<ClientStoreState>()(
   persist(
     (set, get) => ({
       clients: [],
+      balancesFetchedAt: null,
       isLoading: false,
       isLoadingClients: false,
       error: null,
@@ -220,6 +223,7 @@ export const useClientStore = create<ClientStoreState>()(
           );
           const fromServer: Client[] = rawCustomers.map(customerToClient);
           set((state) => ({
+            balancesFetchedAt: Date.now(),
             clients: mergeServerClients(
               fromServer,
               state.clients,
@@ -564,6 +568,7 @@ export const useClientStore = create<ClientStoreState>()(
       clearAll: () => {
         set({
           clients: [],
+          balancesFetchedAt: null,
           isLoading: false,
           isLoadingClients: false,
           error: null,
@@ -576,6 +581,7 @@ export const useClientStore = create<ClientStoreState>()(
       partialize: (state) => ({
         // Only persist clients, not transient loading states
         clients: state.clients,
+        balancesFetchedAt: state.balancesFetchedAt,
       }),
       onRehydrateStorage: () => (state) => {
         if (state) {

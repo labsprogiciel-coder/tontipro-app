@@ -41,6 +41,7 @@ const SYNC_MESSAGES: Record<string, string> = {
   NO_DEVICE: "Aucun TPE actif n'est lié à votre compte. Contactez votre administrateur.",
   INVALID_AMOUNT: "Montant invalide.",
   INSUFFICIENT_BALANCE: "Solde du client insuffisant pour ce retrait.",
+  OFFLINE_LIMIT: "Retrait hors ligne au-delà du plafond, refusé par le serveur.",
   CUSTOMER_NOT_FOUND: "Client introuvable dans votre agence.",
   DUPLICATE_CLIENT_ID: "Opération en double refusée par le serveur.",
   INVALID_CLIENT_ID: "Opération invalide.",

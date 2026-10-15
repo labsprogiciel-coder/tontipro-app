@@ -149,11 +149,16 @@ Done: deposits and history (backend TontiPro-Admin#21), withdrawals
 - **Withdrawals are a direct debit** (decided: no supervisor approval).
   `transactions:createWithdrawal` takes the same arguments and rules as
   deposits, plus `INSUFFICIENT_BALANCE`. Field agents and supervisors have
-  `transactions:withdraw`. They are online only: cash leaves the agent's
-  hands, so the server must confirm the balance first. A failed call is
-  retried once with the same `clientId`; if that fails too the agent is told
-  not to pay out and to check the history. A withdrawal queued by an older
-  app version is rejected, not replayed.
+  `transactions:withdraw`. Online, the server confirms the balance; a failed
+  call is retried once with the same `clientId`.
+- **Offline withdrawals are queued** (TontiPro-Admin#23) within limits the
+  app checks before the agent pays out: at most 25 000 FCFA, within the
+  local balance (which counts queued movements), and balances loaded from
+  the server in the last 8 hours. The sync replays them with
+  `offline: true`; the cash is already handed over, so the server records
+  them even past the balance and flags an `overdraft` for the back office.
+  If an online call failed and the limits don't allow queuing, the agent is
+  told not to pay out and to check the history.
 
 ### Phase 4 - Agent management
 
