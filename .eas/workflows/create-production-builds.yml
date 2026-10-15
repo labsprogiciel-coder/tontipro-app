@@ -1,11 +1,11 @@
-name: Create Production Builds
+# Run by hand (Expo dashboard or `eas workflow:run create-production-builds.yml`)
+# to make a store build. Android only for now; add an `ios` job once Apple
+# credentials are set up in EAS.
+name: Create production builds
 
 jobs:
   build_android:
-    type: build # This job type creates a production build for Android
+    type: build
     params:
       platform: android
-  build_ios:
-    type: build # This job type creates a production build for iOS
-    params:
-      platform: ios
+      profile: production

@@ -1,15 +1,19 @@
-name: Build or update preview version
+# On every push to main: if an installed preview build can run this code
+# (same native fingerprint), ship it over the air on the "preview" channel;
+# otherwise make a new internal preview build. Android only: the agents' TPEs
+# are Android devices.
+name: Ship preview
 
 on:
   push:
     branches: [main]
 
 jobs:
-  fingerprint: #calculate fingerprint
-    environment: preview
+  fingerprint:
     type: fingerprint
+    environment: preview # must match the preview build profile's environment
 
-  android_get_build: # if there's a matching build...
+  android_get_build:
     needs: [fingerprint]
     type: get-build
     params:
@@ -17,20 +21,19 @@ jobs:
       platform: android
       profile: preview
 
-  android_update: # publish an update to that build
+  android_update:
     needs: [android_get_build]
     if: ${{ needs.android_get_build.outputs.build_id }}
     type: update
+    environment: preview
     params:
       channel: preview
       platform: android
 
-  android_build: # otherwise make a new build
+  android_build:
     needs: [android_get_build]
     if: ${{ !needs.android_get_build.outputs.build_id }}
     type: build
     params:
       platform: android
       profile: preview
-
-  ## repeat the get build -> update / build steps for iOS
