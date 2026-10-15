@@ -2,6 +2,7 @@ import React from "react";
 import { View, TextInput, StyleSheet, Pressable } from "react-native";
 import { Search, SlidersHorizontal } from "lucide-react-native";
 
+import { SPACE } from "@/constants/spacing";
 interface SearchInputProps {
   placeholder?: string;
   value: string;
@@ -49,8 +50,8 @@ const styles = StyleSheet.create({
   container: {
     flexDirection: "row",
     alignItems: "center",
-    gap: 10,
-    marginBottom: 20,
+    gap: SPACE.sm,
+    marginBottom: SPACE.lg,
   },
   searchWrapper: {
     flex: 1,
@@ -60,11 +61,11 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     borderWidth: 0.5,
     borderColor: "rgba(0,0,0,0.1)", // --color-border-tertiary
-    paddingHorizontal: 12,
+    paddingHorizontal: SPACE.md,
     height: 48,
   },
   searchIcon: {
-    marginRight: 8,
+    marginRight: SPACE.sm,
   },
   input: {
     flex: 1,

@@ -5,6 +5,7 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { ShieldCheck } from "lucide-react-native";
 import { useAuthStore } from "@/stores/auth-store";
 
+import { SPACE } from "@/constants/spacing";
 // Durée d'affichage de l'écran de bienvenue avant l'enchaînement automatique
 // vers le changement de mot de passe (première connexion) — assez long pour
 // être lu, assez court pour ne pas ralentir l'agent.
@@ -72,7 +73,7 @@ const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: T.bgPrimary },
   content: {
     flex: 1,
-    paddingHorizontal: 28,
+    paddingHorizontal: SPACE.xl,
     justifyContent: "center",
     alignItems: "center",
   },
@@ -83,28 +84,28 @@ const styles = StyleSheet.create({
     backgroundColor: T.orange,
     justifyContent: "center",
     alignItems: "center",
-    marginBottom: 28,
+    marginBottom: SPACE.xl,
   },
   title: {
     fontSize: 24,
     fontWeight: "700",
     color: T.textPrimary,
     textAlign: "center",
-    marginBottom: 8,
+    marginBottom: SPACE.sm,
   },
   orgName: {
     fontSize: 18,
     fontWeight: "600",
     color: T.orangeDark,
     textAlign: "center",
-    marginBottom: 24,
+    marginBottom: SPACE.xl,
   },
   agentName: {
     fontSize: 15,
     color: T.textSecondary,
     textAlign: "center",
-    marginBottom: 32,
+    marginBottom: SPACE.xxl,
   },
-  redirectHint: { flexDirection: "row", alignItems: "center", gap: 10 },
+  redirectHint: { flexDirection: "row", alignItems: "center", gap: SPACE.sm },
   redirectHintText: { fontSize: 14, color: T.textSecondary },
 });

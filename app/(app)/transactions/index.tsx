@@ -20,6 +20,7 @@ import { useClientStore } from "@/stores/client-store";
 import StatusBadge from "../../components/ui/status-bar";
 import SearchInput from "../../components/quickactions/search-input";
 
+import { SPACE } from "@/constants/spacing";
 const T = KAURIDORR_THEME;
 
 type SortOrder = "desc" | "asc";
@@ -35,12 +36,20 @@ export const HistoryScreen: React.FC = () => {
 
   const transactions = useTransactionStore((s) => s.transactions);
   const pendingTransactions = useTransactionStore((s) => s.pendingTransactions);
+  const rejectedTransactions = useTransactionStore(
+    (s) => s.rejectedTransactions,
+  );
   const clients = useClientStore((s) => s.clients);
 
-  // Merge synced + pending into one deduplicated, sorted list.
+  // Merge synced + pending into one deduplicated, sorted list. Transactions
+  // the server rejected are listed (badge "Échec") so the agent can see them.
   const mergedTransactions = useMemo(
-    () => mergeTransactionsSorted(transactions, pendingTransactions),
-    [transactions, pendingTransactions],
+    () =>
+      mergeTransactionsSorted(transactions, [
+        ...pendingTransactions,
+        ...rejectedTransactions,
+      ]),
+    [transactions, pendingTransactions, rejectedTransactions],
   );
 
   const filteredTransactions = useMemo(() => {
@@ -163,7 +172,7 @@ export const HistoryScreen: React.FC = () => {
               {t.amount.toLocaleString("fr-FR")} F
             </Text>
           </View>
-          <StatusBadge status={t.status} />
+          <StatusBadge status={t.syncError ? "failed" : t.status} />
         </View>
       </TouchableOpacity>
     );
@@ -278,7 +287,7 @@ export const HistoryScreen: React.FC = () => {
         keyExtractor={(item) =>
           item.type === "header" ? `hdr-${item.dateKey}` : item.data.id
         }
-        contentContainerStyle={{ paddingBottom: 20 }}
+        contentContainerStyle={{ paddingBottom: SPACE.xl }}
         ListEmptyComponent={
           <View style={styles.emptyContainer}>
             <View style={styles.emptyIconCircle}>
@@ -308,10 +317,10 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
-    paddingHorizontal: 18,
-    paddingVertical: 12,
+    paddingHorizontal: SPACE.lg,
+    paddingVertical: SPACE.md,
   },
-  titleLeft: { flexDirection: "row", alignItems: "center", gap: 8 },
+  titleLeft: { flexDirection: "row", alignItems: "center", gap: SPACE.sm },
   backBtn: {
     width: 30,
     height: 30,
@@ -326,23 +335,23 @@ const styles = StyleSheet.create({
   sortBtn: {
     flexDirection: "row",
     alignItems: "center",
-    gap: 4,
+    gap: SPACE.xs,
     backgroundColor: T.orangeLt,
-    paddingHorizontal: 10,
-    paddingVertical: 5,
+    paddingHorizontal: SPACE.md,
+    paddingVertical: SPACE.xs,
     borderRadius: 20,
   },
   sortLabel: { fontSize: 11, fontWeight: "500", color: T.orange },
 
   filterRow: {
     flexDirection: "row",
-    gap: 6,
-    paddingHorizontal: 18,
-    paddingBottom: 4,
+    gap: SPACE.xs,
+    paddingHorizontal: SPACE.lg,
+    paddingBottom: SPACE.xs,
   },
   filterBtn: {
     flex: 1,
-    paddingVertical: 7,
+    paddingVertical: SPACE.sm,
     borderRadius: 8,
     borderWidth: 1,
     borderColor: T.border,
@@ -355,14 +364,14 @@ const styles = StyleSheet.create({
 
   searchTypeRow: {
     flexDirection: "row",
-    gap: 8,
-    paddingHorizontal: 18,
-    paddingVertical: 8,
+    gap: SPACE.sm,
+    paddingHorizontal: SPACE.lg,
+    paddingVertical: SPACE.sm,
   },
   searchTypeBtn: {
     flex: 1,
-    paddingVertical: 8,
-    paddingHorizontal: 12,
+    paddingVertical: SPACE.sm,
+    paddingHorizontal: SPACE.md,
     borderRadius: 8,
     borderWidth: 1,
     borderColor: T.border,
@@ -373,7 +382,7 @@ const styles = StyleSheet.create({
   searchTypeText: { fontSize: 12, fontWeight: "600", color: T.text3 },
   searchTypeTextActive: { color: T.orange },
 
-  searchInputWrapper: { paddingHorizontal: 20, marginBottom: 4 },
+  searchInputWrapper: { paddingHorizontal: SPACE.lg, marginBottom: SPACE.xs },
 
   dateHeader: {
     fontSize: 11,
@@ -381,25 +390,27 @@ const styles = StyleSheet.create({
     color: T.text3,
     textTransform: "uppercase",
     letterSpacing: 0.4,
-    paddingHorizontal: 18,
-    paddingTop: 14,
-    paddingBottom: 6,
+    paddingHorizontal: SPACE.lg,
+    paddingTop: SPACE.lg,
+    paddingBottom: SPACE.sm,
   },
   row: {
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
-    padding: 16,
-    marginHorizontal: 18,
+    // No card behind the row: content aligns with the gutter and the date
+    // headers; only vertical padding separates rows.
+    paddingVertical: SPACE.md,
+    marginHorizontal: SPACE.lg,
     borderBottomWidth: 0.5,
     borderColor: T.border,
   },
-  left: { gap: 4, flex: 1 },
-  right: { alignItems: "flex-end", gap: 4 },
-  amountRow: { flexDirection: "row", alignItems: "center", gap: 6 },
+  left: { gap: SPACE.xs, flex: 1 },
+  right: { alignItems: "flex-end", gap: SPACE.xs },
+  amountRow: { flexDirection: "row", alignItems: "center", gap: SPACE.xs },
   multiplierBadge: {
-    paddingHorizontal: 6,
-    paddingVertical: 2,
+    paddingHorizontal: SPACE.sm,
+    paddingVertical: SPACE.xxs,
     borderRadius: 6,
   },
   multiplierText: { fontSize: 10, fontWeight: "700" },
@@ -409,8 +420,8 @@ const styles = StyleSheet.create({
 
   emptyContainer: {
     alignItems: "center",
-    marginTop: 60,
-    paddingHorizontal: 32,
+    marginTop: SPACE.huge,
+    paddingHorizontal: SPACE.xxl,
   },
   emptyIconCircle: {
     width: 72,
@@ -419,14 +430,14 @@ const styles = StyleSheet.create({
     backgroundColor: T.orangeLt,
     alignItems: "center",
     justifyContent: "center",
-    marginBottom: 16,
+    marginBottom: SPACE.lg,
   },
   emptyIcon: { fontSize: 30 },
   emptyTitle: {
     fontSize: 18,
     fontWeight: "700",
     color: T.text1,
-    marginBottom: 8,
+    marginBottom: SPACE.sm,
   },
   emptySubtitle: {
     fontSize: 13,

@@ -1,6 +1,7 @@
 import { View, Pressable, StyleSheet } from "react-native";
 import Svg, { Path, Circle } from "react-native-svg";
 
+import { SPACE } from "@/constants/spacing";
 const NotificationBell: React.FC<{ hasNotifications?: boolean }> = ({
   hasNotifications,
 }) => (
@@ -20,7 +21,7 @@ const NotificationBell: React.FC<{ hasNotifications?: boolean }> = ({
 
 const styles = StyleSheet.create({
   container: {
-    padding: 4,
+    padding: SPACE.xs,
     position: "relative",
   },
   badge: {

@@ -202,8 +202,13 @@ export default defineSchema({
     reversalReason: v.optional(v.string()),
     reversedBy: v.optional(v.id("users")),
     timestamp: v.number(),
+    // Idempotency key generated on the device (mobile offline queue): a
+    // replayed createDeposit/createWithdrawal with the same ref is a no-op.
+    clientRef: v.optional(v.string()),
   })
     .index("by_agent_date", ["agentId"])
+    .index("by_agent_timestamp", ["agentId", "timestamp"])
+    .index("by_agent_client_ref", ["agentId", "clientRef"])
     .index("by_branch", ["branchId"])
     .index("by_branch_timestamp", ["branchId", "timestamp"])
     .index("by_customer", ["customerId", "status"]),

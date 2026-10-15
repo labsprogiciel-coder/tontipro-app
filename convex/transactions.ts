@@ -1,6 +1,7 @@
 // convex/transactions.ts
-import { query, mutation } from "./_generated/server";
-import { v } from "convex/values";
+import { query, mutation, MutationCtx } from "./_generated/server";
+import { ConvexError, v } from "convex/values";
+import { Id } from "./_generated/dataModel";
 import { authz } from "./authz";
 
 // ── list ──────────────────────────────────────────────────────────────────────
@@ -155,6 +156,47 @@ export const getById = query({
   },
 });
 
+// ── listMineInRange ───────────────────────────────────────────────────────────
+
+/**
+ * The caller's own transactions within [from, to] (ms), newest first.
+ * Used by the TontiPro reports screen: `list` only returns the latest 100,
+ * which silently truncates quarter/year totals and period comparisons.
+ * Returns at most `limit` rows (max 2000) — a full page means truncated.
+ */
+export const listMineInRange = query({
+  args: {
+    from: v.number(),
+    to: v.optional(v.number()),
+    limit: v.optional(v.number()),
+  },
+  handler: async (ctx, args) => {
+    const identity = await ctx.auth.getUserIdentity();
+    if (!identity) return [];
+
+    const agent = await ctx.db
+      .query("users")
+      .withIndex("by_token", (q) => q.eq("tokenIdentifier", identity.subject))
+      .unique();
+    if (!agent) return [];
+
+    await authz
+      .withTenant(agent.branchId)
+      .require(ctx, identity.subject, "transactions:view_ledger");
+
+    const limit = Math.min(Math.max(args.limit ?? 2000, 1), 2000);
+
+    return ctx.db
+      .query("transactions")
+      .withIndex("by_agent_timestamp", (q) => {
+        const lower = q.eq("agentId", agent._id).gte("timestamp", args.from);
+        return args.to !== undefined ? lower.lte("timestamp", args.to) : lower;
+      })
+      .order("desc")
+      .take(limit);
+  },
+});
+
 // ── listByAgent ───────────────────────────────────────────────────────────────
 
 /**
@@ -260,6 +302,62 @@ export const summarizeByAgent = query({
   },
 });
 
+// ── Offline replay helpers ────────────────────────────────────────────────────
+
+/**
+ * Permanent failures are thrown as ConvexError so the mobile offline queue
+ * can tell them apart from transient ones (network, auth refresh): plain
+ * Error messages are redacted to "Server Error" in production.
+ */
+function rejectTx(code: string, message: string): never {
+  throw new ConvexError({ code, message });
+}
+
+/**
+ * Returns the result of an already-recorded transaction when the device
+ * replays the same `clientRef` (response lost, app killed mid-sync…), so a
+ * retry never applies the amount twice. Runs inside the mutation's
+ * transaction, so concurrent replays are serialized by Convex.
+ */
+async function findReplay(
+  ctx: MutationCtx,
+  agentId: Id<"users">,
+  args: {
+    customerId: Id<"customers">;
+    amount: number;
+    clientRef?: string;
+  },
+  type: "deposit" | "withdrawal",
+) {
+  if (args.clientRef === undefined) return null;
+  if (args.clientRef.length === 0 || args.clientRef.length > 64) {
+    rejectTx("INVALID_CLIENT_REF", "Invalid clientRef");
+  }
+  const existing = await ctx.db
+    .query("transactions")
+    .withIndex("by_agent_client_ref", (q) =>
+      q.eq("agentId", agentId).eq("clientRef", args.clientRef),
+    )
+    .first();
+  if (!existing) return null;
+  if (
+    existing.customerId !== args.customerId ||
+    existing.amount !== args.amount ||
+    existing.type !== type
+  ) {
+    rejectTx(
+      "CLIENT_REF_CONFLICT",
+      "clientRef already used for a different transaction",
+    );
+  }
+  const customer = await ctx.db.get(args.customerId);
+  return {
+    transactionId: existing._id,
+    newBalance: customer?.balance ?? 0,
+    replayed: true,
+  };
+}
+
 // ── createDeposit ─────────────────────────────────────────────────────────────
 
 /**
@@ -271,6 +369,7 @@ export const createDeposit = mutation({
     customerId: v.id("customers"),
     amount: v.number(),
     tpeId: v.string(),
+    clientRef: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
     const identity = await ctx.auth.getUserIdentity();
@@ -286,12 +385,17 @@ export const createDeposit = mutation({
       .withTenant(agent.branchId)
       .require(ctx, identity.subject, "transactions:collect");
 
-    if (args.amount <= 0) throw new Error("Amount must be positive");
-    if (args.amount > 10_000_000) throw new Error("Amount too high (max 10M FCFA)");
+    const replay = await findReplay(ctx, agent._id, args, "deposit");
+    if (replay) return replay;
+
+    if (args.amount <= 0) rejectTx("INVALID_AMOUNT", "Amount must be positive");
+    if (args.amount > 10_000_000)
+      rejectTx("INVALID_AMOUNT", "Amount too high (max 10M FCFA)");
 
     const customer = await ctx.db.get(args.customerId);
-    if (!customer) throw new Error("Customer not found");
-    if (customer.branchId !== agent.branchId) throw new Error("Forbidden");
+    if (!customer) rejectTx("CUSTOMER_NOT_FOUND", "Customer not found");
+    if (customer.branchId !== agent.branchId)
+      rejectTx("FORBIDDEN", "Forbidden");
 
     const transactionId = await ctx.db.insert("transactions", {
       amount: args.amount,
@@ -303,13 +407,14 @@ export const createDeposit = mutation({
       type: "deposit",
       status: "completed",
       timestamp: Date.now(),
+      clientRef: args.clientRef,
     });
 
     // Update customer balance
     const newBalance = (customer.balance ?? 0) + args.amount;
     await ctx.db.patch(args.customerId, { balance: newBalance });
 
-    return { transactionId, newBalance };
+    return { transactionId, newBalance, replayed: false };
   },
 });
 
@@ -323,6 +428,7 @@ export const createWithdrawal = mutation({
     customerId: v.id("customers"),
     amount: v.number(),
     tpeId: v.string(),
+    clientRef: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
     const identity = await ctx.auth.getUserIdentity();
@@ -338,15 +444,19 @@ export const createWithdrawal = mutation({
       .withTenant(agent.branchId)
       .require(ctx, identity.subject, "transactions:collect");
 
-    if (args.amount <= 0) throw new Error("Amount must be positive");
+    const replay = await findReplay(ctx, agent._id, args, "withdrawal");
+    if (replay) return replay;
+
+    if (args.amount <= 0) rejectTx("INVALID_AMOUNT", "Amount must be positive");
 
     const customer = await ctx.db.get(args.customerId);
-    if (!customer) throw new Error("Customer not found");
-    if (customer.branchId !== agent.branchId) throw new Error("Forbidden");
+    if (!customer) rejectTx("CUSTOMER_NOT_FOUND", "Customer not found");
+    if (customer.branchId !== agent.branchId)
+      rejectTx("FORBIDDEN", "Forbidden");
 
     const currentBalance = customer.balance ?? 0;
     if (args.amount > currentBalance) {
-      throw new Error("Insufficient balance");
+      rejectTx("INSUFFICIENT_BALANCE", "Insufficient balance");
     }
 
     const transactionId = await ctx.db.insert("transactions", {
@@ -359,13 +469,14 @@ export const createWithdrawal = mutation({
       type: "withdrawal",
       status: "completed",
       timestamp: Date.now(),
+      clientRef: args.clientRef,
     });
 
     // Update customer balance
     const newBalance = currentBalance - args.amount;
     await ctx.db.patch(args.customerId, { balance: newBalance });
 
-    return { transactionId, newBalance };
+    return { transactionId, newBalance, replayed: false };
   },
 });
 

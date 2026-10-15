@@ -16,6 +16,7 @@ import { ChevronLeft, ShieldCheck, Star, User } from "lucide-react-native";
 import { useAuthStore } from "@/stores/auth-store";
 import { Numpad } from "@/app/components/ui/numpad";
 
+import { SPACE } from "@/constants/spacing";
 // ── Design tokens (from HTML :root) ────────────────────────────
 const T = {
   orange: "#D85A30",
@@ -584,7 +585,7 @@ const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: T.bgPrimary },
 
   // Step dots
-  stepDots: { flexDirection: "row", gap: 6, marginBottom: 28 },
+  stepDots: { flexDirection: "row", gap: SPACE.xs, marginBottom: SPACE.xl },
   dot: { width: 6, height: 6, borderRadius: 3, backgroundColor: T.border },
   dotDone: { backgroundColor: T.orange, opacity: 0.35 },
   dotActive: { width: 18, backgroundColor: T.orange, opacity: 1 },
@@ -593,8 +594,8 @@ const styles = StyleSheet.create({
   backRow: {
     flexDirection: "row",
     alignItems: "center",
-    gap: 4,
-    marginBottom: 20,
+    gap: SPACE.xs,
+    marginBottom: SPACE.lg,
   },
   backText: { fontSize: 13, color: T.textTertiary },
 
@@ -602,8 +603,8 @@ const styles = StyleSheet.create({
   screenWelcome: {
     flex: 1,
     backgroundColor: T.orange,
-    padding: 28,
-    paddingBottom: 32,
+    padding: SPACE.xxl,
+    paddingBottom: SPACE.xxl,
     justifyContent: "space-between",
   },
   welcomeCircle1: {
@@ -624,7 +625,7 @@ const styles = StyleSheet.create({
     borderRadius: 100,
     backgroundColor: "rgba(255,255,255,0.04)",
   },
-  welcomeLogo: { alignItems: "center", gap: 10, marginTop: 20, zIndex: 1 },
+  welcomeLogo: { alignItems: "center", gap: SPACE.sm, marginTop: SPACE.lg, zIndex: 1 },
   logoCircle: {
     width: 72,
     height: 72,
@@ -640,7 +641,7 @@ const styles = StyleSheet.create({
     fontWeight: "600",
     color: "white",
     letterSpacing: -0.5,
-    marginTop: 6,
+    marginTop: SPACE.xs,
   },
   welcomeSubtitle: {
     fontSize: 13,
@@ -652,16 +653,16 @@ const styles = StyleSheet.create({
   btnWhite: {
     backgroundColor: "white",
     borderRadius: 13,
-    padding: 14,
+    padding: SPACE.lg,
     alignItems: "center",
-    marginBottom: 10,
+    marginBottom: SPACE.sm,
   },
   btnWhiteText: { fontSize: 14, fontWeight: "500", color: T.orange },
   btnGhost: {
     borderWidth: 1.5,
     borderColor: "rgba(255,255,255,0.3)",
     borderRadius: 13,
-    padding: 12,
+    padding: SPACE.md,
     alignItems: "center",
     marginBottom: 0,
   },
@@ -671,53 +672,53 @@ const styles = StyleSheet.create({
     fontSize: 10,
     color: "rgba(255,255,255,0.4)",
     textAlign: "center",
-    marginTop: 12,
+    marginTop: SPACE.md,
   },
 
   // ── Inner screens ──
   screenInner: {
     flex: 1,
     backgroundColor: T.bgPrimary,
-    padding: 22,
-    paddingTop: 16,
+    padding: SPACE.xl,
+    paddingTop: SPACE.lg,
   },
-  screenInnerContent: { paddingBottom: 32 },
+  screenInnerContent: { paddingBottom: SPACE.xxl },
   screenTitle: {
     fontSize: 22,
     fontWeight: "600",
     color: T.textPrimary,
     letterSpacing: -0.4,
     lineHeight: 28,
-    marginBottom: 6,
+    marginBottom: SPACE.xs,
   },
   screenSub: {
     fontSize: 13,
     color: T.textSecondary,
     lineHeight: 20,
-    marginBottom: 28,
+    marginBottom: SPACE.xl,
   },
 
   // ── Phone screen ──
-  fieldGroup: { marginBottom: 16 },
+  fieldGroup: { marginBottom: SPACE.lg },
   fieldLabel: {
     fontSize: 11,
     fontWeight: "500",
     color: T.textTertiary,
     textTransform: "uppercase",
     letterSpacing: 0.5,
-    marginBottom: 6,
+    marginBottom: SPACE.xs,
   },
-  phoneInputRow: { flexDirection: "row", gap: 8 },
+  phoneInputRow: { flexDirection: "row", gap: SPACE.sm },
   countrySelect: {
     flexDirection: "row",
     alignItems: "center",
-    gap: 5,
+    gap: SPACE.xs,
     backgroundColor: T.bgSecondary,
     borderWidth: 0.5,
     borderColor: T.border,
     borderRadius: 10,
-    paddingHorizontal: 10,
-    paddingVertical: 11,
+    paddingHorizontal: SPACE.md,
+    paddingVertical: SPACE.md,
   },
   countryFlag: { fontSize: 16 },
   countryCode: { fontSize: 13, fontWeight: "500", color: T.textPrimary },
@@ -727,8 +728,8 @@ const styles = StyleSheet.create({
     borderWidth: 0.5,
     borderColor: T.border,
     borderRadius: 10,
-    paddingHorizontal: 13,
-    paddingVertical: 11,
+    paddingHorizontal: SPACE.md,
+    paddingVertical: SPACE.md,
     fontSize: 15,
     fontWeight: "500",
     color: T.textPrimary,
@@ -736,26 +737,26 @@ const styles = StyleSheet.create({
   },
   textInputFull: { flex: undefined, width: "100%" },
   textInputFilled: { borderColor: T.orange, backgroundColor: T.orangeLight },
-  inputNote: { fontSize: 11, color: T.textTertiary, marginTop: 6 },
-  errorText: { fontSize: 12, color: T.orangeDark, marginTop: 6 },
+  inputNote: { fontSize: 11, color: T.textTertiary, marginTop: SPACE.xs },
+  errorText: { fontSize: 12, color: T.orangeDark, marginTop: SPACE.xs },
   dividerOr: {
     flexDirection: "row",
     alignItems: "center",
-    gap: 10,
-    marginVertical: 20,
+    gap: SPACE.sm,
+    marginVertical: SPACE.lg,
   },
   dividerLine: { flex: 1, height: 0.5, backgroundColor: T.border },
   dividerText: { fontSize: 11, color: T.textTertiary },
   emailAlt: {
     flexDirection: "row",
     alignItems: "center",
-    gap: 10,
+    gap: SPACE.sm,
     backgroundColor: T.bgSecondary,
     borderWidth: 0.5,
     borderColor: T.border,
     borderRadius: 10,
-    paddingHorizontal: 13,
-    paddingVertical: 11,
+    paddingHorizontal: SPACE.md,
+    paddingVertical: SPACE.md,
   },
   emailAltText: { fontSize: 13, color: T.textSecondary, flex: 1 },
   badgeOpt: {
@@ -763,8 +764,8 @@ const styles = StyleSheet.create({
     borderWidth: 0.5,
     borderColor: T.border,
     borderRadius: 5,
-    paddingHorizontal: 7,
-    paddingVertical: 2,
+    paddingHorizontal: SPACE.sm,
+    paddingVertical: SPACE.xxs,
   },
   badgeOptText: { fontSize: 10, color: T.textTertiary },
   spacer: { flex: 1 },
@@ -773,7 +774,7 @@ const styles = StyleSheet.create({
   btnPrimary: {
     backgroundColor: T.orange,
     borderRadius: 13,
-    padding: 14,
+    padding: SPACE.lg,
     alignItems: "center",
   },
   btnPrimaryText: { fontSize: 14, fontWeight: "500", color: "white" },
@@ -788,7 +789,7 @@ const styles = StyleSheet.create({
     backgroundColor: T.orangeLight,
     justifyContent: "center",
     alignItems: "center",
-    marginBottom: 20,
+    marginBottom: SPACE.lg,
   },
   hiddenInput: {
     position: "absolute",
@@ -796,7 +797,7 @@ const styles = StyleSheet.create({
     height: 0,
     width: 0,
   },
-  otpBoxes: { flexDirection: "row", gap: 8, marginVertical: 24 },
+  otpBoxes: { flexDirection: "row", gap: SPACE.sm, marginVertical: SPACE.xl },
   otpBox: {
     flex: 1,
     height: 52,
@@ -818,7 +819,7 @@ const styles = StyleSheet.create({
     fontSize: 12,
     color: T.textTertiary,
     textAlign: "center",
-    marginBottom: 8,
+    marginBottom: SPACE.sm,
   },
   resendRow: {
     flexDirection: "row",
@@ -829,7 +830,7 @@ const styles = StyleSheet.create({
   resendLink: { fontSize: 12, color: T.orange },
 
   // ── Profile screen ──
-  avatarPicker: { alignItems: "center", marginVertical: 16 },
+  avatarPicker: { alignItems: "center", marginVertical: SPACE.lg },
   avatarCircle: {
     width: 72,
     height: 72,
@@ -837,7 +838,7 @@ const styles = StyleSheet.create({
     backgroundColor: T.orangeLight,
     justifyContent: "center",
     alignItems: "center",
-    marginBottom: 8,
+    marginBottom: SPACE.sm,
   },
   avatarText: { fontSize: 24, fontWeight: "600", color: T.orange },
   avatarEdit: {
@@ -854,14 +855,14 @@ const styles = StyleSheet.create({
     alignItems: "center",
   },
   avatarHint: { fontSize: 11, color: T.textTertiary },
-  roleSelector: { flexDirection: "row", gap: 8 },
+  roleSelector: { flexDirection: "row", gap: SPACE.sm },
   roleCard: {
     flex: 1,
     borderWidth: 1.5,
     borderColor: T.border,
     borderRadius: 12,
-    padding: 13,
-    gap: 6,
+    padding: SPACE.md,
+    gap: SPACE.xs,
   },
   roleCardSelected: { borderColor: T.orange, backgroundColor: T.orangeLight },
   roleIcon: {
@@ -880,7 +881,7 @@ const styles = StyleSheet.create({
   screenPinInner: { alignItems: "center" },
   pinTopRow: { width: "100%" },
   pinHeader: { alignItems: "center", marginBottom: 0 },
-  pinDots: { flexDirection: "row", gap: 14, marginVertical: 24 },
+  pinDots: { flexDirection: "row", gap: SPACE.md, marginVertical: SPACE.xl },
   pinDot: {
     width: 14,
     height: 14,
@@ -893,19 +894,19 @@ const styles = StyleSheet.create({
   pinHint: {
     fontSize: 11,
     color: T.textTertiary,
-    marginBottom: 28,
+    marginBottom: SPACE.xl,
     textAlign: "center",
   },
   // ── Success screen ──
   screenSuccess: {
     flex: 1,
     backgroundColor: T.bgPrimary,
-    padding: 24,
-    paddingTop: 60,
+    padding: SPACE.xl,
+    paddingTop: SPACE.huge,
     justifyContent: "space-between",
     alignItems: "center",
   },
-  successIconWrap: { alignItems: "center", gap: 20 },
+  successIconWrap: { alignItems: "center", gap: SPACE.lg },
   successRing: {
     width: 80,
     height: 80,
@@ -920,7 +921,7 @@ const styles = StyleSheet.create({
     fontWeight: "600",
     color: T.textPrimary,
     letterSpacing: -0.4,
-    marginBottom: 6,
+    marginBottom: SPACE.xs,
     textAlign: "center",
   },
   successSub: {
@@ -935,14 +936,14 @@ const styles = StyleSheet.create({
     borderWidth: 0.5,
     borderColor: T.border,
     borderRadius: 14,
-    paddingHorizontal: 16,
-    paddingVertical: 4,
+    paddingHorizontal: SPACE.lg,
+    paddingVertical: SPACE.xs,
   },
   summaryRow: {
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
-    paddingVertical: 10,
+    paddingVertical: SPACE.md,
     borderBottomWidth: 0.5,
     borderBottomColor: T.border,
   },

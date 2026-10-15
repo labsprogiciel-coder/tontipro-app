@@ -30,6 +30,7 @@ import { useAppLockStore } from "@/stores/app-lock-store";
 import { convex } from "@/lib/convex";
 import { withAuthRetry } from "@/lib/withAuthRetry";
 
+import { SPACE } from "@/constants/spacing";
 const T = {
   orange: "#D85A30",
   orangeDark: "#993C1D",
@@ -357,10 +358,10 @@ export default function RegisterScreen() {
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: T.bgPrimary },
-  screen: { flex: 1, paddingHorizontal: 28, paddingTop: 40, paddingBottom: 40 },
+  screen: { flex: 1, paddingHorizontal: SPACE.xl, paddingTop: SPACE.xxxl, paddingBottom: SPACE.xxxl },
 
   // Header
-  header: { alignItems: "center", marginBottom: 30, gap: 8 },
+  header: { alignItems: "center", marginBottom: SPACE.xxl, gap: SPACE.sm },
   logoCircle: {
     width: 64,
     height: 64,
@@ -368,7 +369,7 @@ const styles = StyleSheet.create({
     backgroundColor: T.orange,
     justifyContent: "center",
     alignItems: "center",
-    marginBottom: 12,
+    marginBottom: SPACE.md,
   },
   appName: {
     fontSize: 18,
@@ -388,17 +389,17 @@ const styles = StyleSheet.create({
     color: T.textSecondary,
     textAlign: "center",
     lineHeight: 20,
-    paddingHorizontal: 20,
+    paddingHorizontal: SPACE.lg,
   },
 
   // Form
-  form: { gap: 16 },
-  fieldGroup: { gap: 6 },
+  form: { gap: SPACE.lg },
+  fieldGroup: { gap: SPACE.xs },
   fieldLabel: {
     fontSize: 12,
     fontWeight: "600",
     color: T.textSecondary,
-    marginLeft: 4,
+    marginLeft: SPACE.xs,
   },
   inputWrapper: {
     flexDirection: "row",
@@ -407,10 +408,10 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     borderWidth: 1,
     borderColor: T.border,
-    paddingHorizontal: 12,
+    paddingHorizontal: SPACE.md,
   },
-  inputIcon: { marginRight: 10 },
-  eyeBtn: { padding: 4, marginLeft: 4 },
+  inputIcon: { marginRight: SPACE.sm },
+  eyeBtn: { padding: SPACE.xs, marginLeft: SPACE.xs },
   input: {
     flex: 1,
     height: 50,
@@ -425,15 +426,15 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     justifyContent: "center",
     alignItems: "center",
-    gap: 10,
-    marginTop: 10,
+    gap: SPACE.sm,
+    marginTop: SPACE.sm,
   },
   submitBtnText: { color: "white", fontSize: 16, fontWeight: "600" },
   btnDisabled: { opacity: 0.6 },
   btnPressed: { opacity: 0.9, transform: [{ scale: 0.98 }] },
 
   // Footer
-  footerLink: { marginTop: 24, alignItems: "center" },
+  footerLink: { marginTop: SPACE.xl, alignItems: "center" },
   footerText: { fontSize: 14, color: T.textSecondary },
   footerLinkText: { color: T.orange, fontWeight: "600" },
 });

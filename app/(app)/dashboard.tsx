@@ -30,6 +30,7 @@ import {
 import { KAURIDORR_THEME } from "@/constants/colors";
 import { useAuthStore } from "@/stores/auth-store";
 import { customerToClient, useClientStore } from "@/stores/client-store";
+import { isLocalClient } from "@/stores/sync-bridge";
 import {
   convexRowToTransaction,
   mergeTransactionsSorted,
@@ -49,6 +50,7 @@ import ClientCard from "../components/clients/clients";
 import SearchInput from "../components/quickactions/search-input";
 import { usePermissions } from "@/hooks/usePermissions";
 
+import { SPACE } from "@/constants/spacing";
 const T = KAURIDORR_THEME;
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
@@ -119,7 +121,9 @@ const AgentDashboard: React.FC = () => {
   // on les fusionne manuellement, comme pendingTxList pour les transactions.
   const localClients = useClientStore((s) => s.clients);
   const pendingLocalClients = useMemo(
-    () => localClients.filter((c) => c.syncStatus === "pending"),
+    // Only clients not yet created on the server — a server client with
+    // pending edits is already in `customersData` (it would appear twice).
+    () => localClients.filter(isLocalClient),
     [localClients],
   );
   const clients = useMemo(
@@ -377,15 +381,15 @@ const styles = StyleSheet.create({
   },
   header: {
     backgroundColor: T.orange,
-    paddingHorizontal: 18,
-    paddingBottom: 20,
-    paddingTop: 10,
+    paddingHorizontal: SPACE.lg,
+    paddingBottom: SPACE.xl,
+    paddingTop: SPACE.md,
   },
   headerTop: {
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
-    marginBottom: 14,
+    marginBottom: SPACE.md,
   },
   greeting: {
     color: "rgba(255,255,255,0.8)",
@@ -399,14 +403,14 @@ const styles = StyleSheet.create({
   topUtilityRow: {
     flexDirection: "row",
     alignItems: "center",
-    gap: 10,
+    gap: SPACE.sm,
   },
   metricRow: {
     flexDirection: "row",
-    gap: 10,
+    gap: SPACE.sm,
   },
   body: {
-    padding: 16,
+    padding: SPACE.lg,
   },
   sectionLabel: {
     fontSize: 11,
@@ -414,16 +418,19 @@ const styles = StyleSheet.create({
     color: T.text3,
     textTransform: "uppercase",
     letterSpacing: 0.06 * 11,
-    marginBottom: 10,
+    marginBottom: SPACE.sm,
   },
   actionGrid: {
     flexDirection: "row",
     flexWrap: "wrap",
-    gap: 10,
-    marginBottom: 20,
+    gap: SPACE.sm,
+    marginBottom: SPACE.lg,
   },
   actionBtn: {
-    width: "48%",
+    // Two equal columns that exactly fill the row with the grid's gap
+    // (a fixed 48% width left a sliver on the right).
+    flexGrow: 1,
+    flexBasis: "40%",
   },
   transactionContainer: {
     backgroundColor: T.bg,
@@ -431,12 +438,12 @@ const styles = StyleSheet.create({
     borderWidth: 0.5,
     borderColor: T.border,
     overflow: "hidden",
-    marginBottom: 20,
+    marginBottom: SPACE.lg,
   },
   emptyBox: {
-    paddingVertical: 20,
+    paddingVertical: SPACE.xl,
     alignItems: "center",
-    marginBottom: 16,
+    marginBottom: SPACE.lg,
   },
   emptyText: {
     fontSize: 13,

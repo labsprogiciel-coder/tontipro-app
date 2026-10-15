@@ -20,6 +20,7 @@ import { api } from "@/convex/_generated/api";
 import { Id } from "@/convex/_generated/dataModel";
 import { Numpad } from "@/app/components/ui/numpad";
 
+import { SPACE } from "@/constants/spacing";
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
 function getInitials(name: string): string {
@@ -376,7 +377,7 @@ export default function AgentDetailScreen() {
             <View style={s.modalHandle} />
             <Text style={s.modalTitle}>Changer le rôle</Text>
             <Text style={s.modalSub}>{agent.fullName}</Text>
-            <View style={{ paddingHorizontal: 18, gap: 8, paddingBottom: 24 }}>
+            <View style={{ paddingHorizontal: SPACE.lg, gap: SPACE.sm, paddingBottom: SPACE.xl }}>
               {ROLE_OPTIONS.map((r) => {
                 const m = ROLE_META[r];
                 const active = agent.role === r;
@@ -430,7 +431,7 @@ export default function AgentDetailScreen() {
             {pinSaving ? (
               <ActivityIndicator
                 color={T.orange}
-                style={{ marginVertical: 32 }}
+                style={{ marginVertical: SPACE.xxl }}
               />
             ) : (
               <Numpad
@@ -476,16 +477,16 @@ const s = StyleSheet.create({
   root: { flex: 1, backgroundColor: T.bg },
   center: { flex: 1, alignItems: "center", justifyContent: "center" },
 
-  darkHdr: { backgroundColor: "#1a1a18", paddingBottom: 20 },
+  darkHdr: { backgroundColor: "#1a1a18", paddingBottom: SPACE.xl },
   navRow: {
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
-    paddingHorizontal: 18,
-    paddingTop: 10,
-    marginBottom: 18,
+    paddingHorizontal: SPACE.lg,
+    paddingTop: SPACE.md,
+    marginBottom: SPACE.lg,
   },
-  backBtn: { flexDirection: "row", alignItems: "center", gap: 4 },
+  backBtn: { flexDirection: "row", alignItems: "center", gap: SPACE.xs },
   backTxt: { fontSize: 13, color: "rgba(255,255,255,0.5)" },
   iconBtn: {
     width: 34,
@@ -496,7 +497,7 @@ const s = StyleSheet.create({
     justifyContent: "center",
   },
 
-  hdrCenter: { alignItems: "center", gap: 8 },
+  hdrCenter: { alignItems: "center", gap: SPACE.sm },
   hdrAvatarWrap: { position: "relative" },
   hdrAvatar: {
     width: 60,
@@ -526,30 +527,30 @@ const s = StyleSheet.create({
   hdrPhone: { fontSize: 12, color: "rgba(255,255,255,0.45)" },
   badgeRow: {
     flexDirection: "row",
-    gap: 6,
-    marginTop: 2,
+    gap: SPACE.xs,
+    marginTop: SPACE.xxs,
     flexWrap: "wrap",
     justifyContent: "center",
   },
-  pill: { paddingHorizontal: 9, paddingVertical: 3, borderRadius: 20 },
+  pill: { paddingHorizontal: SPACE.sm, paddingVertical: SPACE.xs, borderRadius: 20 },
   pillTxt: { fontSize: 10 },
   pillOnline: {
-    paddingHorizontal: 9,
-    paddingVertical: 3,
+    paddingHorizontal: SPACE.sm,
+    paddingVertical: SPACE.xs,
     borderRadius: 20,
     backgroundColor: "rgba(59,109,17,0.3)",
   },
   pillOnlineTxt: { fontSize: 10, color: "#97c459" },
 
-  body: { padding: 18 },
+  body: { padding: SPACE.lg },
   secTitle: {
     fontSize: 11,
     fontWeight: "500",
     color: T.text3,
     textTransform: "uppercase",
     letterSpacing: 0.5,
-    marginBottom: 8,
-    marginTop: 16,
+    marginBottom: SPACE.sm,
+    marginTop: SPACE.lg,
   },
 
   card: {
@@ -563,8 +564,8 @@ const s = StyleSheet.create({
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
-    paddingHorizontal: 14,
-    paddingVertical: 10,
+    paddingHorizontal: SPACE.lg,
+    paddingVertical: SPACE.md,
   },
   revLabel: { fontSize: 12, color: T.text2 },
   revValue: {
@@ -572,7 +573,7 @@ const s = StyleSheet.create({
     fontWeight: "500",
     color: T.text1,
     flexShrink: 1,
-    marginLeft: 16,
+    marginLeft: SPACE.lg,
     textAlign: "right",
   },
   rowDiv: { height: 0.5, backgroundColor: T.border },
@@ -580,8 +581,8 @@ const s = StyleSheet.create({
   readonlyBanner: {
     backgroundColor: "#fff3cd",
     borderRadius: 8,
-    padding: 10,
-    marginBottom: 8,
+    padding: SPACE.md,
+    marginBottom: SPACE.sm,
   },
   readonlyTxt: { fontSize: 12, color: "#856404" },
 
@@ -592,10 +593,10 @@ const s = StyleSheet.create({
     borderWidth: 0.5,
     borderColor: T.border,
     borderRadius: 14,
-    paddingHorizontal: 14,
-    paddingVertical: 14,
+    paddingHorizontal: SPACE.lg,
+    paddingVertical: SPACE.lg,
   },
-  roleRowLabel: { fontSize: 11, color: T.text3, marginBottom: 3 },
+  roleRowLabel: { fontSize: 11, color: T.text3, marginBottom: SPACE.xxs },
   roleRowValue: { fontSize: 14, fontWeight: "600" },
   roleRowChange: { fontSize: 12, color: T.orange, fontWeight: "500" },
 
@@ -610,16 +611,16 @@ const s = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
-    paddingHorizontal: 14,
-    paddingVertical: 11,
+    paddingHorizontal: SPACE.lg,
+    paddingVertical: SPACE.md,
   },
   capBorder: { borderBottomWidth: 0.5, borderBottomColor: T.border },
   capLabel: { fontSize: 13, color: T.text1 },
 
-  actionRow: { flexDirection: "row", gap: 8, marginTop: 20 },
+  actionRow: { flexDirection: "row", gap: SPACE.sm, marginTop: SPACE.lg },
   btnSuspend: {
     flex: 1,
-    padding: 12,
+    padding: SPACE.md,
     borderRadius: 12,
     borderWidth: 0.5,
     borderColor: "rgba(162,45,45,0.3)",
@@ -629,7 +630,7 @@ const s = StyleSheet.create({
   btnSuspendTxt: { fontSize: 12, fontWeight: "500", color: T.textDanger },
   btnEdit: {
     flex: 1,
-    padding: 12,
+    padding: SPACE.md,
     borderRadius: 12,
     backgroundColor: T.orange,
     alignItems: "center",
@@ -640,13 +641,13 @@ const s = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",
-    gap: 6,
-    padding: 12,
+    gap: SPACE.xs,
+    padding: SPACE.md,
     borderRadius: 12,
     borderWidth: 0.5,
     borderColor: T.orange,
     backgroundColor: T.orangeLt,
-    marginTop: 12,
+    marginTop: SPACE.md,
   },
   btnPinTxt: { fontSize: 12, fontWeight: "500", color: T.orange },
 
@@ -659,8 +660,8 @@ const s = StyleSheet.create({
     backgroundColor: T.bg,
     borderTopLeftRadius: 20,
     borderTopRightRadius: 20,
-    paddingTop: 12,
-    paddingBottom: 32,
+    paddingTop: SPACE.md,
+    paddingBottom: SPACE.xxl,
   },
   modalHandle: {
     width: 36,
@@ -668,20 +669,20 @@ const s = StyleSheet.create({
     borderRadius: 2,
     backgroundColor: T.border2,
     alignSelf: "center",
-    marginBottom: 16,
+    marginBottom: SPACE.lg,
   },
   modalTitle: {
     fontSize: 16,
     fontWeight: "600",
     color: T.text1,
     textAlign: "center",
-    marginBottom: 4,
+    marginBottom: SPACE.xs,
   },
   modalSub: {
     fontSize: 12,
     color: T.text3,
     textAlign: "center",
-    marginBottom: 16,
+    marginBottom: SPACE.lg,
   },
 
   rolePill: {
@@ -692,8 +693,8 @@ const s = StyleSheet.create({
     borderWidth: 0.5,
     borderColor: T.border,
     borderRadius: 12,
-    paddingHorizontal: 14,
-    paddingVertical: 13,
+    paddingHorizontal: SPACE.lg,
+    paddingVertical: SPACE.md,
   },
   rolePillActive: { borderColor: T.orange, backgroundColor: T.orangeLt },
   rolePillTxt: { fontSize: 14, fontWeight: "500", color: T.text1 },
@@ -701,8 +702,8 @@ const s = StyleSheet.create({
   pinDots: {
     flexDirection: "row",
     justifyContent: "center",
-    gap: 14,
-    marginBottom: 24,
+    gap: SPACE.md,
+    marginBottom: SPACE.xl,
   },
   dot2: {
     width: 14,

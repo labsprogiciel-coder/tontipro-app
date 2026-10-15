@@ -2,6 +2,7 @@ import { StatusVariant } from "@/constants/utils";
 import React from "react";
 import { View, Text, StyleSheet, TouchableOpacity } from "react-native";
 
+import { SPACE } from "@/constants/spacing";
 // 1. Add 'as const' so TS knows the exact values
 export const avatarColors = {
   info: { bg: "#e6f1fb", text: "#185fa5" },
@@ -69,8 +70,8 @@ const styles = StyleSheet.create({
   card: {
     backgroundColor: "#ffffff", // --color-background-primary
     borderRadius: 14,
-    padding: 13,
-    marginBottom: 8,
+    padding: SPACE.md,
+    marginBottom: SPACE.sm,
     flexDirection: "row",
     alignItems: "center",
     borderWidth: 0.5,
@@ -88,7 +89,7 @@ const styles = StyleSheet.create({
     fontWeight: "500",
   },
   infoContainer: {
-    marginLeft: 12,
+    marginLeft: SPACE.md,
     flex: 1,
   },
   nameText: {
@@ -99,7 +100,7 @@ const styles = StyleSheet.create({
   phoneText: {
     fontSize: 11,
     color: "#5f5e5a", // --color-text-secondary
-    marginTop: 1,
+    marginTop: SPACE.xxs,
   },
   rightContainer: {
     alignItems: "flex-end",
@@ -110,10 +111,10 @@ const styles = StyleSheet.create({
     color: "#1a1a18",
   },
   badge: {
-    paddingHorizontal: 7,
-    paddingVertical: 2,
+    paddingHorizontal: SPACE.sm,
+    paddingVertical: SPACE.xxs,
     borderRadius: 5,
-    marginTop: 3,
+    marginTop: SPACE.xxs,
   },
   badgeText: {
     fontSize: 10,

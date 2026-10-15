@@ -27,6 +27,7 @@ import { useQuery } from "convex/react";
 import { api } from "@/convex/_generated/api";
 import { Id } from "@/convex/_generated/dataModel";
 
+import { SPACE } from "@/constants/spacing";
 // ── Types ─────────────────────────────────────────────────────────────────────
 
 type Step = 1 | 2 | 3 | "success";
@@ -294,7 +295,7 @@ function StepRole({
         </View>
 
         {/* Capability table */}
-        <Text style={[s.fieldLabel, { marginTop: 20, marginBottom: 10 }]}>
+        <Text style={[s.fieldLabel, { marginTop: SPACE.lg, marginBottom: SPACE.sm }]}>
           Capacités du rôle sélectionné
         </Text>
         <View style={s.capTable}>
@@ -418,7 +419,7 @@ function StepPin({
         </Pressable>
 
         <Pressable
-          style={[s.optionRow, { marginTop: 8 }]}
+          style={[s.optionRow, { marginTop: SPACE.sm }]}
           onPress={onToggleSms}
         >
           <View style={[s.optionIcon, { backgroundColor: "#e6f1fb" }]}>
@@ -530,7 +531,7 @@ function SuccessScreen({
         </Pressable>
       </View>
       <Pressable
-        style={[s.btnOutline, { marginTop: 8 }]}
+        style={[s.btnOutline, { marginTop: SPACE.sm }]}
         onPress={onBackToList}
       >
         <Text style={s.btnOutlineTxt}>Retour à la liste des agents</Text>
@@ -551,7 +552,7 @@ function Field({
   children: React.ReactNode;
 }) {
   return (
-    <View style={{ marginBottom: 14 }}>
+    <View style={{ marginBottom: SPACE.md }}>
       <Text style={s.fieldLabel}>{label}</Text>
       {children}
     </View>
@@ -624,13 +625,13 @@ export default function AddAgentScreen() {
           backgroundColor: T.bg,
         }}
       >
-        <Text style={{ fontSize: 32, marginBottom: 12 }}>🔒</Text>
+        <Text style={{ fontSize: 32, marginBottom: SPACE.md }}>🔒</Text>
         <Text
           style={{
             fontSize: 15,
             fontWeight: "600",
             color: T.text1,
-            marginBottom: 6,
+            marginBottom: SPACE.xs,
           }}
         >
           Accès refusé
@@ -640,7 +641,7 @@ export default function AddAgentScreen() {
             fontSize: 13,
             color: T.text3,
             textAlign: "center",
-            paddingHorizontal: 32,
+            paddingHorizontal: SPACE.xxl,
           }}
         >
           Vous n&apos;avez pas la permission de gérer les agents.
@@ -762,32 +763,32 @@ const s = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
-    paddingHorizontal: 18,
-    paddingTop: 12,
+    paddingHorizontal: SPACE.lg,
+    paddingTop: SPACE.md,
   },
-  backBtn: { flexDirection: "row", alignItems: "center", gap: 4 },
+  backBtn: { flexDirection: "row", alignItems: "center", gap: SPACE.xs },
   backTxt: { fontSize: 13, color: T.text3 },
   stepBadge: {
     backgroundColor: T.bg2,
     borderWidth: 0.5,
     borderColor: T.border,
     borderRadius: 20,
-    paddingHorizontal: 9,
-    paddingVertical: 3,
+    paddingHorizontal: SPACE.sm,
+    paddingVertical: SPACE.xs,
   },
   stepBadgeTxt: { fontSize: 11, fontWeight: "500", color: T.text3 },
 
-  formBody: { flex: 1, paddingHorizontal: 18, paddingTop: 0 },
+  formBody: { flex: 1, paddingHorizontal: SPACE.lg, paddingTop: 0 },
   screenTitle: {
     fontSize: 20,
     fontWeight: "600",
     color: T.text1,
     letterSpacing: -0.4,
     lineHeight: 26,
-    marginTop: 14,
-    marginBottom: 4,
+    marginTop: SPACE.md,
+    marginBottom: SPACE.xs,
   },
-  screenSub: { fontSize: 13, color: T.text2, lineHeight: 20, marginBottom: 22 },
+  screenSub: { fontSize: 13, color: T.text2, lineHeight: 20, marginBottom: SPACE.xl },
 
   fieldLabel: {
     fontSize: 11,
@@ -795,20 +796,20 @@ const s = StyleSheet.create({
     color: T.text3,
     textTransform: "uppercase",
     letterSpacing: 0.5,
-    marginBottom: 6,
+    marginBottom: SPACE.xs,
   },
   input: {
     backgroundColor: T.bg2,
     borderWidth: 0.5,
     borderColor: T.border,
     borderRadius: 11,
-    paddingHorizontal: 13,
-    paddingVertical: 12,
+    paddingHorizontal: SPACE.md,
+    paddingVertical: SPACE.md,
     fontSize: 14,
     color: T.text1,
   },
   inputFilled: { borderColor: T.orange, backgroundColor: T.orangeLt },
-  phoneRow: { flexDirection: "row", gap: 7 },
+  phoneRow: { flexDirection: "row", gap: SPACE.sm },
   countryPill: {
     flexDirection: "row",
     alignItems: "center",
@@ -816,45 +817,45 @@ const s = StyleSheet.create({
     borderWidth: 0.5,
     borderColor: T.border,
     borderRadius: 11,
-    paddingHorizontal: 10,
-    paddingVertical: 12,
+    paddingHorizontal: SPACE.md,
+    paddingVertical: SPACE.md,
   },
   countryTxt: { fontSize: 13, color: T.text1 },
-  hintOk: { flexDirection: "row", alignItems: "center", gap: 4, marginTop: 5 },
+  hintOk: { flexDirection: "row", alignItems: "center", gap: SPACE.xs, marginTop: SPACE.xs },
   hintTxt: { fontSize: 11 },
-  hintNeutral: { fontSize: 11, color: T.text3, marginTop: 5 },
+  hintNeutral: { fontSize: 11, color: T.text3, marginTop: SPACE.xs },
 
   ctaWrap: {
-    paddingHorizontal: 18,
+    paddingHorizontal: SPACE.lg,
     paddingBottom: Platform.OS === "ios" ? 24 : 16,
-    paddingTop: 8,
+    paddingTop: SPACE.sm,
     backgroundColor: T.bg,
   },
   btnMain: {
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",
-    gap: 7,
+    gap: SPACE.sm,
     backgroundColor: T.orange,
     borderRadius: 13,
-    paddingVertical: 14,
+    paddingVertical: SPACE.lg,
   },
   btnMainDisabled: { opacity: 0.4 },
   btnMainTxt: { fontSize: 14, fontWeight: "500", color: "white" },
 
-  roleList: { gap: 8, marginBottom: 4 },
+  roleList: { gap: SPACE.sm, marginBottom: SPACE.xs },
   roleCard: {
     flexDirection: "row",
     alignItems: "center",
-    gap: 10,
+    gap: SPACE.sm,
     borderWidth: 0.5,
     borderColor: T.border2,
     borderRadius: 13,
-    padding: 13,
+    padding: SPACE.md,
   },
   roleCardActive: { borderColor: T.orange, backgroundColor: T.orangeLt },
   roleName: { fontSize: 13, fontWeight: "500", color: T.text1 },
-  roleDesc: { fontSize: 10, color: T.text2, lineHeight: 14, marginTop: 2 },
+  roleDesc: { fontSize: 10, color: T.text2, lineHeight: 14, marginTop: SPACE.xxs },
 
   capTable: {
     backgroundColor: T.bg2,
@@ -866,8 +867,8 @@ const s = StyleSheet.create({
   capHdr: {
     flexDirection: "row",
     backgroundColor: T.bg3,
-    paddingHorizontal: 12,
-    paddingVertical: 8,
+    paddingHorizontal: SPACE.md,
+    paddingVertical: SPACE.sm,
   },
   capHdrTxt: {
     fontSize: 10,
@@ -875,7 +876,7 @@ const s = StyleSheet.create({
     color: T.text3,
     textTransform: "uppercase",
   },
-  capRow: { flexDirection: "row", paddingHorizontal: 12, paddingVertical: 9 },
+  capRow: { flexDirection: "row", paddingHorizontal: SPACE.md, paddingVertical: SPACE.sm },
   capBorder: { borderBottomWidth: 0.5, borderBottomColor: T.border },
   capCell: { flex: 1, fontSize: 13, color: T.text2 },
 
@@ -884,14 +885,14 @@ const s = StyleSheet.create({
     borderWidth: 0.5,
     borderColor: "rgba(133,79,11,0.2)",
     borderRadius: 12,
-    padding: 11,
-    marginBottom: 18,
+    padding: SPACE.md,
+    marginBottom: SPACE.lg,
   },
   warningTxt: { fontSize: 12, color: T.textWarning, lineHeight: 18 },
 
-  pinSection: { alignItems: "center", paddingVertical: 16 },
+  pinSection: { alignItems: "center", paddingVertical: SPACE.lg },
   pinSectionLbl: { fontSize: 13, color: T.text2 },
-  pinBoxes: { flexDirection: "row", gap: 10, marginVertical: 16 },
+  pinBoxes: { flexDirection: "row", gap: SPACE.sm, marginVertical: SPACE.lg },
   pinBox: {
     width: 48,
     height: 52,
@@ -911,12 +912,12 @@ const s = StyleSheet.create({
   optionRow: {
     flexDirection: "row",
     alignItems: "center",
-    gap: 10,
+    gap: SPACE.sm,
     backgroundColor: T.bg2,
     borderWidth: 0.5,
     borderColor: T.border,
     borderRadius: 12,
-    padding: 12,
+    padding: SPACE.md,
   },
   optionIcon: {
     width: 30,
@@ -930,9 +931,9 @@ const s = StyleSheet.create({
 
   successScreen: {
     alignItems: "center",
-    paddingTop: 48,
-    paddingHorizontal: 22,
-    paddingBottom: 28,
+    paddingTop: SPACE.xxxl,
+    paddingHorizontal: SPACE.xl,
+    paddingBottom: SPACE.xxl,
   },
   successRing: {
     width: 76,
@@ -941,21 +942,21 @@ const s = StyleSheet.create({
     backgroundColor: T.orangeLt,
     alignItems: "center",
     justifyContent: "center",
-    marginBottom: 18,
+    marginBottom: SPACE.lg,
   },
   successH: {
     fontSize: 22,
     fontWeight: "600",
     color: T.text1,
     letterSpacing: -0.4,
-    marginBottom: 6,
+    marginBottom: SPACE.xs,
   },
   successP: {
     fontSize: 13,
     color: T.text2,
     lineHeight: 22,
     textAlign: "center",
-    marginBottom: 22,
+    marginBottom: SPACE.xl,
   },
 
   idCard: {
@@ -965,14 +966,14 @@ const s = StyleSheet.create({
     borderColor: T.border,
     borderRadius: 16,
     overflow: "hidden",
-    marginBottom: 18,
+    marginBottom: SPACE.lg,
   },
   idCardTop: {
     backgroundColor: "#1a1a18",
-    padding: 14,
+    padding: SPACE.lg,
     flexDirection: "row",
     alignItems: "center",
-    gap: 12,
+    gap: SPACE.md,
   },
   idAv: {
     width: 40,
@@ -987,16 +988,16 @@ const s = StyleSheet.create({
   idRow: {
     flexDirection: "row",
     justifyContent: "space-between",
-    paddingHorizontal: 14,
-    paddingVertical: 9,
+    paddingHorizontal: SPACE.lg,
+    paddingVertical: SPACE.sm,
   },
   idLabel: { fontSize: 12, color: T.text2 },
   idValue: { fontSize: 12, fontWeight: "500", color: T.text1 },
 
-  actionPair: { flexDirection: "row", gap: 8, width: "100%", marginBottom: 0 },
+  actionPair: { flexDirection: "row", gap: SPACE.sm, width: "100%", marginBottom: 0 },
   btnPairOutline: {
     flex: 1,
-    padding: 12,
+    padding: SPACE.md,
     borderRadius: 13,
     borderWidth: 0.5,
     borderColor: T.border2,
@@ -1006,7 +1007,7 @@ const s = StyleSheet.create({
   btnPairOutlineTxt: { fontSize: 12, fontWeight: "500", color: T.text1 },
   btnPairOrange: {
     flex: 1,
-    padding: 12,
+    padding: SPACE.md,
     borderRadius: 13,
     backgroundColor: T.orange,
     alignItems: "center",
@@ -1014,7 +1015,7 @@ const s = StyleSheet.create({
   btnPairOrangeTxt: { fontSize: 12, fontWeight: "500", color: "white" },
   btnOutline: {
     width: "100%",
-    padding: 13,
+    padding: SPACE.md,
     borderRadius: 13,
     borderWidth: 0.5,
     borderColor: T.border2,

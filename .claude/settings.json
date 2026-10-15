@@ -30,7 +30,8 @@
       "Bash(gh issue edit 44 --title '[Auth] Migrate authentication to Convex Auth \\(email + password + invite token\\)' --body ' *)",
       "Bash(gh issue edit 47 --title '[Agents] Migrate agent management to Convex users table \\(role-based\\)' --body ' *)",
       "Bash(gh issue create --title '[Devices] Wire device binding screen to Convex \\(QR scan + PIN entry\\)' --milestone 'Supabase → Convex Migration' --label migration,backend --body ' *)",
-      "Bash(bun add *)"
+      "Bash(bun add *)",
+      "Bash(grep -r \"inviteToken\\\\|?token=\\\\|activation\" /Users/serge/Downloads/TontiPro --include=\"*.tsx\" --include=\"*.ts\" ! -path \"*/node_modules/*\" -n)"
     ]
   }
 }

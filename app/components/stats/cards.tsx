@@ -2,6 +2,7 @@ import React from "react";
 import { View, Text, StyleSheet } from "react-native";
 import { LucideIcon } from "lucide-react-native";
 
+import { SPACE } from "@/constants/spacing";
 interface MetricPillProps {
   label: string;
   value: string | number;
@@ -38,7 +39,7 @@ const styles = StyleSheet.create({
   pill: {
     backgroundColor: "rgba(255,255,255,0.18)", // --color-background-info/warning glass effect
     borderRadius: 12,
-    padding: 10,
+    padding: SPACE.md,
     flex: 1,
     minHeight: 80,
     justifyContent: "space-between",
@@ -47,7 +48,7 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
-    marginBottom: 4,
+    marginBottom: SPACE.xs,
   },
   label: {
     fontSize: 10,
@@ -62,8 +63,8 @@ const styles = StyleSheet.create({
   footerRow: {
     flexDirection: "row",
     alignItems: "center",
-    marginTop: 2,
-    gap: 6,
+    marginTop: SPACE.xxs,
+    gap: SPACE.xs,
   },
   subText: {
     fontSize: 10,

@@ -4,6 +4,7 @@ import React from "react";
 import { TouchableOpacity, Text, StyleSheet, ViewStyle } from "react-native";
 import { KAURIDORR_THEME } from "@/constants/colors";
 
+import { SPACE } from "@/constants/spacing";
 const T = KAURIDORR_THEME;
 
 interface KButtonProps {
@@ -41,8 +42,8 @@ export const KButton: React.FC<KButtonProps> = ({
 
 const styles = StyleSheet.create({
   btn: {
-    marginHorizontal: 18,
-    padding: 14,
+    marginHorizontal: SPACE.lg,
+    padding: SPACE.lg,
     borderRadius: 13,
     alignItems: "center",
     justifyContent: "center",

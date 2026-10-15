@@ -6,6 +6,7 @@ import { useClientStore } from "@/stores/client-store";
 import { useTransactionStore } from "@/stores/transaction-store";
 import { Transaction } from "@/types/transaction";
 import { Client } from "@/types/client";
+import { SPACE } from "@/constants/spacing";
 
 // ── Label maps ────────────────────────────────────────────────────────────────
 
@@ -455,7 +456,7 @@ const ClientDetails = () => {
             />
             <View style={styles.txCard}>
               {transactions.length === 0 ? (
-                <View style={{ padding: 16 }}>
+                <View style={{ padding: SPACE.lg }}>
                   <Text
                     style={{
                       fontSize: 13,
@@ -514,17 +515,17 @@ const styles = StyleSheet.create({
 
   header: {
     backgroundColor: "#1a1a18",
-    paddingHorizontal: 18,
-    paddingBottom: 24,
-    paddingTop: 10,
+    paddingHorizontal: SPACE.lg,
+    paddingBottom: SPACE.xl,
+    paddingTop: SPACE.md,
   },
   backRow: {
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
-    marginBottom: 18,
+    marginBottom: SPACE.lg,
   },
-  backBtn: { flexDirection: "row", alignItems: "center", gap: 5 },
+  backBtn: { flexDirection: "row", alignItems: "center", gap: SPACE.xs },
   backLabel: { fontSize: 13, color: "rgba(255,255,255,0.55)" },
   moreBtn: {
     width: 30,
@@ -535,7 +536,7 @@ const styles = StyleSheet.create({
     alignItems: "center",
   },
 
-  profileCenter: { alignItems: "center", gap: 8 },
+  profileCenter: { alignItems: "center", gap: SPACE.sm },
   profileAvatar: {
     width: 64,
     height: 64,
@@ -549,11 +550,11 @@ const styles = StyleSheet.create({
   profileAvatarText: { fontSize: 22, fontWeight: "500", color: "#993C1D" },
   profileName: { fontSize: 18, fontWeight: "500", color: "white" },
   profilePhone: { fontSize: 12, color: "rgba(255,255,255,0.45)" },
-  profileBadges: { flexDirection: "row", gap: 6, marginTop: 2 },
+  profileBadges: { flexDirection: "row", gap: SPACE.xs, marginTop: SPACE.xxs },
   badgeActive: {
     backgroundColor: "rgba(59,109,17,0.3)",
-    paddingHorizontal: 9,
-    paddingVertical: 3,
+    paddingHorizontal: SPACE.sm,
+    paddingVertical: SPACE.xs,
     borderRadius: 20,
   },
   badgeActiveText: { fontSize: 10, color: "#97c459" },
@@ -561,8 +562,8 @@ const styles = StyleSheet.create({
   badgeInactiveText: { color: "#e07070" },
   badgeSince: {
     backgroundColor: "rgba(255,255,255,0.1)",
-    paddingHorizontal: 9,
-    paddingVertical: 3,
+    paddingHorizontal: SPACE.sm,
+    paddingVertical: SPACE.xs,
     borderRadius: 20,
   },
   badgeSinceText: { fontSize: 10, color: "rgba(255,255,255,0.5)" },
@@ -571,14 +572,14 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     borderRadius: 14,
     overflow: "hidden",
-    marginTop: 18,
+    marginTop: SPACE.lg,
     backgroundColor: "rgba(255,255,255,0.08)",
   },
   statCell: {
     flex: 1,
     backgroundColor: "rgba(255,255,255,0.05)",
-    paddingVertical: 12,
-    paddingHorizontal: 10,
+    paddingVertical: SPACE.md,
+    paddingHorizontal: SPACE.md,
     alignItems: "center",
   },
   statCellBorder: {
@@ -587,21 +588,21 @@ const styles = StyleSheet.create({
     borderColor: "rgba(255,255,255,0.08)",
   },
   statVal: { fontSize: 15, fontWeight: "500", color: "white" },
-  statLbl: { fontSize: 10, color: "rgba(255,255,255,0.4)", marginTop: 2 },
+  statLbl: { fontSize: 10, color: "rgba(255,255,255,0.4)", marginTop: SPACE.xxs },
 
-  body: { paddingBottom: 28 },
+  body: { paddingBottom: SPACE.xxl },
 
-  actionStrip: { flexDirection: "row", gap: 8, padding: 16, paddingBottom: 0 },
+  actionStrip: { flexDirection: "row", gap: SPACE.sm, padding: SPACE.lg, paddingBottom: 0 },
   actBtn: {
     flex: 1,
     backgroundColor: "white",
     borderWidth: 0.5,
     borderColor: "rgba(0,0,0,0.1)",
     borderRadius: 12,
-    paddingVertical: 11,
-    paddingHorizontal: 6,
+    paddingVertical: SPACE.md,
+    paddingHorizontal: SPACE.sm,
     alignItems: "center",
-    gap: 5,
+    gap: SPACE.xs,
   },
   actIcon: {
     width: 32,
@@ -612,7 +613,7 @@ const styles = StyleSheet.create({
   },
   actLbl: { fontSize: 10, color: "#5f5e5a" },
 
-  section: { paddingHorizontal: 16, paddingTop: 16 },
+  section: { paddingHorizontal: SPACE.lg, paddingTop: SPACE.lg },
 
   infoCard: {
     backgroundColor: "white",
@@ -625,8 +626,8 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
-    paddingHorizontal: 14,
-    paddingVertical: 11,
+    paddingHorizontal: SPACE.lg,
+    paddingVertical: SPACE.md,
     borderBottomWidth: 0.5,
     borderBottomColor: "rgba(0,0,0,0.1)",
   },
@@ -636,23 +637,23 @@ const styles = StyleSheet.create({
   infoAccent: { color: "#D85A30" },
 
   kycScanRow: {
-    paddingHorizontal: 14,
-    paddingVertical: 11,
+    paddingHorizontal: SPACE.lg,
+    paddingVertical: SPACE.md,
     borderBottomWidth: 0.5,
     borderBottomColor: "rgba(0,0,0,0.1)",
   },
   kycScanText: { fontSize: 13, color: "#185fa5", fontWeight: "500" },
 
   progressWrap: {
-    paddingHorizontal: 14,
-    paddingVertical: 12,
+    paddingHorizontal: SPACE.lg,
+    paddingVertical: SPACE.md,
     borderBottomWidth: 0.5,
     borderBottomColor: "rgba(0,0,0,0.1)",
   },
   progressTop: {
     flexDirection: "row",
     justifyContent: "space-between",
-    marginBottom: 7,
+    marginBottom: SPACE.sm,
   },
   progressLabel: { fontSize: 12, color: "#5f5e5a" },
   progressPct: { fontSize: 12, fontWeight: "500", color: "#D85A30" },
@@ -667,7 +668,7 @@ const styles = StyleSheet.create({
     backgroundColor: "#D85A30",
     borderRadius: 3,
   },
-  progressSub: { fontSize: 10, color: "#888780", marginTop: 5 },
+  progressSub: { fontSize: 10, color: "#888780", marginTop: SPACE.xs },
 
   txCard: {
     backgroundColor: "white",
@@ -679,19 +680,19 @@ const styles = StyleSheet.create({
 
   bottomActions: {
     flexDirection: "row",
-    gap: 8,
-    paddingHorizontal: 16,
-    paddingTop: 16,
+    gap: SPACE.sm,
+    paddingHorizontal: SPACE.lg,
+    paddingTop: SPACE.lg,
   },
   btnDep: {
     flex: 1,
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",
-    gap: 6,
+    gap: SPACE.xs,
     backgroundColor: "#D85A30",
     borderRadius: 12,
-    paddingVertical: 13,
+    paddingVertical: SPACE.md,
   },
   btnDepText: { color: "white", fontSize: 13, fontWeight: "500" },
   btnRet: {
@@ -699,12 +700,12 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",
-    gap: 6,
+    gap: SPACE.xs,
     backgroundColor: "white",
     borderWidth: 0.5,
     borderColor: "rgba(0,0,0,0.18)",
     borderRadius: 12,
-    paddingVertical: 13,
+    paddingVertical: SPACE.md,
   },
   btnRetText: { color: "#1a1a18", fontSize: 13, fontWeight: "500" },
 
@@ -712,8 +713,8 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
-    paddingHorizontal: 14,
-    paddingVertical: 10,
+    paddingHorizontal: SPACE.lg,
+    paddingVertical: SPACE.md,
     borderBottomWidth: 0.5,
     borderBottomColor: "rgba(0,0,0,0.1)",
   },
@@ -725,7 +726,7 @@ const styles = StyleSheet.create({
     color: "#1a1a18",
     flexShrink: 1,
     textAlign: "right",
-    marginLeft: 8,
+    marginLeft: SPACE.sm,
   },
 });
 

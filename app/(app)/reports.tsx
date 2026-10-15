@@ -1,6 +1,14 @@
 // app/(app)/reports.tsx
 import { useMemo, useState } from "react";
-import { ScrollView, StyleSheet, Text, View, Pressable } from "react-native";
+import {
+  Alert,
+  ScrollView,
+  StyleSheet,
+  Text,
+  View,
+  Pressable,
+} from "react-native";
+import { useQueries } from "convex/react";
 import { SafeAreaView } from "react-native-safe-area-context";
 import {
   Download,
@@ -12,12 +20,16 @@ import {
 import { useAuthStore } from "@/stores/auth-store";
 import { useClientStore } from "@/stores/client-store";
 import {
+  convexRowToTransaction,
   mergeTransactionsSorted,
   useTransactionStore,
 } from "@/stores/transaction-store";
 import { useAgentStore } from "@/stores/agent-store";
 import { Transaction } from "@/types/transaction";
+import { api } from "@/convex/_generated/api";
+import { shareCsv, toCsv } from "@/utils/csv-export";
 
+import { SPACE } from "@/constants/spacing";
 // ─── Design tokens ────────────────────────────────────────────────────────────
 const T = {
   bg: "#ffffff",
@@ -63,14 +75,15 @@ const PERIOD_LABELS: Record<Period, string> = {
 
 const PERIOD_STAT_LABEL: Record<Period, string> = {
   auj: "aujourd'hui",
-  "7j": "cette semaine",
+  "7j": "ces 7 derniers jours",
   mois: "ce mois",
-  trim: "ce trimestre",
+  trim: "ces 3 derniers mois",
   an: "cette année",
 };
 
 const WEEK_DAYS = ["Lun", "Mar", "Mer", "Jeu", "Ven", "Sam", "Dim"];
-const MONTH_WEEKS = ["S1", "S2", "S3", "S4"];
+// Days 22 to the end of the month share the last bucket.
+const MONTH_WEEKS = ["1–7", "8–14", "15–21", "22–fin"];
 const SHORT_MONTHS = [
   "Jan",
   "Fév",
@@ -95,17 +108,27 @@ const AVATAR_COLORS = [
 ];
 
 // ─── Utilities ────────────────────────────────────────────────────────────────
+
+/** Local midnight `offsetDays` days from today (DST-safe: built from y/m/d). */
+function dayStart(offsetDays = 0): Date {
+  const now = new Date();
+  return new Date(
+    now.getFullYear(),
+    now.getMonth(),
+    now.getDate() + offsetDays,
+  );
+}
+
+// Every period is made of whole calendar days, so its bounds only change at
+// midnight — they are also the report queries' args (stable subscriptions).
 function periodStartMs(period: Period): number {
   const now = new Date();
   switch (period) {
     case "auj":
-      return new Date(
-        now.getFullYear(),
-        now.getMonth(),
-        now.getDate(),
-      ).getTime();
+      return dayStart().getTime();
     case "7j":
-      return now.getTime() - 7 * 86400000;
+      // Today plus the 6 previous days: exactly one bar per weekday.
+      return dayStart(-6).getTime();
     case "mois":
       return new Date(now.getFullYear(), now.getMonth(), 1).getTime();
     case "trim":
@@ -118,19 +141,12 @@ function periodStartMs(period: Period): number {
 function prevPeriodRange(period: Period): { start: number; end: number } {
   const now = new Date();
   const m = now.getMonth(),
-    y = now.getFullYear(),
-    d = now.getDate();
+    y = now.getFullYear();
   switch (period) {
     case "auj":
-      return {
-        start: new Date(y, m, d - 1).getTime(),
-        end: new Date(y, m, d).getTime(),
-      };
+      return { start: dayStart(-1).getTime(), end: dayStart().getTime() };
     case "7j":
-      return {
-        start: now.getTime() - 14 * 86400000,
-        end: now.getTime() - 7 * 86400000,
-      };
+      return { start: dayStart(-13).getTime(), end: dayStart(-6).getTime() };
     case "mois":
       return {
         start: new Date(y, m - 1, 1).getTime(),
@@ -149,6 +165,44 @@ function prevPeriodRange(period: Period): { start: number; end: number } {
   }
 }
 
+/**
+ * % change vs the previous period, or null when there is nothing to compare
+ * against (previous period empty but current one not).
+ */
+function pctChange(current: number, previous: number): number | null {
+  if (previous === 0) return current === 0 ? 0 : null;
+  return Math.round(((current - previous) / Math.abs(previous)) * 100);
+}
+
+function trendInfo(pct: number | null, current: number, what = "") {
+  const up = pct === null ? current >= 0 : pct >= 0;
+  const subject = what ? `${what} ` : "";
+  const label =
+    pct === null
+      ? `${subject}sans comparaison (période préc. vide)`
+      : `${up ? "↑" : "↓"} ${Math.abs(pct)}% ${subject}vs période préc.`;
+  return { up, label };
+}
+
+const COMMISSION_RATE = 0.01;
+
+/** Rounded per line so the displayed deposit + withdrawal lines add up to the total. */
+function commissionOf(deposits: number, withdrawals: number) {
+  const dep = Math.round(deposits * COMMISSION_RATE);
+  const ret = Math.round(withdrawals * COMMISSION_RATE);
+  return { dep, ret, total: dep + ret };
+}
+
+const sum = (txs: Transaction[]) => txs.reduce((acc, t) => acc + t.amount, 0);
+
+const CHART_TITLE: Record<Period, string> = {
+  auj: "Activité de la journée",
+  "7j": "Activité par jour",
+  mois: "Activité par semaine",
+  trim: "Activité par mois",
+  an: "Activité par mois",
+};
+
 const TODAY_SLOTS = ["Matin", "Midi", "A-M", "Soir"];
 
 function buildBars(txList: Transaction[], period: Period) {
@@ -163,11 +217,24 @@ function buildBars(txList: Transaction[], period: Period) {
     return b;
   }
   if (period === "7j") {
-    const b = WEEK_DAYS.map((label) => ({ dep: 0, ret: 0, label }));
+    // One bar per calendar day, oldest first, labelled with its weekday.
+    const days = [...Array(7)].map((_, i) => dayStart(i - 6));
+    const b = days.map((d) => ({
+      dep: 0,
+      ret: 0,
+      label: WEEK_DAYS[(d.getDay() + 6) % 7],
+    }));
     txList.forEach((t) => {
-      const dow = (new Date(t.date).getDay() + 6) % 7;
-      if (t.type === "deposit") b[dow].dep += t.amount;
-      if (t.type === "withdrawal") b[dow].ret += t.amount;
+      const dt = new Date(t.date);
+      const idx = days.findIndex(
+        (d) =>
+          d.getFullYear() === dt.getFullYear() &&
+          d.getMonth() === dt.getMonth() &&
+          d.getDate() === dt.getDate(),
+      );
+      if (idx === -1) return;
+      if (t.type === "deposit") b[idx].dep += t.amount;
+      if (t.type === "withdrawal") b[idx].ret += t.amount;
     });
     return b;
   }
@@ -182,16 +249,20 @@ function buildBars(txList: Transaction[], period: Period) {
   }
   if (period === "trim") {
     const now = new Date();
-    const b = [0, 1, 2].map((i) => ({
+    const months = [0, 1, 2].map(
+      (i) => new Date(now.getFullYear(), now.getMonth() - 2 + i, 1),
+    );
+    const b = months.map((d) => ({
       dep: 0,
       ret: 0,
-      label: SHORT_MONTHS[(now.getMonth() - 2 + i + 12) % 12],
+      label: SHORT_MONTHS[d.getMonth()],
     }));
     txList.forEach((t) => {
-      const idx = [0, 1, 2].findIndex(
-        (i) =>
-          (new Date().getMonth() - 2 + i + 12) % 12 ===
-          new Date(t.date).getMonth(),
+      const dt = new Date(t.date);
+      const idx = months.findIndex(
+        (d) =>
+          d.getFullYear() === dt.getFullYear() &&
+          d.getMonth() === dt.getMonth(),
       );
       if (idx === -1) return;
       if (t.type === "deposit") b[idx].dep += t.amount;
@@ -206,6 +277,129 @@ function buildBars(txList: Transaction[], period: Period) {
     if (t.type === "withdrawal") b[m].ret += t.amount;
   });
   return b;
+}
+
+/** Label of the busiest bar, or null when the period has no activity. */
+function peakLabel(
+  bars: { dep: number; ret: number; label: string }[],
+  key: "dep" | "ret",
+): string | null {
+  const peak = bars.reduce(
+    (best, b) => (b[key] > best[key] ? b : best),
+    bars[0],
+  );
+  return peak && peak[key] > 0 ? peak.label : null;
+}
+
+// ─── Report data ──────────────────────────────────────────────────────────────
+
+// Max rows per query (server clamps: listMineInRange 2000, listByBranch 1000).
+const MINE_LIMIT = 2000;
+const BRANCH_LIMIT = 1000;
+
+type ReportScope = "mine" | "branch";
+
+/**
+ * Current- and previous-period transactions for the reports. Server data
+ * comes from date-bounded queries (the store only holds the latest 100 of the
+ * caller's own operations); queued offline operations are merged in and
+ * reversed operations are excluded. Offline, it falls back to the store and
+ * flags the result as partial.
+ */
+function useReportData(period: Period, scope: ReportScope) {
+  const start = periodStartMs(period);
+  const prev = prevPeriodRange(period);
+  const limit = scope === "mine" ? MINE_LIMIT : BRANCH_LIMIT;
+
+  // useQueries (not useQuery) so a failing query — e.g. a backend that
+  // predates listMineInRange — degrades to the local fallback instead of
+  // throwing into the screen.
+  const queries = useMemo(() => {
+    const query =
+      scope === "mine"
+        ? api.transactions.listMineInRange
+        : api.transactions.listByBranch;
+    return {
+      cur: { query, args: { from: start, limit } },
+      prev: { query, args: { from: prev.start, to: prev.end - 1, limit } },
+    };
+  }, [scope, start, prev.start, prev.end, limit]);
+  const results = useQueries(queries);
+  const failed = [results.cur, results.prev].some((r) => r instanceof Error);
+  const curRows = failed ? undefined : (results.cur as any[] | undefined);
+  const prevRows = failed ? undefined : (results.prev as any[] | undefined);
+
+  const stored = useTransactionStore((s) => s.transactions);
+  const pending = useTransactionStore((s) => s.pendingTransactions);
+  const clients = useClientStore((s) => s.clients);
+
+  return useMemo(() => {
+    const nameOf = (id: string) => clients.find((c) => c.id === id)?.name;
+    const agentNames = new Map<string, string>();
+    const toTxs = (rows: any[]) =>
+      rows.map((row) => {
+        if (row.agentName) agentNames.set(row.agentId, row.agentName);
+        return convexRowToTransaction(row, nameOf);
+      });
+
+    const partial = curRows === undefined || prevRows === undefined;
+    const truncated =
+      (curRows?.length ?? 0) >= limit || (prevRows?.length ?? 0) >= limit;
+
+    const server = partial
+      ? stored
+      : [...toTxs(curRows as any[]), ...toTxs(prevRows as any[])];
+    const all = mergeTransactionsSorted(server, pending).filter(
+      (t) => t.status !== "reversed",
+    );
+    const inRange = (from: number, to: number) =>
+      all.filter((t) => {
+        const ms = new Date(t.date).getTime();
+        return ms >= from && ms < to;
+      });
+
+    return {
+      current: inRange(start, Infinity),
+      previous: inRange(prev.start, prev.end),
+      agentNames,
+      partial,
+      truncated,
+    };
+  }, [
+    curRows,
+    prevRows,
+    stored,
+    pending,
+    clients,
+    start,
+    prev.start,
+    prev.end,
+    limit,
+  ]);
+}
+
+function exportTransactionsCsv(
+  txs: Transaction[],
+  filename: string,
+  agentName: (id?: string) => string = () => "",
+) {
+  const csv = toCsv(
+    ["date", "type", "montant", "client", "agent", "statut"],
+    txs.map((t) => [
+      t.date,
+      t.type === "deposit" ? "dépôt" : "retrait",
+      t.amount,
+      t.clientName,
+      agentName(t.agentId),
+      t.status,
+    ]),
+  );
+  shareCsv(filename, csv, "Exporter le rapport").catch((e) =>
+    Alert.alert(
+      "Export impossible",
+      e instanceof Error ? e.message : String(e),
+    ),
+  );
 }
 
 function initials(name?: string) {
@@ -288,7 +482,7 @@ function BarChart({
                   {
                     height: Math.max(4, (b.ret / maxVal) * maxH),
                     backgroundColor: T.border2,
-                    marginTop: 2,
+                    marginTop: SPACE.xxs,
                   },
                 ]}
               />
@@ -312,20 +506,43 @@ function SectionHeader({ title, link }: { title: string; link?: string }) {
 
 function ExportButton({
   label = "Exporter mon rapport (CSV)",
+  onPress,
 }: {
   label?: string;
+  onPress: () => void;
 }) {
   return (
-    <Pressable style={s.exportBtn}>
+    <Pressable style={s.exportBtn} onPress={onPress}>
       <Download size={14} color={T.text2} strokeWidth={1.5} />
       <Text style={s.exportText}>{label}</Text>
     </Pressable>
   );
 }
 
+/** Tells the user when the figures do not cover the whole period. */
+function DataNotice({
+  partial,
+  truncated,
+}: {
+  partial: boolean;
+  truncated: boolean;
+}) {
+  if (!partial && !truncated) return null;
+  return (
+    <View style={s.notice}>
+      <Text style={s.noticeText}>
+        {partial
+          ? "Hors connexion ou chargement : chiffres basés sur les opérations récentes enregistrées sur cet appareil, peut-être incomplets."
+          : "Période très chargée : seules les opérations les plus récentes sont incluses, les totaux peuvent être sous-estimés."}
+      </Text>
+    </View>
+  );
+}
+
 // ─── Agent view components ────────────────────────────────────────────────────
 
 function AgentHero({
+  label,
   total,
   subtitle,
   trendUp,
@@ -334,6 +551,7 @@ function AgentHero({
   clients,
   commission,
 }: {
+  label: string;
   total: number;
   subtitle: string;
   trendUp: boolean;
@@ -344,7 +562,7 @@ function AgentHero({
 }) {
   return (
     <View style={s.hero}>
-      <Text style={s.heroLabel}>Collecte du mois</Text>
+      <Text style={s.heroLabel}>{label}</Text>
       <Text style={s.heroBig}>
         {total.toLocaleString("fr-FR")}
         <Text style={s.heroCur}> FCFA</Text>
@@ -440,7 +658,9 @@ function TopClientItem({
       </View>
       <View style={{ flex: 1 }}>
         <Text style={s.rankName}>{name}</Text>
-        <Text style={s.rankSub}>{txCount} transactions</Text>
+        <Text style={s.rankSub}>
+          {txCount} transaction{txCount > 1 ? "s" : ""}
+        </Text>
       </View>
       <View style={s.rankRight}>
         <Text style={s.rankVal}>{amount.toLocaleString("fr-FR")} F</Text>
@@ -707,51 +927,27 @@ function AgentView() {
   const [activeTab, setTab] = useState<AgentTab>("tout");
 
   const clients = useClientStore((s) => s.clients);
-  const transactions = useTransactionStore((s) => s.transactions);
-  const pending = useTransactionStore((s) => s.pendingTransactions);
-
-  const all = useMemo(
-    () => mergeTransactionsSorted(transactions, pending),
-    [transactions, pending],
-  );
-
-  const start = periodStartMs(period);
-  const filtered = useMemo(
-    () => all.filter((t) => new Date(t.date).getTime() >= start),
-    [all, start],
-  );
-
-  const prev = prevPeriodRange(period);
-  const prevFiltered = useMemo(
-    () =>
-      all.filter((t) => {
-        const ms = new Date(t.date).getTime();
-        return ms >= prev.start && ms < prev.end;
-      }),
-    [all, prev.start, prev.end],
-  );
+  const {
+    current: filtered,
+    previous: prevFiltered,
+    partial,
+    truncated,
+  } = useReportData(period, "mine");
 
   const deposits = filtered.filter((t) => t.type === "deposit");
   const withdrawals = filtered.filter((t) => t.type === "withdrawal");
   const prevDeposits = prevFiltered.filter((t) => t.type === "deposit");
   const prevWithd = prevFiltered.filter((t) => t.type === "withdrawal");
 
-  const totalDep = deposits.reduce((s, t) => s + t.amount, 0);
-  const totalRet = withdrawals.reduce((s, t) => s + t.amount, 0);
+  const totalDep = sum(deposits);
+  const totalRet = sum(withdrawals);
   const net = totalDep - totalRet;
-  const commission = Math.round((totalDep + totalRet) * 0.01);
+  const commission = commissionOf(totalDep, totalRet);
 
-  const prevNet =
-    prevDeposits.reduce((s, t) => s + t.amount, 0) -
-    prevWithd.reduce((s, t) => s + t.amount, 0);
-  const trendPct =
-    prevNet !== 0
-      ? Math.round(((net - prevNet) / Math.abs(prevNet)) * 100)
-      : net > 0
-        ? 100
-        : 0;
-  const trendUp = trendPct >= 0;
-  const trendLabel = `${trendUp ? "↑" : "↓"} ${Math.abs(trendPct)}% vs période préc.`;
+  const prevDep = sum(prevDeposits);
+  const prevNet = prevDep - sum(prevWithd);
+  const netTrend = trendInfo(pctChange(net, prevNet), net);
+  const depTrendPct = pctChange(totalDep, prevDep);
 
   const activeClients = clients.filter((c) => c.status === "active").length;
   const chartBars = useMemo(
@@ -765,7 +961,8 @@ function AgentView() {
       string,
       { amount: number; txCount: number; clientId: string }
     >();
-    deposits.forEach((t) => {
+    filtered.forEach((t) => {
+      if (t.type !== "deposit") return;
       const prev = map.get(t.clientId) ?? {
         amount: 0,
         txCount: 0,
@@ -781,9 +978,16 @@ function AgentView() {
       .sort((a, b) => b.amount - a.amount)
       .slice(0, 3)
       .map((e) => ({ ...e, client: clients.find((c) => c.id === e.clientId) }));
-  }, [deposits, clients]);
+  }, [filtered, clients]);
 
   const maxClientAmount = topClients[0]?.amount || 1;
+
+  // Progress toward the client's savings goal (balance / goal) — not the
+  // per-collection commitment, which the period's deposits always exceed.
+  const goalPctOf = (client?: (typeof clients)[number]) =>
+    client?.savingsGoal && client.savingsGoal > 0
+      ? Math.min(Math.round((client.balance / client.savingsGoal) * 100), 100)
+      : null;
 
   const AGENT_TABS: { id: AgentTab; label: string }[] = [
     { id: "tout", label: "Tout" },
@@ -794,30 +998,23 @@ function AgentView() {
   ];
 
   const isFiltered = activeTab !== "tout";
-
-  // Breakdown bars for focused Dépôts/Retraits tabs (reuses buildBars)
-  const dayBars = useMemo(
-    () => buildBars(filtered, period),
-    [filtered, period],
-  );
-
-  const peakDay = dayBars.reduce(
-    (max, b, i) => (b.dep > dayBars[max].dep ? i : max),
-    0,
-  );
+  const peakDep = peakLabel(chartBars, "dep");
+  const peakRet = peakLabel(chartBars, "ret");
+  const exportReport = () =>
+    exportTransactionsCsv(filtered, `mon-rapport-${period}.csv`);
 
   return (
     <SafeAreaView edges={["top"]} style={s.root}>
       <ScrollView
         style={{ flex: 1 }}
         showsVerticalScrollIndicator={false}
-        contentContainerStyle={{ paddingBottom: 32 }}
+        contentContainerStyle={{ paddingBottom: SPACE.xxl }}
       >
         {/* Top bar */}
         <View style={s.topbar}>
           <View style={s.topbarRow}>
             <Text style={s.pageTitle}>Mes rapports</Text>
-            <View style={{ flexDirection: "row", gap: 6 }}>
+            <View style={{ flexDirection: "row", gap: SPACE.xs }}>
               <Pressable
                 style={[
                   s.iconBtn,
@@ -834,7 +1031,7 @@ function AgentView() {
                   strokeWidth={1.5}
                 />
               </Pressable>
-              <Pressable style={s.iconBtn}>
+              <Pressable style={s.iconBtn} onPress={exportReport}>
                 <Download size={14} color={T.text2} strokeWidth={1.5} />
               </Pressable>
             </View>
@@ -863,17 +1060,20 @@ function AgentView() {
           ))}
         </ScrollView>
 
+        <DataNotice partial={partial} truncated={truncated} />
+
         {/* ── Tout ── */}
         {activeTab === "tout" && (
           <>
             <AgentHero
+              label={`Solde net (dépôts − retraits) · ${periodLabel}`}
               total={net}
               subtitle={`${filtered.length} transactions · ${periodLabel}`}
-              trendUp={trendUp}
-              trendLabel={trendLabel}
+              trendUp={netTrend.up}
+              trendLabel={netTrend.label}
               transactions={filtered.length}
               clients={activeClients}
-              commission={commission}
+              commission={commission.total}
             />
             <QuickStats
               deposits={totalDep}
@@ -883,25 +1083,21 @@ function AgentView() {
               periodLabel={periodLabel}
             />
             <View style={s.section}>
-              <SectionHeader title="Activité hebdomadaire" />
+              <SectionHeader title={CHART_TITLE[period]} />
               <BarChart bars={chartBars} />
             </View>
             <View style={s.section}>
               <SectionHeader title="Mes meilleurs clients" link="Voir tous →" />
               <View style={s.card}>
                 {topClients.length === 0 ? (
-                  <View style={{ padding: 16 }}>
+                  <View style={{ padding: SPACE.lg }}>
                     <Text style={{ fontSize: 13, color: T.text3 }}>
                       Aucune donnée
                     </Text>
                   </View>
                 ) : (
                   topClients.map((entry, i) => {
-                    const goal = entry.client?.commitmentAmount;
-                    const goalPct =
-                      goal && goal > 0
-                        ? Math.min(Math.round((entry.amount / goal) * 100), 100)
-                        : null;
+                    const goalPct = goalPctOf(entry.client);
                     return (
                       <TopClientItem
                         key={entry.clientId}
@@ -927,7 +1123,7 @@ function AgentView() {
                     Dépôts (×{deposits.length} opér.)
                   </Text>
                   <Text style={[s.cVal, { color: T.greenMid }]}>
-                    +{Math.round(totalDep * 0.01).toLocaleString("fr-FR")} F
+                    +{commission.dep.toLocaleString("fr-FR")} F
                   </Text>
                 </View>
                 <View style={s.cRow}>
@@ -935,22 +1131,22 @@ function AgentView() {
                     Retraits (×{withdrawals.length} opér.)
                   </Text>
                   <Text style={[s.cVal, { color: T.greenMid }]}>
-                    +{Math.round(totalRet * 0.01).toLocaleString("fr-FR")} F
+                    +{commission.ret.toLocaleString("fr-FR")} F
                   </Text>
                 </View>
                 <View style={[s.cRow, { borderBottomWidth: 0 }]}>
                   <Text
                     style={[s.cLabel, { fontWeight: "600", color: T.text1 }]}
                   >
-                    Total ce mois
+                    Total
                   </Text>
                   <Text style={[s.cVal, { color: T.orange, fontSize: 15 }]}>
-                    {commission.toLocaleString("fr-FR")} F
+                    {commission.total.toLocaleString("fr-FR")} F
                   </Text>
                 </View>
               </View>
             </View>
-            <ExportButton />
+            <ExportButton onPress={exportReport} />
           </>
         )}
 
@@ -980,17 +1176,21 @@ function AgentView() {
                 lbl: "Dépôts / client",
               }}
               stat3={{
-                val: `${trendUp ? "+" : ""}${trendPct}%`,
+                val:
+                  depTrendPct === null
+                    ? "—"
+                    : `${depTrendPct >= 0 ? "+" : ""}${depTrendPct}%`,
                 lbl: "vs période préc.",
               }}
             />
             <View style={s.section}>
-              <SectionHeader title="Par jour de la semaine" />
+              <SectionHeader title={CHART_TITLE[period]} />
               <View style={s.card}>
-                <BarChart bars={dayBars} showRet={false} />
+                <BarChart bars={chartBars} showRet={false} />
                 <Text style={s.peakDayText}>
-                  Pic d&apos;activité :{" "}
-                  {(period === "auj" ? TODAY_SLOTS : WEEK_DAYS)[peakDay]}
+                  {peakDep
+                    ? `Pic d'activité : ${peakDep}`
+                    : "Aucun dépôt sur la période"}
                 </Text>
               </View>
             </View>
@@ -1001,7 +1201,7 @@ function AgentView() {
               />
               <View style={s.card}>
                 {topClients.length === 0 ? (
-                  <View style={{ padding: 16 }}>
+                  <View style={{ padding: SPACE.lg }}>
                     <Text style={{ fontSize: 13, color: T.text3 }}>
                       Aucune donnée
                     </Text>
@@ -1022,7 +1222,7 @@ function AgentView() {
                 )}
               </View>
             </View>
-            <ExportButton label="Exporter" />
+            <ExportButton onPress={exportReport} label="Exporter" />
           </>
         )}
 
@@ -1057,11 +1257,11 @@ function AgentView() {
               }}
             />
             <View style={s.section}>
-              <SectionHeader title="Par jour de la semaine" />
+              <SectionHeader title={CHART_TITLE[period]} />
               <View style={s.card}>
                 <View style={s.barChart}>
-                  {dayBars.map((b, i) => {
-                    const maxVal = Math.max(...dayBars.map((x) => x.ret), 1);
+                  {chartBars.map((b, i) => {
+                    const maxVal = Math.max(...chartBars.map((x) => x.ret), 1);
                     return (
                       <View key={i} style={s.barWrap}>
                         <View
@@ -1078,6 +1278,11 @@ function AgentView() {
                     );
                   })}
                 </View>
+                <Text style={s.peakDayText}>
+                  {peakRet
+                    ? `Pic de retraits : ${peakRet}`
+                    : "Aucun retrait sur la période"}
+                </Text>
               </View>
             </View>
             <View style={s.section}>
@@ -1113,7 +1318,7 @@ function AgentView() {
                 </View>
               </View>
             </View>
-            <ExportButton label="Exporter" />
+            <ExportButton onPress={exportReport} label="Exporter" />
           </>
         )}
 
@@ -1123,7 +1328,7 @@ function AgentView() {
             <View style={[s.focusedHero, { backgroundColor: T.dark }]}>
               <Text style={s.heroLabel}>Ma commission totale</Text>
               <Text style={s.heroBig}>
-                {commission.toLocaleString("fr-FR")}
+                {commission.total.toLocaleString("fr-FR")}
                 <Text style={s.heroCur}> F</Text>
               </Text>
               <Text style={s.heroSub}>{periodLabel} · taux 1%</Text>
@@ -1136,7 +1341,7 @@ function AgentView() {
                     Dépôts (1% × {deposits.length} opér.)
                   </Text>
                   <Text style={[s.cVal, { color: T.greenMid }]}>
-                    +{Math.round(totalDep * 0.01).toLocaleString("fr-FR")} F
+                    +{commission.dep.toLocaleString("fr-FR")} F
                   </Text>
                 </View>
                 <View style={s.cRow}>
@@ -1144,7 +1349,7 @@ function AgentView() {
                     Retraits (1% × {withdrawals.length} opér.)
                   </Text>
                   <Text style={[s.cVal, { color: T.greenMid }]}>
-                    +{Math.round(totalRet * 0.01).toLocaleString("fr-FR")} F
+                    +{commission.ret.toLocaleString("fr-FR")} F
                   </Text>
                 </View>
                 <View style={[s.cRow, { borderBottomWidth: 0 }]}>
@@ -1154,12 +1359,15 @@ function AgentView() {
                     Total
                   </Text>
                   <Text style={[s.cVal, { color: T.orange, fontSize: 15 }]}>
-                    {commission.toLocaleString("fr-FR")} F
+                    {commission.total.toLocaleString("fr-FR")} F
                   </Text>
                 </View>
               </View>
             </View>
-            <ExportButton label="Exporter mon rapport (CSV)" />
+            <ExportButton
+              onPress={exportReport}
+              label="Exporter mon rapport (CSV)"
+            />
           </>
         )}
 
@@ -1194,18 +1402,14 @@ function AgentView() {
               <SectionHeader title="Meilleurs clients" link="Voir tous →" />
               <View style={s.card}>
                 {topClients.length === 0 ? (
-                  <View style={{ padding: 16 }}>
+                  <View style={{ padding: SPACE.lg }}>
                     <Text style={{ fontSize: 13, color: T.text3 }}>
                       Aucune donnée
                     </Text>
                   </View>
                 ) : (
                   topClients.map((entry, i) => {
-                    const goal = entry.client?.commitmentAmount;
-                    const goalPct =
-                      goal && goal > 0
-                        ? Math.min(Math.round((entry.amount / goal) * 100), 100)
-                        : null;
+                    const goalPct = goalPctOf(entry.client);
                     return (
                       <TopClientItem
                         key={entry.clientId}
@@ -1223,7 +1427,10 @@ function AgentView() {
                 )}
               </View>
             </View>
-            <ExportButton label="Exporter liste clients (CSV)" />
+            <ExportButton
+              onPress={exportReport}
+              label="Exporter liste clients (CSV)"
+            />
           </>
         )}
       </ScrollView>
@@ -1237,48 +1444,29 @@ function AdminView() {
   const [activeTab, setTab] = useState<AdminTab>("global");
 
   const clients = useClientStore((s) => s.clients);
-  const transactions = useTransactionStore((s) => s.transactions);
-  const pending = useTransactionStore((s) => s.pendingTransactions);
-  const agents = useAgentStore((s) => s.agents);
-
-  const all = useMemo(
-    () => mergeTransactionsSorted(transactions, pending),
-    [transactions, pending],
-  );
-
-  const start = periodStartMs(period);
-  const filtered = useMemo(
-    () => all.filter((t) => new Date(t.date).getTime() >= start),
-    [all, start],
-  );
-
-  const prev = prevPeriodRange(period);
-  const prevFiltered = useMemo(
-    () =>
-      all.filter((t) => {
-        const ms = new Date(t.date).getTime();
-        return ms >= prev.start && ms < prev.end;
-      }),
-    [all, prev.start, prev.end],
-  );
+  const roster = useAgentStore((s) => s.agents);
+  const {
+    current: filtered,
+    previous: prevFiltered,
+    agentNames,
+    partial,
+    truncated,
+  } = useReportData(period, "branch");
 
   const deposits = filtered.filter((t) => t.type === "deposit");
   const withdrawals = filtered.filter((t) => t.type === "withdrawal");
-  const prevDep = prevFiltered.filter((t) => t.type === "deposit");
-  const prevRet = prevFiltered.filter((t) => t.type === "withdrawal");
 
-  const totalDep = deposits.reduce((s, t) => s + t.amount, 0);
-  const totalRet = withdrawals.reduce((s, t) => s + t.amount, 0);
+  const totalDep = sum(deposits);
+  const totalRet = sum(withdrawals);
   const totalSaved = clients.reduce((s, c) => s + (c.balance ?? 0), 0);
-  const commissions = Math.round((totalDep + totalRet) * 0.01);
+  const commission = commissionOf(totalDep, totalRet);
 
-  const prevNet =
-    prevDep.reduce((s, t) => s + t.amount, 0) -
-    prevRet.reduce((s, t) => s + t.amount, 0);
-  const net = totalDep - totalRet;
-  const trendPct =
-    prevNet !== 0 ? Math.round(((net - prevNet) / Math.abs(prevNet)) * 100) : 0;
-  const trendUp = trendPct >= 0;
+  // The hero shows all-time savings; its pill compares this period's deposits.
+  const depTrend = trendInfo(
+    pctChange(totalDep, sum(prevFiltered.filter((t) => t.type === "deposit"))),
+    totalDep,
+    "dépôts",
+  );
 
   const periodLabel = PERIOD_STAT_LABEL[period];
   const chartBars = useMemo(
@@ -1286,21 +1474,29 @@ function AdminView() {
     [filtered, period],
   );
 
-  // Agent leaderboard: compute per-agent stats from transactions
+  // Per-agent stats. "Collected" is deposits only; commission is earned on
+  // every operation (deposits and withdrawals).
   const agentStatsMap = useMemo(() => {
     const map = new Map<
       string,
-      { collected: number; clientSet: Set<string>; ops: number }
+      {
+        collected: number;
+        withdrawn: number;
+        clientSet: Set<string>;
+        ops: number;
+      }
     >();
     for (const t of filtered) {
       const agentId = t.agentId;
       if (!agentId) continue;
       const entry = map.get(agentId) ?? {
         collected: 0,
+        withdrawn: 0,
         clientSet: new Set<string>(),
         ops: 0,
       };
-      entry.collected += t.amount;
+      if (t.type === "deposit") entry.collected += t.amount;
+      else entry.withdrawn += t.amount;
       entry.clientSet.add(t.clientId);
       entry.ops++;
       map.set(agentId, entry);
@@ -1308,13 +1504,47 @@ function AdminView() {
     return map;
   }, [filtered]);
 
-  const sortedAgents = useMemo(() => {
-    return [...agents].sort((a, b) => {
-      const aCollected = agentStatsMap.get(a._id)?.collected ?? 0;
-      const bCollected = agentStatsMap.get(b._id)?.collected ?? 0;
-      return bCollected - aCollected;
-    });
-  }, [agents, agentStatsMap]);
+  // Branch roster (only admins/supervisors may load it) plus every agent who
+  // appears in the period's transactions — accountants and IT admins have no
+  // roster, but the branch query names each transaction's agent.
+  const agentRows = useMemo(() => {
+    const rows = new Map<
+      string,
+      { id: string; name: string; suspended: boolean }
+    >();
+    for (const a of roster) {
+      rows.set(a._id, {
+        id: a._id,
+        name: a.fullName,
+        suspended: a.status === "suspended",
+      });
+    }
+    for (const id of agentStatsMap.keys()) {
+      if (!rows.has(id)) {
+        rows.set(id, {
+          id,
+          name: agentNames.get(id) ?? "Agent inconnu",
+          suspended: false,
+        });
+      }
+    }
+    return [...rows.values()];
+  }, [roster, agentStatsMap, agentNames]);
+
+  const sortedAgents = useMemo(
+    () =>
+      [...agentRows].sort(
+        (a, b) =>
+          (agentStatsMap.get(b.id)?.collected ?? 0) -
+          (agentStatsMap.get(a.id)?.collected ?? 0),
+      ),
+    [agentRows, agentStatsMap],
+  );
+
+  const agentCommission = (id: string) => {
+    const st = agentStatsMap.get(id);
+    return commissionOf(st?.collected ?? 0, st?.withdrawn ?? 0).total;
+  };
 
   // Group breakdown
   const groupStats = useMemo(() => {
@@ -1341,36 +1571,42 @@ function AdminView() {
     { id: "commissions", label: "Commissions" },
   ];
 
-  const maxAgentCollected =
-    sortedAgents.length > 0
-      ? Math.max(
-          ...sortedAgents.map((a) => agentStatsMap.get(a._id)?.collected ?? 0),
-          1,
-        )
-      : 1;
+  const maxAgentCollected = Math.max(
+    ...sortedAgents.map((a) => agentStatsMap.get(a.id)?.collected ?? 0),
+    1,
+  );
 
   const AGENT_BAR_COLORS = [T.orange, T.blue, T.greenMid, T.orange, T.text3];
+
+  const agentNameOf = (id?: string) =>
+    (id && agentRows.find((a) => a.id === id)?.name) ?? "";
+  const exportReport = () =>
+    exportTransactionsCsv(
+      filtered,
+      `rapport-agence-${period}.csv`,
+      agentNameOf,
+    );
 
   return (
     <SafeAreaView edges={["top"]} style={s.root}>
       <ScrollView
         style={{ flex: 1 }}
         showsVerticalScrollIndicator={false}
-        contentContainerStyle={{ paddingBottom: 32 }}
+        contentContainerStyle={{ paddingBottom: SPACE.xxl }}
       >
         {/* Top bar */}
         <View style={s.topbar}>
           <View style={s.topbarRow}>
             <Text style={s.pageTitle}>Rapports</Text>
-            <View style={{ flexDirection: "row", gap: 6 }}>
-              <Pressable style={s.iconBtn}>
+            <View style={{ flexDirection: "row", gap: SPACE.xs }}>
+              <Pressable style={s.iconBtn} onPress={() => setTab("global")}>
                 <SlidersHorizontal
                   size={14}
                   color={T.text2}
                   strokeWidth={1.5}
                 />
               </Pressable>
-              <Pressable style={s.iconBtn}>
+              <Pressable style={s.iconBtn} onPress={exportReport}>
                 <Download size={14} color={T.text2} strokeWidth={1.5} />
               </Pressable>
             </View>
@@ -1399,21 +1635,23 @@ function AdminView() {
           ))}
         </ScrollView>
 
+        <DataNotice partial={partial} truncated={truncated} />
+
         {/* ── Vue globale ── */}
         {activeTab === "global" && (
           <>
             <AdminHero
               total={totalSaved}
-              subtitle={`${periodLabel} · ${clients.length} clients · ${agents.length} agents`}
-              trendUp={trendUp}
-              trendLabel={`${trendUp ? "↑" : "↓"} ${Math.abs(trendPct)}% vs période préc.`}
+              subtitle={`${clients.length} clients · ${agentRows.length} agents`}
+              trendUp={depTrend.up}
+              trendLabel={depTrend.label}
               transactions={filtered.length}
               collected={
                 totalDep >= 1_000_000
                   ? `${(totalDep / 1_000_000).toFixed(1)}M`
                   : totalDep.toLocaleString("fr-FR")
               }
-              commissions={commissions}
+              commissions={commission.total}
             />
             <View style={s.qstatRow}>
               <View style={s.qstat}>
@@ -1434,19 +1672,19 @@ function AdminView() {
               </View>
             </View>
             <View style={s.section}>
-              <SectionHeader title="Collecte mensuelle" link="Détail →" />
+              <SectionHeader title={CHART_TITLE[period]} />
               <BarChart bars={chartBars} />
             </View>
             <View style={s.section}>
               <SectionHeader title="Performance agents" link="Voir tous →" />
               <View style={s.card}>
                 {sortedAgents.slice(0, 3).map((agent, i) => {
-                  const stats = agentStatsMap.get(agent._id);
+                  const stats = agentStatsMap.get(agent.id);
                   return (
                     <AgentLeaderItem
-                      key={agent._id}
+                      key={agent.id}
                       rank={i + 1}
-                      name={agent.fullName}
+                      name={agent.name}
                       clients={stats?.clientSet.size ?? 0}
                       ops={stats?.ops ?? 0}
                       amount={stats?.collected ?? 0}
@@ -1457,7 +1695,7 @@ function AdminView() {
                   );
                 })}
                 {sortedAgents.length === 0 && (
-                  <View style={{ padding: 16 }}>
+                  <View style={{ padding: SPACE.lg }}>
                     <Text style={{ fontSize: 13, color: T.text3 }}>
                       Aucun agent
                     </Text>
@@ -1466,12 +1704,12 @@ function AdminView() {
               </View>
             </View>
             <View style={s.section}>
-              <SectionHeader title="Commissions du mois" />
+              <SectionHeader title={`Commissions · ${periodLabel}`} />
               <View style={s.card}>
                 <View style={s.cRow}>
                   <Text style={s.cLabel}>Dépôts (1% × {deposits.length})</Text>
                   <Text style={[s.cVal, { color: T.greenMid }]}>
-                    {Math.round(totalDep * 0.01).toLocaleString("fr-FR")} F
+                    {commission.dep.toLocaleString("fr-FR")} F
                   </Text>
                 </View>
                 <View style={s.cRow}>
@@ -1479,7 +1717,7 @@ function AdminView() {
                     Retraits (1% × {withdrawals.length})
                   </Text>
                   <Text style={[s.cVal, { color: T.greenMid }]}>
-                    {Math.round(totalRet * 0.01).toLocaleString("fr-FR")} F
+                    {commission.ret.toLocaleString("fr-FR")} F
                   </Text>
                 </View>
                 <View style={[s.cRow, { borderBottomWidth: 0 }]}>
@@ -1489,12 +1727,15 @@ function AdminView() {
                     Total organisation
                   </Text>
                   <Text style={[s.cVal, { color: T.orange, fontSize: 15 }]}>
-                    {commissions.toLocaleString("fr-FR")} F
+                    {commission.total.toLocaleString("fr-FR")} F
                   </Text>
                 </View>
               </View>
             </View>
-            <ExportButton label="Exporter rapport complet" />
+            <ExportButton
+              onPress={exportReport}
+              label="Exporter rapport complet"
+            />
           </>
         )}
 
@@ -1504,19 +1745,19 @@ function AdminView() {
             <View style={s.section}>
               <SectionHeader title={`Collecte par agent — ${periodLabel}`} />
               <View style={s.card}>
-                <View style={{ padding: 12, gap: 10 }}>
+                <View style={{ padding: SPACE.md, gap: SPACE.sm }}>
                   {sortedAgents.map((agent, i) => {
-                    const stats = agentStatsMap.get(agent._id);
+                    const stats = agentStatsMap.get(agent.id);
                     return (
                       <AgentCompBar
-                        key={agent._id}
-                        name={agent.fullName}
+                        key={agent.id}
+                        name={agent.name}
                         amount={stats?.collected ?? 0}
                         maxAmount={maxAgentCollected}
                         avatarBg={AVATAR_COLORS[i % 5].bg}
                         avatarColor={AVATAR_COLORS[i % 5].fg}
                         barColor={AGENT_BAR_COLORS[i % 5]}
-                        blocked={agent.status === "suspended"}
+                        blocked={agent.suspended}
                       />
                     );
                   })}
@@ -1560,20 +1801,19 @@ function AdminView() {
                   </Text>
                 </View>
                 {sortedAgents.map((agent, i) => {
-                  const stats = agentStatsMap.get(agent._id);
-                  const collected = stats?.collected ?? 0;
-                  const comm = Math.round(collected * 0.01);
+                  const stats = agentStatsMap.get(agent.id);
+                  const comm = agentCommission(agent.id);
                   const isLast = i === sortedAgents.length - 1;
                   return (
                     <View
-                      key={agent._id}
+                      key={agent.id}
                       style={[
                         s.agentTableRow,
                         isLast ? { borderBottomWidth: 0 } : undefined,
                       ]}
                     >
                       <Text style={[s.agentTableVal, { flex: 1 }]}>
-                        {agent.fullName}
+                        {agent.name}
                       </Text>
                       <Text
                         style={[
@@ -1597,13 +1837,13 @@ function AdminView() {
                           { minWidth: 64, textAlign: "right" },
                         ]}
                       >
-                        —
+                        {comm.toLocaleString("fr-FR")} F
                       </Text>
                     </View>
                   );
                 })}
                 {sortedAgents.length === 0 && (
-                  <View style={{ padding: 16 }}>
+                  <View style={{ padding: SPACE.lg }}>
                     <Text style={{ fontSize: 13, color: T.text3 }}>
                       Aucun agent
                     </Text>
@@ -1611,7 +1851,10 @@ function AdminView() {
                 )}
               </View>
             </View>
-            <ExportButton label="Exporter par agent (CSV)" />
+            <ExportButton
+              onPress={exportReport}
+              label="Exporter par agent (CSV)"
+            />
           </>
         )}
 
@@ -1678,7 +1921,7 @@ function AdminView() {
                   );
                 })}
                 {groupStats.length === 0 && (
-                  <View style={{ padding: 16 }}>
+                  <View style={{ padding: SPACE.lg }}>
                     <Text style={{ fontSize: 13, color: T.text3 }}>
                       Aucun groupe défini
                     </Text>
@@ -1686,7 +1929,10 @@ function AdminView() {
                 )}
               </View>
             </View>
-            <ExportButton label="Exporter par groupe (CSV)" />
+            <ExportButton
+              onPress={exportReport}
+              label="Exporter par groupe (CSV)"
+            />
           </>
         )}
 
@@ -1696,7 +1942,7 @@ function AdminView() {
             <View style={[s.focusedHero, { backgroundColor: T.dark }]}>
               <Text style={s.heroLabel}>Commissions organisation</Text>
               <Text style={s.heroBig}>
-                {commissions.toLocaleString("fr-FR")}
+                {commission.total.toLocaleString("fr-FR")}
                 <Text style={s.heroCur}> F</Text>
               </Text>
               <Text style={s.heroSub}>
@@ -1725,7 +1971,7 @@ function AdminView() {
                     Dépôts (1% × {deposits.length} opér.)
                   </Text>
                   <Text style={[s.cVal, { color: T.greenMid }]}>
-                    {Math.round(totalDep * 0.01).toLocaleString("fr-FR")} F
+                    {commission.dep.toLocaleString("fr-FR")} F
                   </Text>
                 </View>
                 <View style={s.cRow}>
@@ -1733,7 +1979,7 @@ function AdminView() {
                     Retraits (1% × {withdrawals.length} opér.)
                   </Text>
                   <Text style={[s.cVal, { color: T.greenMid }]}>
-                    {Math.round(totalRet * 0.01).toLocaleString("fr-FR")} F
+                    {commission.ret.toLocaleString("fr-FR")} F
                   </Text>
                 </View>
                 <View style={[s.cRow, { borderBottomWidth: 0 }]}>
@@ -1743,7 +1989,7 @@ function AdminView() {
                     Total organisation
                   </Text>
                   <Text style={[s.cVal, { color: T.orange, fontSize: 15 }]}>
-                    {commissions.toLocaleString("fr-FR")} F
+                    {commission.total.toLocaleString("fr-FR")} F
                   </Text>
                 </View>
               </View>
@@ -1753,21 +1999,19 @@ function AdminView() {
                 <SectionHeader title="Par agent" />
                 <View style={s.card}>
                   {sortedAgents.map((agent, i) => {
-                    const stats = agentStatsMap.get(agent._id);
-                    const collected = stats?.collected ?? 0;
-                    const comm = Math.round(collected * 0.01);
+                    const comm = agentCommission(agent.id);
                     const isLast = i === sortedAgents.length - 1;
                     return (
                       <View
-                        key={agent._id}
+                        key={agent.id}
                         style={[
                           s.cRow,
                           isLast ? { borderBottomWidth: 0 } : undefined,
                         ]}
                       >
-                        <Text style={s.cLabel}>{agent.fullName}</Text>
+                        <Text style={s.cLabel}>{agent.name}</Text>
                         <Text style={[s.cVal, { color: T.textSuccess }]}>
-                          —
+                          {comm.toLocaleString("fr-FR")} F
                         </Text>
                       </View>
                     );
@@ -1775,7 +2019,10 @@ function AdminView() {
                 </View>
               </View>
             )}
-            <ExportButton label="Exporter commissions (CSV)" />
+            <ExportButton
+              onPress={exportReport}
+              label="Exporter commissions (CSV)"
+            />
           </>
         )}
       </ScrollView>
@@ -1801,9 +2048,9 @@ const s = StyleSheet.create({
 
   topbar: {
     backgroundColor: T.bg,
-    paddingHorizontal: 18,
-    paddingTop: 12,
-    paddingBottom: 14,
+    paddingHorizontal: SPACE.lg,
+    paddingTop: SPACE.md,
+    paddingBottom: SPACE.lg,
     borderBottomWidth: 0.5,
     borderBottomColor: T.border,
   },
@@ -1811,7 +2058,7 @@ const s = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
-    marginBottom: 12,
+    marginBottom: SPACE.md,
   },
   pageTitle: {
     fontSize: 18,
@@ -1832,12 +2079,12 @@ const s = StyleSheet.create({
 
   periodBar: {
     flexDirection: "row",
-    gap: 4,
+    gap: SPACE.xs,
     backgroundColor: T.bg2,
-    padding: 3,
+    padding: SPACE.xs,
     borderRadius: 10,
   },
-  popt: { flex: 1, alignItems: "center", paddingVertical: 6, borderRadius: 7 },
+  popt: { flex: 1, alignItems: "center", paddingVertical: SPACE.sm, borderRadius: 7 },
   poptActive: {
     backgroundColor: T.bg,
     borderWidth: 0.5,
@@ -1848,14 +2095,14 @@ const s = StyleSheet.create({
 
   pillTabs: {
     flexDirection: "row",
-    gap: 6,
-    paddingHorizontal: 18,
-    paddingVertical: 14,
+    gap: SPACE.xs,
+    paddingHorizontal: SPACE.lg,
+    paddingVertical: SPACE.lg,
     justifyContent: "center",
   },
   ptab: {
-    paddingHorizontal: 12,
-    paddingVertical: 5,
+    paddingHorizontal: SPACE.md,
+    paddingVertical: SPACE.xs,
     borderRadius: 20,
     borderWidth: 0.5,
     borderColor: T.border2,
@@ -1869,27 +2116,27 @@ const s = StyleSheet.create({
 
   hero: {
     backgroundColor: T.orange,
-    paddingHorizontal: 18,
-    paddingTop: 18,
-    paddingBottom: 22,
+    paddingHorizontal: SPACE.lg,
+    paddingTop: SPACE.lg,
+    paddingBottom: SPACE.xl,
   },
   adminHero: {
     backgroundColor: T.dark,
-    paddingHorizontal: 18,
-    paddingTop: 18,
-    paddingBottom: 22,
+    paddingHorizontal: SPACE.lg,
+    paddingTop: SPACE.lg,
+    paddingBottom: SPACE.xl,
   },
   focusedHero: {
-    paddingHorizontal: 18,
-    paddingTop: 16,
-    paddingBottom: 20,
+    paddingHorizontal: SPACE.lg,
+    paddingTop: SPACE.lg,
+    paddingBottom: SPACE.xl,
   },
   heroLabel: {
     fontSize: 10,
     color: "rgba(255,255,255,0.5)",
     textTransform: "uppercase",
     letterSpacing: 0.5,
-    marginBottom: 4,
+    marginBottom: SPACE.xs,
   },
   heroBig: {
     fontSize: 32,
@@ -1899,16 +2146,16 @@ const s = StyleSheet.create({
     lineHeight: 38,
   },
   heroCur: { fontSize: 14, fontWeight: "400", opacity: 0.55 },
-  heroSub: { fontSize: 12, color: "rgba(255,255,255,0.5)", marginTop: 4 },
+  heroSub: { fontSize: 12, color: "rgba(255,255,255,0.5)", marginTop: SPACE.xs },
 
   trendPill: {
     flexDirection: "row",
     alignItems: "center",
-    gap: 4,
+    gap: SPACE.xs,
     alignSelf: "flex-start",
-    marginTop: 8,
-    paddingHorizontal: 9,
-    paddingVertical: 3,
+    marginTop: SPACE.sm,
+    paddingHorizontal: SPACE.sm,
+    paddingVertical: SPACE.xs,
     borderRadius: 20,
   },
   trendUp: { backgroundColor: "rgba(59,109,17,0.3)" },
@@ -1919,42 +2166,42 @@ const s = StyleSheet.create({
 
   kpiGrid: {
     flexDirection: "row",
-    gap: 1,
+    gap: SPACE.xxs,
     backgroundColor: "rgba(255,255,255,0.08)",
     borderRadius: 12,
     overflow: "hidden",
-    marginTop: 14,
+    marginTop: SPACE.md,
   },
   kpiCell: {
     flex: 1,
     backgroundColor: "rgba(255,255,255,0.05)",
-    paddingVertical: 10,
+    paddingVertical: SPACE.md,
     alignItems: "center",
   },
   kcVal: { fontSize: 15, fontWeight: "600", color: "#fff" },
-  kcLbl: { fontSize: 10, color: "rgba(255,255,255,0.4)", marginTop: 1 },
+  kcLbl: { fontSize: 10, color: "rgba(255,255,255,0.4)", marginTop: SPACE.xxs },
 
-  focusedMiniRow: { flexDirection: "row", gap: 8, marginTop: 12 },
+  focusedMiniRow: { flexDirection: "row", gap: SPACE.sm, marginTop: SPACE.md },
   focusedMini: {
     flex: 1,
     backgroundColor: "rgba(255,255,255,0.15)",
     borderRadius: 10,
-    paddingVertical: 9,
+    paddingVertical: SPACE.sm,
     alignItems: "center",
   },
   focusedMiniVal: { fontSize: 14, fontWeight: "600", color: "#fff" },
   focusedMiniLbl: {
     fontSize: 9,
     color: "rgba(255,255,255,0.5)",
-    marginTop: 1,
+    marginTop: SPACE.xxs,
     textAlign: "center",
   },
 
   qstatRow: {
     flexDirection: "row",
-    gap: 8,
-    paddingHorizontal: 18,
-    paddingTop: 14,
+    gap: SPACE.sm,
+    paddingHorizontal: SPACE.lg,
+    paddingTop: SPACE.lg,
   },
   qstat: {
     flex: 1,
@@ -1962,18 +2209,18 @@ const s = StyleSheet.create({
     borderWidth: 0.5,
     borderColor: T.border,
     borderRadius: 12,
-    padding: 12,
+    padding: SPACE.md,
   },
-  qstatLbl: { fontSize: 10, color: T.text3, marginBottom: 4 },
+  qstatLbl: { fontSize: 10, color: T.text3, marginBottom: SPACE.xs },
   qstatVal: { fontSize: 17, fontWeight: "600" },
-  qstatSub: { fontSize: 10, color: T.text3, marginTop: 2 },
+  qstatSub: { fontSize: 10, color: T.text3, marginTop: SPACE.xxs },
 
-  section: { paddingHorizontal: 18, paddingTop: 14 },
+  section: { paddingHorizontal: SPACE.lg, paddingTop: SPACE.lg },
   secRow: {
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
-    marginBottom: 8,
+    marginBottom: SPACE.sm,
   },
   secTitle: {
     fontSize: 11,
@@ -1994,38 +2241,46 @@ const s = StyleSheet.create({
 
   chartLegend: {
     flexDirection: "row",
-    gap: 12,
-    paddingHorizontal: 14,
-    paddingTop: 10,
-    paddingBottom: 4,
+    gap: SPACE.md,
+    paddingHorizontal: SPACE.lg,
+    paddingTop: SPACE.md,
+    paddingBottom: SPACE.xs,
   },
-  legItem: { flexDirection: "row", alignItems: "center", gap: 4 },
+  legItem: { flexDirection: "row", alignItems: "center", gap: SPACE.xs },
   legDot: { width: 8, height: 8, borderRadius: 2 },
   legText: { fontSize: 10, color: T.text2 },
   barChart: {
     flexDirection: "row",
     alignItems: "flex-end",
-    gap: 5,
+    gap: SPACE.xs,
     height: 86,
-    paddingHorizontal: 14,
-    paddingBottom: 10,
+    paddingHorizontal: SPACE.lg,
+    paddingBottom: SPACE.md,
   },
   barWrap: { flex: 1, flexDirection: "column", alignItems: "center" },
   bar: { width: "100%", borderTopLeftRadius: 3, borderTopRightRadius: 3 },
-  barLbl: { fontSize: 9, color: T.text3, marginTop: 4 },
+  barLbl: { fontSize: 9, color: T.text3, marginTop: SPACE.xs },
   peakDayText: {
     fontSize: 11,
     color: T.text3,
-    paddingHorizontal: 14,
-    paddingBottom: 10,
+    paddingHorizontal: SPACE.lg,
+    paddingBottom: SPACE.md,
   },
+  notice: {
+    marginHorizontal: SPACE.lg,
+    marginBottom: SPACE.md,
+    padding: SPACE.md,
+    borderRadius: 10,
+    backgroundColor: T.bgWarning,
+  },
+  noticeText: { fontSize: 12, color: T.textWarning, lineHeight: 16 },
 
   rankItem: {
     flexDirection: "row",
     alignItems: "center",
-    gap: 10,
-    paddingVertical: 10,
-    paddingHorizontal: 14,
+    gap: SPACE.sm,
+    paddingVertical: SPACE.md,
+    paddingHorizontal: SPACE.lg,
     borderBottomWidth: 0.5,
     borderBottomColor: T.border,
   },
@@ -2045,27 +2300,27 @@ const s = StyleSheet.create({
   },
   rankAvText: { fontSize: 11, fontWeight: "600" },
   rankName: { fontSize: 13, fontWeight: "500", color: T.text1 },
-  rankSub: { fontSize: 10, color: T.text3, marginTop: 1 },
+  rankSub: { fontSize: 10, color: T.text3, marginTop: SPACE.xxs },
   rankRight: { alignItems: "flex-end" },
   rankVal: { fontSize: 13, fontWeight: "600", color: T.text1 },
-  rankPct: { fontSize: 10, color: T.text3, marginTop: 1 },
+  rankPct: { fontSize: 10, color: T.text3, marginTop: SPACE.xxs },
 
   progTrack: {
     height: 4,
     backgroundColor: T.bg2,
     borderRadius: 2,
     overflow: "hidden",
-    marginTop: 5,
+    marginTop: SPACE.xs,
   },
   progFill: { height: 4, borderRadius: 2 },
 
-  agentCompRow: { gap: 4 },
+  agentCompRow: { gap: SPACE.xs },
   agentCompHeader: {
     flexDirection: "row",
     justifyContent: "space-between",
-    marginBottom: 4,
+    marginBottom: SPACE.xs,
   },
-  agentCompLeft: { flexDirection: "row", alignItems: "center", gap: 6 },
+  agentCompLeft: { flexDirection: "row", alignItems: "center", gap: SPACE.xs },
   agentCompAv: {
     width: 22,
     height: 22,
@@ -2078,17 +2333,17 @@ const s = StyleSheet.create({
   agentCompAmount: { fontSize: 12, fontWeight: "600", color: T.text1 },
   blockedBadge: {
     backgroundColor: T.bgDanger,
-    paddingHorizontal: 5,
-    paddingVertical: 1,
+    paddingHorizontal: SPACE.xs,
+    paddingVertical: SPACE.xxs,
     borderRadius: 4,
   },
   blockedBadgeText: { fontSize: 9, color: T.textDanger },
 
   agentTableHeader: {
     flexDirection: "row",
-    gap: 4,
-    paddingHorizontal: 14,
-    paddingVertical: 7,
+    gap: SPACE.xs,
+    paddingHorizontal: SPACE.lg,
+    paddingVertical: SPACE.sm,
     backgroundColor: T.bg2,
     borderBottomWidth: 0.5,
     borderBottomColor: T.border,
@@ -2096,9 +2351,9 @@ const s = StyleSheet.create({
   agentTableCell: { fontSize: 10, color: T.text3 },
   agentTableRow: {
     flexDirection: "row",
-    gap: 4,
-    paddingHorizontal: 14,
-    paddingVertical: 8,
+    gap: SPACE.xs,
+    paddingHorizontal: SPACE.lg,
+    paddingVertical: SPACE.sm,
     borderBottomWidth: 0.5,
     borderBottomColor: T.border,
   },
@@ -2110,8 +2365,8 @@ const s = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
-    paddingHorizontal: 14,
-    paddingVertical: 11,
+    paddingHorizontal: SPACE.lg,
+    paddingVertical: SPACE.md,
     borderBottomWidth: 0.5,
     borderBottomColor: T.border,
   },
@@ -2122,14 +2377,14 @@ const s = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",
-    gap: 7,
-    marginHorizontal: 18,
-    marginTop: 16,
+    gap: SPACE.sm,
+    marginHorizontal: SPACE.lg,
+    marginTop: SPACE.lg,
     backgroundColor: T.bg,
     borderWidth: 0.5,
     borderColor: T.border2,
     borderRadius: 12,
-    paddingVertical: 13,
+    paddingVertical: SPACE.md,
   },
   exportText: { fontSize: 13, fontWeight: "500", color: T.text1 },
 });

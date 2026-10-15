@@ -47,6 +47,7 @@ import { useTransactionStore } from "@/stores/transaction-store";
 import { useAuthStore } from "@/stores/auth-store";
 import { usePermissions } from "@/hooks/usePermissions";
 
+import { SPACE } from "@/constants/spacing";
 // ─── Design tokens ────────────────────────────────────────────────────────────
 const T = {
   bg: "#ffffff",
@@ -397,7 +398,7 @@ function BtnMain({
       activeOpacity={0.8}
       style={[styles.btnMain, { backgroundColor: color }]}
     >
-      {icon && <View style={{ marginRight: 6 }}>{icon}</View>}
+      {icon && <View style={{ marginRight: SPACE.xs }}>{icon}</View>}
       <Text style={styles.btnMainText}>{label}</Text>
     </TouchableOpacity>
   );
@@ -419,7 +420,7 @@ function BtnOutline({
       activeOpacity={0.7}
       style={styles.btnOutline}
     >
-      {icon && <View style={{ marginRight: 6 }}>{icon}</View>}
+      {icon && <View style={{ marginRight: SPACE.xs }}>{icon}</View>}
       <Text style={styles.btnOutlineText}>{label}</Text>
     </TouchableOpacity>
   );
@@ -576,7 +577,7 @@ function HubScreen({ onNavigate }: { onNavigate: (s: Screen) => void }) {
     <ScrollView
       style={{ flex: 1, backgroundColor: T.bg3 }}
       showsVerticalScrollIndicator={false}
-      contentContainerStyle={{ paddingBottom: 32 }}
+      contentContainerStyle={{ paddingBottom: SPACE.xxl }}
     >
       {/* Top bar */}
       <View style={styles.topbar}>
@@ -620,7 +621,7 @@ function HubScreen({ onNavigate }: { onNavigate: (s: Screen) => void }) {
       </View>
 
       {/* Recent history */}
-      <View style={[styles.sectionPad, { marginTop: 14 }]}>
+      <View style={[styles.sectionPad, { marginTop: SPACE.md }]}>
         <SecTitle label="Historique récent" />
         <View style={styles.card}>
           {history.map((h, i) => (
@@ -635,7 +636,7 @@ function HubScreen({ onNavigate }: { onNavigate: (s: Screen) => void }) {
                 style={{
                   flexDirection: "row",
                   alignItems: "center",
-                  gap: 10,
+                  gap: SPACE.sm,
                   flex: 1,
                 }}
               >
@@ -717,7 +718,7 @@ function ImportUploadScreen({
       <StepBar total={4} done={1} active={1} accent="orange" />
       <ScrollView
         showsVerticalScrollIndicator={false}
-        contentContainerStyle={{ paddingBottom: 32 }}
+        contentContainerStyle={{ paddingBottom: SPACE.xxl }}
       >
         <BackRow label="Données" step={1} total={4} onBack={onBack} />
 
@@ -746,7 +747,7 @@ function ImportUploadScreen({
           <Text style={styles.uploadSub}>
             {"Depuis votre téléphone,\nGoogle Drive ou WhatsApp"}
           </Text>
-          <View style={{ flexDirection: "row", gap: 6 }}>
+          <View style={{ flexDirection: "row", gap: SPACE.xs }}>
             {[".CSV", ".XLS", ".XLSX"].map((f) => (
               <View key={f} style={styles.fmtChip}>
                 <Text style={styles.fmtChipText}>{f}</Text>
@@ -756,7 +757,7 @@ function ImportUploadScreen({
         </TouchableOpacity>
 
         {/* Template download */}
-        <View style={[styles.sectionPad, { marginTop: 14 }]}>
+        <View style={[styles.sectionPad, { marginTop: SPACE.md }]}>
           <SecTitle label="Modèle de fichier" />
           <TouchableOpacity activeOpacity={0.7} style={styles.templateRow}>
             <View style={[styles.histIcon, { backgroundColor: T.bgSuccess }]}>
@@ -773,7 +774,7 @@ function ImportUploadScreen({
         </View>
 
         {/* Required columns */}
-        <View style={[styles.sectionPad, { marginTop: 14 }]}>
+        <View style={[styles.sectionPad, { marginTop: SPACE.md }]}>
           <SecTitle label="Colonnes requises" />
           <View style={styles.card}>
             {required.map((r, i) => (
@@ -864,7 +865,7 @@ function ImportMapScreen({
       <StepBar total={4} done={2} active={2} accent="orange" />
       <ScrollView
         showsVerticalScrollIndicator={false}
-        contentContainerStyle={{ paddingBottom: 32 }}
+        contentContainerStyle={{ paddingBottom: SPACE.xxl }}
       >
         <BackRow label="Retour" step={2} total={4} onBack={onBack} />
 
@@ -913,7 +914,7 @@ function ImportMapScreen({
             </Text>
           </View>
           {headers.length === 0 && !loading && (
-            <View style={{ padding: 16 }}>
+            <View style={{ padding: SPACE.lg }}>
               <Text style={{ color: T.text3, fontSize: 13 }}>
                 Aucune colonne détectée
               </Text>
@@ -1037,7 +1038,7 @@ function ImportPreviewScreen({
       <StepBar total={4} done={3} active={3} accent="orange" />
       <ScrollView
         showsVerticalScrollIndicator={false}
-        contentContainerStyle={{ paddingBottom: 32 }}
+        contentContainerStyle={{ paddingBottom: SPACE.xxl }}
       >
         <BackRow label="Retour" step={3} total={4} onBack={onBack} />
 
@@ -1067,7 +1068,7 @@ function ImportPreviewScreen({
         {/* Warning banner — only if there are issues */}
         {(dupCount > 0 || errCount > 0) && (
           <View style={styles.warnBanner}>
-            <View style={{ marginTop: 1 }}>
+            <View style={{ marginTop: SPACE.xxs }}>
               <AlertTriangle
                 size={14}
                 color={T.textWarning}
@@ -1085,7 +1086,7 @@ function ImportPreviewScreen({
         )}
 
         {/* Preview table */}
-        <View style={[styles.sectionPad, { paddingBottom: 8 }]}>
+        <View style={[styles.sectionPad, { paddingBottom: SPACE.sm }]}>
           <SecTitle
             label={`Aperçu des données (${Math.min(rows.length, 5)} premières)`}
           />
@@ -1207,7 +1208,7 @@ function ImportSuccessScreen({
 
       {skipped > 0 && (
         <View style={styles.errSummary}>
-          <View style={{ marginTop: 1 }}>
+          <View style={{ marginTop: SPACE.xxs }}>
             <AlertTriangle size={15} color={T.textWarning} strokeWidth={1.4} />
           </View>
           <Text style={styles.errTxt}>
@@ -1220,7 +1221,7 @@ function ImportSuccessScreen({
         </View>
       )}
 
-      <View style={{ width: "100%", gap: 8 }}>
+      <View style={{ width: "100%", gap: SPACE.sm }}>
         <BtnMain
           label="Voir la liste des clients"
           color={T.orange}
@@ -1278,7 +1279,7 @@ function ImportTxUploadScreen({
       <StepBar total={3} done={1} active={1} accent="orange" />
       <ScrollView
         showsVerticalScrollIndicator={false}
-        contentContainerStyle={{ paddingBottom: 32 }}
+        contentContainerStyle={{ paddingBottom: SPACE.xxl }}
       >
         <BackRow label="Données" step={1} total={3} onBack={onBack} />
         <View style={styles.screenTitleBlock}>
@@ -1302,13 +1303,13 @@ function ImportTxUploadScreen({
           <Text style={styles.uploadSub}>
             {"Depuis votre téléphone,\nGoogle Drive ou WhatsApp"}
           </Text>
-          <View style={{ flexDirection: "row", gap: 6 }}>
+          <View style={{ flexDirection: "row", gap: SPACE.xs }}>
             <View style={styles.fmtChip}>
               <Text style={styles.fmtChipText}>.CSV</Text>
             </View>
           </View>
         </TouchableOpacity>
-        <View style={[styles.sectionPad, { marginTop: 14 }]}>
+        <View style={[styles.sectionPad, { marginTop: SPACE.md }]}>
           <SecTitle label="Colonnes attendues" />
           <View style={styles.card}>
             {columns.map((r, i) => (
@@ -1442,7 +1443,7 @@ function ImportTxPreviewScreen({
       <StepBar total={3} done={2} active={2} accent="orange" />
       <ScrollView
         showsVerticalScrollIndicator={false}
-        contentContainerStyle={{ paddingBottom: 32 }}
+        contentContainerStyle={{ paddingBottom: SPACE.xxl }}
       >
         <BackRow label="Retour" step={2} total={3} onBack={onBack} />
         <View style={styles.screenTitleBlock}>
@@ -1471,7 +1472,7 @@ function ImportTxPreviewScreen({
 
         {(dupCount > 0 || errCount > 0) && (
           <View style={styles.warnBanner}>
-            <View style={{ marginTop: 1 }}>
+            <View style={{ marginTop: SPACE.xxs }}>
               <AlertTriangle
                 size={14}
                 color={T.textWarning}
@@ -1488,7 +1489,7 @@ function ImportTxPreviewScreen({
           </View>
         )}
 
-        <View style={[styles.sectionPad, { paddingBottom: 8 }]}>
+        <View style={[styles.sectionPad, { paddingBottom: SPACE.sm }]}>
           <SecTitle
             label={`Aperçu (${Math.min(rows.length, 5)} premières lignes)`}
           />
@@ -1502,7 +1503,7 @@ function ImportTxPreviewScreen({
             </Text>
           </View>
           {loading && (
-            <View style={{ padding: 16 }}>
+            <View style={{ padding: SPACE.lg }}>
               <Text style={{ color: T.text3, fontSize: 13 }}>Lecture…</Text>
             </View>
           )}
@@ -1599,7 +1600,7 @@ function ImportTxSuccessScreen({
           </View>
         ))}
       </View>
-      <View style={{ width: "100%", gap: 8 }}>
+      <View style={{ width: "100%", gap: SPACE.sm }}>
         <BtnMain label="Retour aux données" color={T.purple} onPress={onDone} />
         <BtnOutline label="Nouvel import" onPress={onDone} />
       </View>
@@ -1689,7 +1690,7 @@ function CleanDataScreen({
     <View style={{ flex: 1, backgroundColor: T.bg3 }}>
       <ScrollView
         showsVerticalScrollIndicator={false}
-        contentContainerStyle={{ paddingBottom: 32 }}
+        contentContainerStyle={{ paddingBottom: SPACE.xxl }}
       >
         <BackRow label="Données" step={1} total={1} onBack={onBack} />
 
@@ -1701,11 +1702,11 @@ function CleanDataScreen({
           </Text>
         </View>
 
-        <View style={[styles.sectionPad, { paddingBottom: 10 }]}>
+        <View style={[styles.sectionPad, { paddingBottom: SPACE.md }]}>
           <SecTitle label="Actions disponibles" />
         </View>
 
-        <View style={{ paddingHorizontal: 18, gap: 10 }}>
+        <View style={{ paddingHorizontal: SPACE.lg, gap: SPACE.sm }}>
           {actions.map((a) => (
             <TouchableOpacity
               key={a.label}
@@ -1735,11 +1736,11 @@ function CleanDataScreen({
         </View>
 
         <View
-          style={[styles.sectionPad, { paddingTop: 20, paddingBottom: 10 }]}
+          style={[styles.sectionPad, { paddingTop: SPACE.xl, paddingBottom: SPACE.md }]}
         >
           <SecTitle label="Réconciliation" />
         </View>
-        <View style={{ paddingHorizontal: 18, gap: 8 }}>
+        <View style={{ paddingHorizontal: SPACE.lg, gap: SPACE.sm }}>
           <BtnOutline
             label="Recalculer les soldes depuis les transactions"
             icon={<RotateCcw size={14} color={T.text2} strokeWidth={1.5} />}
@@ -1748,11 +1749,11 @@ function CleanDataScreen({
         </View>
 
         <View
-          style={[styles.sectionPad, { paddingTop: 20, paddingBottom: 10 }]}
+          style={[styles.sectionPad, { paddingTop: SPACE.xl, paddingBottom: SPACE.md }]}
         >
           <SecTitle label="Réimporter après nettoyage" />
         </View>
-        <View style={{ paddingHorizontal: 18, gap: 8 }}>
+        <View style={{ paddingHorizontal: SPACE.lg, gap: SPACE.sm }}>
           <BtnMain
             label="Importer des clients"
             color={T.orange}
@@ -1848,7 +1849,7 @@ function ExportConfigScreen({
       <StepBar total={3} done={2} active={2} accent="blue" />
       <ScrollView
         showsVerticalScrollIndicator={false}
-        contentContainerStyle={{ paddingBottom: 32 }}
+        contentContainerStyle={{ paddingBottom: SPACE.xxl }}
       >
         <BackRow label="Données" step={2} total={3} onBack={onBack} />
 
@@ -1860,7 +1861,7 @@ function ExportConfigScreen({
         </View>
 
         {/* Format */}
-        <View style={[styles.sectionPad, { paddingBottom: 10 }]}>
+        <View style={[styles.sectionPad, { paddingBottom: SPACE.md }]}>
           <SecTitle label="Format de fichier" />
         </View>
         <View style={styles.exportOpts}>
@@ -1901,7 +1902,7 @@ function ExportConfigScreen({
         </View>
 
         {/* Date range */}
-        <View style={[styles.sectionPad, { paddingTop: 14, paddingBottom: 8 }]}>
+        <View style={[styles.sectionPad, { paddingTop: SPACE.lg, paddingBottom: SPACE.sm }]}>
           <SecTitle label="Période" />
         </View>
         <View style={styles.dateRow}>
@@ -1917,10 +1918,10 @@ function ExportConfigScreen({
         </View>
 
         {/* Data options */}
-        <View style={[styles.sectionPad, { paddingTop: 14, paddingBottom: 8 }]}>
+        <View style={[styles.sectionPad, { paddingTop: SPACE.lg, paddingBottom: SPACE.sm }]}>
           <SecTitle label="Données à inclure" />
         </View>
-        <View style={[styles.card, { marginHorizontal: 18 }]}>
+        <View style={[styles.card, { marginHorizontal: SPACE.lg }]}>
           {toggles.map((t, i) => (
             <View
               key={t.label}
@@ -1929,7 +1930,7 @@ function ExportConfigScreen({
                 i === toggles.length - 1 && { borderBottomWidth: 0 },
               ]}
             >
-              <View style={{ flex: 1, marginRight: 12 }}>
+              <View style={{ flex: 1, marginRight: SPACE.md }}>
                 <Text style={styles.toggleLabel}>{t.label}</Text>
                 <Text style={styles.toggleSub}>{t.sub}</Text>
               </View>
@@ -1986,7 +1987,7 @@ function ExportDoneScreen({ onDone }: { onDone: () => void }) {
             size={32}
             color="#fff"
             strokeWidth={1.5}
-            style={{ marginBottom: 8 }}
+            style={{ marginBottom: SPACE.sm }}
           />
           <Text style={styles.fileCardName}>
             kauridorr_export_avril2025.csv
@@ -2027,7 +2028,7 @@ function ExportDoneScreen({ onDone }: { onDone: () => void }) {
         </View>
       </View>
 
-      <View style={{ width: "100%", gap: 8, marginTop: 4 }}>
+      <View style={{ width: "100%", gap: SPACE.sm, marginTop: SPACE.xs }}>
         <BtnMain
           label="Télécharger le fichier"
           color={T.blue}
@@ -2168,9 +2169,9 @@ const styles = StyleSheet.create({
   // ── Top bar (hub) ──
   topbar: {
     backgroundColor: T.bg,
-    paddingHorizontal: 18,
-    paddingTop: 12,
-    paddingBottom: 14,
+    paddingHorizontal: SPACE.lg,
+    paddingTop: SPACE.md,
+    paddingBottom: SPACE.lg,
     borderBottomWidth: 0.5,
     borderBottomColor: T.border,
   },
@@ -2200,9 +2201,9 @@ const styles = StyleSheet.create({
   syncRow: {
     flexDirection: "row",
     alignItems: "center",
-    gap: 8,
-    paddingHorizontal: 18,
-    paddingVertical: 10,
+    gap: SPACE.sm,
+    paddingHorizontal: SPACE.lg,
+    paddingVertical: SPACE.md,
     backgroundColor: T.bg2,
     borderBottomWidth: 0.5,
     borderBottomColor: T.border,
@@ -2216,7 +2217,7 @@ const styles = StyleSheet.create({
   syncTime: { marginLeft: "auto", fontSize: 11, color: T.text3 },
 
   // ── Section padding ──
-  sectionPad: { paddingHorizontal: 18, paddingTop: 14 },
+  sectionPad: { paddingHorizontal: SPACE.lg, paddingTop: SPACE.lg },
 
   // ── Section title ──
   secTitle: {
@@ -2225,21 +2226,22 @@ const styles = StyleSheet.create({
     color: T.text3,
     textTransform: "uppercase",
     letterSpacing: 0.5,
-    marginBottom: 8,
+    marginBottom: SPACE.sm,
   },
 
   // ── Action tiles ──
   actionTiles: {
     flexDirection: "row",
     flexWrap: "wrap",
-    gap: 10,
-    paddingHorizontal: 18,
+    gap: SPACE.sm,
+    paddingHorizontal: SPACE.lg,
   },
   tile: {
-    width: "47%",
+    flexGrow: 1,
+    flexBasis: "40%",
     borderRadius: 16,
-    padding: 16,
-    gap: 10,
+    padding: SPACE.lg,
+    gap: SPACE.sm,
     borderWidth: 0.5,
   },
   tileIcon: {
@@ -2273,13 +2275,13 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
-    paddingHorizontal: 14,
-    paddingVertical: 12,
+    paddingHorizontal: SPACE.lg,
+    paddingVertical: SPACE.md,
     borderBottomWidth: 0.5,
     borderBottomColor: T.border,
   },
   cardLabel: { fontSize: 13, color: T.text1 },
-  cardSub: { fontSize: 11, color: T.text3, marginTop: 1 },
+  cardSub: { fontSize: 11, color: T.text3, marginTop: SPACE.xxs },
 
   histIcon: {
     width: 30,
@@ -2290,8 +2292,8 @@ const styles = StyleSheet.create({
   },
 
   colBadge: {
-    paddingHorizontal: 7,
-    paddingVertical: 2,
+    paddingHorizontal: SPACE.sm,
+    paddingVertical: SPACE.xxs,
     borderRadius: 4,
   },
   colBadgeText: { fontSize: 10, fontWeight: "500" },
@@ -2305,28 +2307,28 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
-    paddingHorizontal: 18,
-    paddingTop: 12,
+    paddingHorizontal: SPACE.lg,
+    paddingTop: SPACE.md,
     paddingBottom: 0,
     backgroundColor: T.bg,
   },
-  backBtn: { flexDirection: "row", alignItems: "center", gap: 5 },
+  backBtn: { flexDirection: "row", alignItems: "center", gap: SPACE.xs },
   backLabel: { fontSize: 13, color: T.text3 },
   stepBadge: {
     backgroundColor: T.bg2,
     borderWidth: 0.5,
     borderColor: T.border,
     borderRadius: 20,
-    paddingHorizontal: 9,
-    paddingVertical: 3,
+    paddingHorizontal: SPACE.sm,
+    paddingVertical: SPACE.xs,
   },
   stepBadgeText: { fontSize: 11, fontWeight: "500", color: T.text3 },
 
   // ── Screen title block ──
   screenTitleBlock: {
-    paddingHorizontal: 18,
-    paddingTop: 14,
-    paddingBottom: 18,
+    paddingHorizontal: SPACE.lg,
+    paddingTop: SPACE.lg,
+    paddingBottom: SPACE.lg,
     backgroundColor: T.bg,
   },
   screenTitle: {
@@ -2334,22 +2336,22 @@ const styles = StyleSheet.create({
     fontWeight: "600",
     color: T.text1,
     letterSpacing: -0.4,
-    marginBottom: 4,
+    marginBottom: SPACE.xs,
   },
   screenSub: { fontSize: 13, color: T.text2, lineHeight: 19 },
 
-  divider: { height: 1, backgroundColor: T.border, marginBottom: 14 },
+  divider: { height: 1, backgroundColor: T.border, marginBottom: SPACE.md },
 
   // ── Upload zone ──
   uploadZone: {
-    marginHorizontal: 18,
+    marginHorizontal: SPACE.lg,
     borderWidth: 1.5,
     borderStyle: "dashed",
     borderColor: "rgba(216,90,48,0.35)",
     borderRadius: 16,
-    padding: 28,
+    padding: SPACE.xxl,
     alignItems: "center",
-    gap: 10,
+    gap: SPACE.sm,
     backgroundColor: T.orangeLt,
   },
   uploadIconWrap: {
@@ -2370,8 +2372,8 @@ const styles = StyleSheet.create({
   },
 
   fmtChip: {
-    paddingHorizontal: 8,
-    paddingVertical: 3,
+    paddingHorizontal: SPACE.sm,
+    paddingVertical: SPACE.xs,
     borderRadius: 5,
     backgroundColor: "rgba(216,90,48,0.15)",
   },
@@ -2380,27 +2382,27 @@ const styles = StyleSheet.create({
   templateRow: {
     flexDirection: "row",
     alignItems: "center",
-    gap: 10,
+    gap: SPACE.sm,
     backgroundColor: T.bg,
     borderWidth: 0.5,
     borderColor: T.border,
     borderRadius: 13,
-    padding: 12,
+    padding: SPACE.md,
   },
 
   // ── File pill ──
   filePill: {
     flexDirection: "row",
     alignItems: "center",
-    gap: 10,
+    gap: SPACE.sm,
     backgroundColor: T.bg,
     borderWidth: 0.5,
     borderColor: T.border,
     borderRadius: 12,
-    paddingHorizontal: 14,
-    paddingVertical: 11,
-    marginHorizontal: 18,
-    marginBottom: 14,
+    paddingHorizontal: SPACE.lg,
+    paddingVertical: SPACE.md,
+    marginHorizontal: SPACE.lg,
+    marginBottom: SPACE.md,
   },
   fileIconWrap: {
     width: 34,
@@ -2410,7 +2412,7 @@ const styles = StyleSheet.create({
     justifyContent: "center",
   },
   fileName: { fontSize: 13, fontWeight: "500", color: T.text1 },
-  fileMeta: { fontSize: 11, color: T.text3, marginTop: 1 },
+  fileMeta: { fontSize: 11, color: T.text3, marginTop: SPACE.xxs },
   fileRemove: {
     marginLeft: "auto",
     width: 24,
@@ -2428,13 +2430,13 @@ const styles = StyleSheet.create({
     borderColor: T.border,
     borderRadius: 14,
     overflow: "hidden",
-    marginHorizontal: 18,
+    marginHorizontal: SPACE.lg,
   },
   mapHeader: {
     flexDirection: "row",
     justifyContent: "space-between",
-    paddingHorizontal: 14,
-    paddingVertical: 8,
+    paddingHorizontal: SPACE.lg,
+    paddingVertical: SPACE.sm,
     backgroundColor: T.bg2,
     borderBottomWidth: 0.5,
     borderBottomColor: T.border,
@@ -2450,8 +2452,8 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
-    paddingHorizontal: 14,
-    paddingVertical: 9,
+    paddingHorizontal: SPACE.lg,
+    paddingVertical: SPACE.sm,
     borderBottomWidth: 0.5,
     borderBottomColor: T.border,
   },
@@ -2465,31 +2467,31 @@ const styles = StyleSheet.create({
     overflow: "hidden",
     borderWidth: 0.5,
     borderColor: T.border,
-    gap: 1,
+    gap: SPACE.xxs,
     backgroundColor: T.border,
   },
   valCell: {
     flex: 1,
     backgroundColor: T.bg2,
-    paddingVertical: 10,
+    paddingVertical: SPACE.md,
     alignItems: "center",
   },
   valNum: { fontSize: 18, fontWeight: "700" },
-  valLbl: { fontSize: 10, color: T.text3, marginTop: 1 },
+  valLbl: { fontSize: 10, color: T.text3, marginTop: SPACE.xxs },
 
   // ── Warning banner ──
   warnBanner: {
     flexDirection: "row",
     alignItems: "flex-start",
-    gap: 8,
-    marginHorizontal: 18,
-    marginBottom: 12,
+    gap: SPACE.sm,
+    marginHorizontal: SPACE.lg,
+    marginBottom: SPACE.md,
     backgroundColor: T.bgWarning,
     borderWidth: 0.5,
     borderColor: "rgba(133,79,11,0.2)",
     borderRadius: 11,
-    paddingHorizontal: 13,
-    paddingVertical: 10,
+    paddingHorizontal: SPACE.md,
+    paddingVertical: SPACE.md,
   },
   warnBannerText: {
     flex: 1,
@@ -2505,16 +2507,16 @@ const styles = StyleSheet.create({
     borderColor: T.border,
     borderRadius: 14,
     overflow: "hidden",
-    marginHorizontal: 18,
+    marginHorizontal: SPACE.lg,
   },
   ptHeader: {
     flexDirection: "row",
-    paddingHorizontal: 12,
-    paddingVertical: 8,
+    paddingHorizontal: SPACE.md,
+    paddingVertical: SPACE.sm,
     backgroundColor: T.bg2,
     borderBottomWidth: 0.5,
     borderBottomColor: T.border,
-    gap: 8,
+    gap: SPACE.sm,
   },
   ptHeaderText: {
     flex: 1,
@@ -2527,36 +2529,36 @@ const styles = StyleSheet.create({
   ptRow: {
     flexDirection: "row",
     alignItems: "center",
-    paddingHorizontal: 12,
-    paddingVertical: 9,
+    paddingHorizontal: SPACE.md,
+    paddingVertical: SPACE.sm,
     borderBottomWidth: 0.5,
     borderBottomColor: T.border,
-    gap: 8,
+    gap: SPACE.sm,
   },
   ptName: { fontSize: 12, fontWeight: "500", color: T.text1 },
   ptPhone: { flex: 1, fontSize: 11, color: T.text3 },
   ptBadge: {
-    paddingHorizontal: 6,
-    paddingVertical: 2,
+    paddingHorizontal: SPACE.sm,
+    paddingVertical: SPACE.xxs,
     borderRadius: 5,
   },
   ptBadgeText: { fontSize: 10 },
 
   // ── Export options ──
   exportOpts: {
-    paddingHorizontal: 18,
-    gap: 8,
+    paddingHorizontal: SPACE.lg,
+    gap: SPACE.sm,
   },
   expCard: {
     backgroundColor: T.bg,
     borderWidth: 0.5,
     borderColor: T.border,
     borderRadius: 14,
-    paddingHorizontal: 14,
-    paddingVertical: 13,
+    paddingHorizontal: SPACE.lg,
+    paddingVertical: SPACE.md,
     flexDirection: "row",
     alignItems: "center",
-    gap: 12,
+    gap: SPACE.md,
   },
   expIcon: {
     width: 36,
@@ -2566,7 +2568,7 @@ const styles = StyleSheet.create({
     justifyContent: "center",
   },
   expName: { fontSize: 13, fontWeight: "500", color: T.text1 },
-  expDesc: { fontSize: 11, color: T.text3, marginTop: 1 },
+  expDesc: { fontSize: 11, color: T.text3, marginTop: SPACE.xxs },
   selCheck: {
     width: 20,
     height: 20,
@@ -2587,8 +2589,8 @@ const styles = StyleSheet.create({
   dateRow: {
     flexDirection: "row",
     alignItems: "center",
-    gap: 8,
-    marginHorizontal: 18,
+    gap: SPACE.sm,
+    marginHorizontal: SPACE.lg,
   },
   dateInput: {
     flex: 1,
@@ -2599,31 +2601,31 @@ const styles = StyleSheet.create({
     borderWidth: 0.5,
     borderColor: T.border,
     borderRadius: 11,
-    paddingHorizontal: 13,
-    paddingVertical: 10,
+    paddingHorizontal: SPACE.md,
+    paddingVertical: SPACE.md,
   },
   dateInputText: { fontSize: 13, fontWeight: "500", color: T.text1 },
-  dateArrow: { fontSize: 13, color: T.text3, paddingHorizontal: 4 },
+  dateArrow: { fontSize: 13, color: T.text3, paddingHorizontal: SPACE.xs },
 
   // ── Toggle row ──
   toggleRow: {
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
-    paddingHorizontal: 14,
-    paddingVertical: 11,
+    paddingHorizontal: SPACE.lg,
+    paddingVertical: SPACE.md,
     borderBottomWidth: 0.5,
     borderBottomColor: T.border,
   },
   toggleLabel: { fontSize: 13, color: T.text1 },
-  toggleSub: { fontSize: 11, color: T.text3, marginTop: 1 },
+  toggleSub: { fontSize: 11, color: T.text3, marginTop: SPACE.xxs },
 
   // ── CTA wrap ──
   ctaWrap: {
-    paddingHorizontal: 18,
-    paddingTop: 14,
-    paddingBottom: 24,
-    gap: 8,
+    paddingHorizontal: SPACE.lg,
+    paddingTop: SPACE.lg,
+    paddingBottom: SPACE.xl,
+    gap: SPACE.sm,
   },
 
   // ── Buttons ──
@@ -2631,7 +2633,7 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",
-    paddingVertical: 14,
+    paddingVertical: SPACE.lg,
     borderRadius: 13,
   },
   btnMainText: {
@@ -2643,7 +2645,7 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",
-    paddingVertical: 13,
+    paddingVertical: SPACE.md,
     borderRadius: 13,
     borderWidth: 0.5,
     borderColor: T.border2,
@@ -2654,9 +2656,9 @@ const styles = StyleSheet.create({
   // ── Success screen ──
   successScreen: {
     alignItems: "center",
-    paddingHorizontal: 22,
-    paddingTop: 48,
-    paddingBottom: 28,
+    paddingHorizontal: SPACE.xl,
+    paddingTop: SPACE.xxxl,
+    paddingBottom: SPACE.xxl,
   },
   successRing: {
     width: 76,
@@ -2664,58 +2666,59 @@ const styles = StyleSheet.create({
     borderRadius: 38,
     alignItems: "center",
     justifyContent: "center",
-    marginBottom: 18,
+    marginBottom: SPACE.lg,
   },
   successH: {
     fontSize: 22,
     fontWeight: "600",
     color: T.text1,
     letterSpacing: -0.4,
-    marginBottom: 6,
+    marginBottom: SPACE.xs,
   },
   successP: {
     fontSize: 13,
     color: T.text2,
     lineHeight: 20,
     textAlign: "center",
-    marginBottom: 22,
+    marginBottom: SPACE.xl,
   },
   resultGrid: {
     flexDirection: "row",
     flexWrap: "wrap",
-    gap: 8,
+    gap: SPACE.sm,
     width: "100%",
-    marginBottom: 18,
+    marginBottom: SPACE.lg,
   },
   resultTile: {
-    width: "47%",
+    flexGrow: 1,
+    flexBasis: "40%",
     backgroundColor: T.bg2,
     borderWidth: 0.5,
     borderColor: T.border,
     borderRadius: 14,
-    padding: 14,
+    padding: SPACE.lg,
     alignItems: "center",
   },
   resultVal: { fontSize: 22, fontWeight: "700" },
   resultLbl: {
     fontSize: 11,
     color: T.text3,
-    marginTop: 3,
+    marginTop: SPACE.xxs,
     textAlign: "center",
   },
 
   errSummary: {
     flexDirection: "row",
     alignItems: "flex-start",
-    gap: 9,
+    gap: SPACE.sm,
     width: "100%",
     backgroundColor: T.bgWarning,
     borderWidth: 0.5,
     borderColor: "rgba(133,79,11,0.2)",
     borderRadius: 12,
-    paddingHorizontal: 14,
-    paddingVertical: 12,
-    marginBottom: 16,
+    paddingHorizontal: SPACE.lg,
+    paddingVertical: SPACE.md,
+    marginBottom: SPACE.lg,
   },
   errTxt: { flex: 1, fontSize: 12, color: T.textWarning, lineHeight: 18 },
 
@@ -2727,10 +2730,10 @@ const styles = StyleSheet.create({
     borderColor: T.border,
     borderRadius: 16,
     overflow: "hidden",
-    marginBottom: 16,
+    marginBottom: SPACE.lg,
   },
   fileCardHeader: {
-    padding: 16,
+    padding: SPACE.lg,
     alignItems: "center",
   },
   fileCardName: {
@@ -2742,7 +2745,7 @@ const styles = StyleSheet.create({
   fileCardMeta: {
     fontSize: 11,
     color: "rgba(255,255,255,0.6)",
-    marginTop: 3,
+    marginTop: SPACE.xxs,
   },
   fileCardStats: {
     flexDirection: "row",
@@ -2751,7 +2754,7 @@ const styles = StyleSheet.create({
   },
   fileCardStatCell: {
     flex: 1,
-    padding: 10,
+    padding: SPACE.md,
     alignItems: "center",
   },
   fileCardStatBorder: {
@@ -2762,11 +2765,11 @@ const styles = StyleSheet.create({
   fileCardStatLbl: { fontSize: 10, color: T.text3 },
 
   // ── Progress bar ──
-  progressWrap: { width: "100%", marginBottom: 18 },
+  progressWrap: { width: "100%", marginBottom: SPACE.lg },
   progLabelRow: {
     flexDirection: "row",
     justifyContent: "space-between",
-    marginBottom: 6,
+    marginBottom: SPACE.xs,
   },
   progLabel: { fontSize: 12, color: T.text2 },
   progTrack: {
@@ -2783,11 +2786,11 @@ const styles = StyleSheet.create({
   cleanCard: {
     flexDirection: "row",
     alignItems: "center",
-    gap: 12,
+    gap: SPACE.md,
     borderRadius: 14,
     borderWidth: 0.5,
-    paddingHorizontal: 14,
-    paddingVertical: 14,
+    paddingHorizontal: SPACE.lg,
+    paddingVertical: SPACE.lg,
   },
   cleanIcon: {
     width: 40,
@@ -2797,10 +2800,10 @@ const styles = StyleSheet.create({
     justifyContent: "center",
   },
   cleanLabel: { fontSize: 14, fontWeight: "600" },
-  cleanSub: { fontSize: 11, color: T.text3, marginTop: 2 },
+  cleanSub: { fontSize: 11, color: T.text3, marginTop: SPACE.xxs },
   cleanBadge: {
-    paddingHorizontal: 9,
-    paddingVertical: 4,
+    paddingHorizontal: SPACE.sm,
+    paddingVertical: SPACE.xs,
     borderRadius: 20,
   },
   cleanBadgeTxt: { fontSize: 13, fontWeight: "700" },

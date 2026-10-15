@@ -2,6 +2,7 @@ import React from "react";
 import { Pressable, View, Text, StyleSheet, ViewStyle } from "react-native";
 import { LucideIcon } from "lucide-react-native";
 
+import { SPACE } from "@/constants/spacing";
 interface ActionButtonProps {
   label: string;
   icon: LucideIcon;
@@ -46,7 +47,7 @@ const styles = StyleSheet.create({
     borderWidth: 0.5,
     borderColor: "rgba(0,0,0,0.1)",
     borderRadius: 12,
-    paddingVertical: 12,
+    paddingVertical: SPACE.md,
     alignItems: "center",
     width: "23%", // 4-column layout
     // Add a very subtle shadow to match the card feel
@@ -62,7 +63,7 @@ const styles = StyleSheet.create({
     borderRadius: 10,
     justifyContent: "center",
     alignItems: "center",
-    marginBottom: 6,
+    marginBottom: SPACE.xs,
   },
   btnLabel: {
     fontSize: 10,

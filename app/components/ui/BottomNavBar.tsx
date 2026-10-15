@@ -34,6 +34,7 @@ import {
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
+import { SPACE } from "@/constants/spacing";
 // ─── Brand tokens ────────────────────────────────────────────────────────────
 const ORANGE = "#D85A30";
 const ORANGE_DARK = "#993C1D";
@@ -67,11 +68,11 @@ function IconHome({ active }: { active: boolean }) {
       }}
     >
       {/* 2×2 grid of squares = dashboard icon */}
-      <View style={{ flexDirection: "row", gap: 3 }}>
+      <View style={{ flexDirection: "row", gap: SPACE.xxs }}>
         <View style={[styles.iconSquare, { backgroundColor: c }]} />
         <View style={[styles.iconSquare, { backgroundColor: c }]} />
       </View>
-      <View style={{ flexDirection: "row", gap: 3, marginTop: 3 }}>
+      <View style={{ flexDirection: "row", gap: SPACE.xxs, marginTop: SPACE.xxs }}>
         <View style={[styles.iconSquare, { backgroundColor: c }]} />
         <View style={[styles.iconSquare, { backgroundColor: c }]} />
       </View>
@@ -97,7 +98,7 @@ function IconClients({ active }: { active: boolean }) {
           height: 10,
           borderRadius: 5,
           backgroundColor: c,
-          marginBottom: 2,
+          marginBottom: SPACE.xxs,
         }}
       />
       {/* Shoulders arc */}
@@ -124,7 +125,7 @@ function IconHistory({ active }: { active: boolean }) {
         justifyContent: "center",
       }}
     >
-      <View style={{ flexDirection: "row", alignItems: "flex-end", gap: 3 }}>
+      <View style={{ flexDirection: "row", alignItems: "flex-end", gap: SPACE.xxs }}>
         <View
           style={{ width: 4, height: 8, borderRadius: 2, backgroundColor: c }}
         />
@@ -160,7 +161,7 @@ function IconReports({ active }: { active: boolean }) {
           position: "absolute",
           flexDirection: "row",
           alignItems: "flex-end",
-          gap: 5,
+          gap: SPACE.xs,
           bottom: 3,
         }}
       >
@@ -173,7 +174,7 @@ function IconReports({ active }: { active: boolean }) {
             height: 4,
             borderRadius: 2,
             backgroundColor: c,
-            marginBottom: 5,
+            marginBottom: SPACE.xs,
           }}
         />
         <View
@@ -182,7 +183,7 @@ function IconReports({ active }: { active: boolean }) {
             height: 4,
             borderRadius: 2,
             backgroundColor: c,
-            marginBottom: 10,
+            marginBottom: SPACE.sm,
           }}
         />
         <View
@@ -191,7 +192,7 @@ function IconReports({ active }: { active: boolean }) {
             height: 4,
             borderRadius: 2,
             backgroundColor: c,
-            marginBottom: 15,
+            marginBottom: SPACE.lg,
           }}
         />
       </View>
@@ -230,7 +231,7 @@ function IconProfile({ active }: { active: boolean }) {
           height: 9,
           borderRadius: 4.5,
           backgroundColor: c,
-          marginBottom: 2,
+          marginBottom: SPACE.xxs,
         }}
       />
       {/* Body / shoulders */}
@@ -443,8 +444,8 @@ const styles = StyleSheet.create({
     backgroundColor: BG,
     borderTopWidth: 0.5,
     borderTopColor: BORDER,
-    paddingTop: 8,
-    paddingHorizontal: 4,
+    paddingTop: SPACE.sm,
+    paddingHorizontal: SPACE.xs,
     // Elevation for Android
     elevation: 12,
     // Shadow for iOS
@@ -463,16 +464,16 @@ const styles = StyleSheet.create({
     flex: 1,
     alignItems: "center",
     justifyContent: "center",
-    paddingVertical: 4,
-    paddingHorizontal: 4,
+    paddingVertical: SPACE.xs,
+    paddingHorizontal: SPACE.xs,
     minHeight: 48, // minimum tap target
   },
 
   tabInner: {
     alignItems: "center",
-    gap: 3,
-    paddingHorizontal: 6,
-    paddingVertical: 4,
+    gap: SPACE.xxs,
+    paddingHorizontal: SPACE.sm,
+    paddingVertical: SPACE.xs,
     borderRadius: 10,
   },
 
@@ -498,7 +499,7 @@ const styles = StyleSheet.create({
     height: 4,
     borderRadius: 2,
     backgroundColor: ORANGE,
-    marginTop: 3,
+    marginTop: SPACE.xxs,
   },
 
   // ── FAB ──

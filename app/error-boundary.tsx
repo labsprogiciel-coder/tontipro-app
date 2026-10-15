@@ -4,6 +4,7 @@ import { useNavigationStore } from "@/stores/navigation-store";
 import { colors } from "@/constants/colors";
 import { useRouter } from "expo-router";
 
+import { SPACE } from "@/constants/spacing";
 interface Props {
   children: React.ReactNode;
   onError?: (error: Error, errorInfo: React.ErrorInfo) => void;
@@ -152,32 +153,32 @@ const styles = StyleSheet.create({
     flex: 1,
     alignItems: "center",
     justifyContent: "center",
-    padding: 20,
+    padding: SPACE.xl,
   },
   title: {
     fontSize: 36,
     textAlign: "center",
     fontWeight: "bold",
-    marginBottom: 8,
+    marginBottom: SPACE.sm,
     color: colors.text,
   },
   subtitle: {
     fontSize: 14,
     color: colors.textSecondary,
-    marginBottom: 12,
+    marginBottom: SPACE.md,
     textAlign: "center",
   },
   description: {
     fontSize: 14,
     color: colors.textSecondary,
     textAlign: "center",
-    marginTop: 8,
+    marginTop: SPACE.sm,
   },
   resetButton: {
-    marginTop: 24,
+    marginTop: SPACE.xl,
     backgroundColor: colors.primary,
-    paddingVertical: 12,
-    paddingHorizontal: 24,
+    paddingVertical: SPACE.md,
+    paddingHorizontal: SPACE.xl,
     borderRadius: 8,
   },
   resetButtonText: {

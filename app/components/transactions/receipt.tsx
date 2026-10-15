@@ -1,6 +1,7 @@
 import { View, Text, StyleSheet } from "react-native";
 import { KAURIDORR_THEME } from "@/constants/colors";
 
+import { SPACE } from "@/constants/spacing";
 const T = KAURIDORR_THEME;
 
 interface SuccessReceiptProps {
@@ -76,9 +77,9 @@ const styles = StyleSheet.create({
     borderColor: T.border,
     borderRadius: 16,
     overflow: "hidden",
-    marginBottom: 20,
+    marginBottom: SPACE.lg,
   },
-  receiptHeader: { padding: 16, alignItems: "center" },
+  receiptHeader: { padding: SPACE.lg, alignItems: "center" },
   receiptAmount: {
     color: "#fff",
     fontSize: 28,
@@ -89,14 +90,14 @@ const styles = StyleSheet.create({
   receiptSubtext: {
     fontSize: 11,
     color: "rgba(255,255,255,0.65)",
-    marginTop: 2,
+    marginTop: SPACE.xxs,
   },
   row: {
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
-    paddingVertical: 10,
-    paddingHorizontal: 14,
+    paddingVertical: SPACE.md,
+    paddingHorizontal: SPACE.lg,
     borderBottomWidth: 0.5,
     borderColor: T.border,
   },
@@ -104,7 +105,7 @@ const styles = StyleSheet.create({
   rowValue: { fontSize: 13, fontWeight: "500", color: T.text1 },
   refText: {
     textAlign: "center",
-    padding: 8,
+    padding: SPACE.sm,
     fontSize: 10,
     color: T.text3,
     borderTopWidth: 0.5,

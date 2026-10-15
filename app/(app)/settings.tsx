@@ -34,6 +34,7 @@ import {
   Users2,
 } from "lucide-react-native";
 
+import { LAYOUT, SPACE } from "@/constants/spacing";
 interface SettingItemProps {
   icon: LucideIcon;
   label: string;
@@ -279,7 +280,7 @@ const SettingsScreen = () => {
         </View>
 
         {/* Sign Out */}
-        <View style={[styles.section, { marginTop: 10, marginBottom: 40 }]}>
+        <View style={[styles.section, { marginTop: SPACE.sm, marginBottom: SPACE.xxl }]}>
           <SettingItem
             icon={LogOut}
             label="Déconnexion"
@@ -299,21 +300,22 @@ const SettingsScreen = () => {
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: "#eeede8" },
   header: {
-    paddingHorizontal: 20,
-    paddingVertical: 15,
+    paddingHorizontal: SPACE.lg,
+    paddingVertical: SPACE.lg,
     backgroundColor: "#ffffff",
     borderBottomWidth: 0.5,
     borderBottomColor: "rgba(0,0,0,0.1)",
   },
   headerTitle: { fontSize: 22, fontWeight: "700", color: "#1a1a18" },
-  scrollContent: { padding: 16 },
+  scrollContent: { padding: SPACE.lg },
   sectionLabel: {
     fontSize: 11,
     fontWeight: "600",
     color: "#888780",
     textTransform: "uppercase",
-    marginBottom: 8,
-    marginLeft: 4,
+    marginBottom: SPACE.sm,
+    // Aligned with the row content inside the cards below.
+    marginLeft: SPACE.lg,
   },
   section: {
     backgroundColor: "#ffffff",
@@ -321,9 +323,9 @@ const styles = StyleSheet.create({
     borderWidth: 0.5,
     borderColor: "rgba(0,0,0,0.1)",
     overflow: "hidden",
-    marginBottom: 20,
+    marginBottom: LAYOUT.sectionGap,
   },
-  profileCard: { flexDirection: "row", alignItems: "center", padding: 16 },
+  profileCard: { flexDirection: "row", alignItems: "center", padding: SPACE.lg },
   avatar: {
     width: 50,
     height: 50,
@@ -333,13 +335,13 @@ const styles = StyleSheet.create({
     alignItems: "center",
   },
   avatarText: { color: "white", fontWeight: "700", fontSize: 18 },
-  profileInfo: { flex: 1, marginLeft: 12 },
+  profileInfo: { flex: 1, marginLeft: SPACE.md },
   profileName: { fontSize: 16, fontWeight: "600", color: "#1a1a18" },
-  profileId: { fontSize: 12, color: "#5f5e5a", marginTop: 2 },
+  profileId: { fontSize: 12, color: "#5f5e5a", marginTop: SPACE.xxs },
   editBtn: {
     backgroundColor: "#f5f4f0",
-    paddingHorizontal: 12,
-    paddingVertical: 6,
+    paddingHorizontal: SPACE.md,
+    paddingVertical: SPACE.sm,
     borderRadius: 8,
   },
   editBtnText: { fontSize: 12, fontWeight: "600", color: "#5f5e5a" },
@@ -347,29 +349,29 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
-    padding: 16,
+    padding: SPACE.lg,
     height: 56,
   },
-  itemLeft: { flexDirection: "row", alignItems: "center", gap: 12 },
+  itemLeft: { flexDirection: "row", alignItems: "center", gap: SPACE.md },
   itemLabel: { fontSize: 14, color: "#1a1a18", fontWeight: "500" },
-  itemRight: { flexDirection: "row", alignItems: "center", gap: 8 },
+  itemRight: { flexDirection: "row", alignItems: "center", gap: SPACE.sm },
   itemValue: { fontSize: 13, color: "#888780" },
-  divider: { height: 0.5, backgroundColor: "rgba(0,0,0,0.05)", marginLeft: 48 },
+  divider: { height: 0.5, backgroundColor: "rgba(0,0,0,0.05)", marginLeft: SPACE.xxxl },
   pressed: { backgroundColor: "#f5f4f0" },
   destructiveText: { color: "#a32d2d" },
   versionText: {
     textAlign: "center",
     color: "#888780",
     fontSize: 11,
-    marginBottom: 20,
+    marginBottom: SPACE.lg,
   },
   destructiveBg: { backgroundColor: "rgba(163, 45, 45, 0.1)" },
   infoBox: {
     flexDirection: "row",
     alignItems: "center",
-    padding: 16,
+    padding: SPACE.lg,
     backgroundColor: "#f9f9f7",
-    gap: 10,
+    gap: SPACE.sm,
   },
   infoText: {
     fontSize: 12,
@@ -378,10 +380,12 @@ const styles = StyleSheet.create({
   },
   warningContainer: {
     flexDirection: "row",
-    paddingHorizontal: 8,
-    marginTop: -10,
-    marginBottom: 20,
-    gap: 6,
+    // Hangs under the backup card (section gap minus 12) and lines up
+    // with the card content; the next section keeps the full gap.
+    paddingHorizontal: SPACE.lg,
+    marginTop: -SPACE.md,
+    marginBottom: LAYOUT.sectionGap,
+    gap: SPACE.xs,
     alignItems: "center",
   },
   warningText: {

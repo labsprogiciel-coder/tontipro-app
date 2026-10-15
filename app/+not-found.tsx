@@ -1,6 +1,7 @@
 import { Link, Stack } from "expo-router";
 import { StyleSheet, Text, View } from "react-native";
 
+import { SPACE } from "@/constants/spacing";
 export default function NotFoundScreen() {
   return (
     <>
@@ -21,15 +22,15 @@ const styles = StyleSheet.create({
     flex: 1,
     alignItems: "center",
     justifyContent: "center",
-    padding: 20,
+    padding: SPACE.xl,
   },
   title: {
     fontSize: 20,
     fontWeight: "bold",
   },
   link: {
-    marginTop: 15,
-    paddingVertical: 15,
+    marginTop: SPACE.lg,
+    paddingVertical: SPACE.lg,
   },
   linkText: {
     fontSize: 14,

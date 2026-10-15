@@ -15,6 +15,7 @@ import { ArrowUp, ArrowDown, ChevronLeft } from "lucide-react-native";
 import { KAURIDORR_THEME } from "@/constants/colors";
 import SearchInput from "../../components/quickactions/search-input";
 
+import { SPACE } from "@/constants/spacing";
 const T = KAURIDORR_THEME;
 
 type SortOrder = "desc" | "asc";
@@ -73,7 +74,7 @@ export const ClientsScreen: React.FC = () => {
             flexDirection: "row",
             alignItems: "center",
             justifyContent: "space-between",
-            marginBottom: 4,
+            marginBottom: SPACE.xs,
           }}
         >
           <Text style={styles.name}>{item.name}</Text>
@@ -81,7 +82,7 @@ export const ClientsScreen: React.FC = () => {
             {item.balance.toLocaleString("fr-FR")} F
           </Text>
         </View>
-        <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
+        <View style={{ flexDirection: "row", alignItems: "center", gap: SPACE.sm }}>
           {item.accountNumber && (
             <Text style={styles.code}>{item.accountNumber}</Text>
           )}
@@ -226,9 +227,9 @@ export default ClientsScreen;
 const styles = StyleSheet.create({
   noResultContainer: {
     alignItems: "center",
-    marginVertical: 24,
-    marginHorizontal: 24,
-    padding: 18,
+    marginVertical: SPACE.xl,
+    marginHorizontal: SPACE.xl,
+    padding: SPACE.lg,
     backgroundColor: T.bg2,
     borderRadius: 12,
     borderWidth: 0.5,
@@ -237,13 +238,13 @@ const styles = StyleSheet.create({
   noResultText: {
     fontSize: 15,
     color: T.text3,
-    marginBottom: 12,
+    marginBottom: SPACE.md,
     textAlign: "center",
   },
   addBtn: {
     backgroundColor: T.orange,
-    paddingHorizontal: 24,
-    paddingVertical: 10,
+    paddingHorizontal: SPACE.xl,
+    paddingVertical: SPACE.md,
     borderRadius: 8,
   },
   addBtnText: {
@@ -256,10 +257,10 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
-    paddingHorizontal: 18,
-    paddingVertical: 12,
+    paddingHorizontal: SPACE.lg,
+    paddingVertical: SPACE.md,
   },
-  titleLeft: { flexDirection: "row", alignItems: "center", gap: 8 },
+  titleLeft: { flexDirection: "row", alignItems: "center", gap: SPACE.sm },
   backBtn: {
     width: 30,
     height: 30,
@@ -274,24 +275,24 @@ const styles = StyleSheet.create({
   sortBtn: {
     flexDirection: "row",
     alignItems: "center",
-    gap: 4,
+    gap: SPACE.xs,
     backgroundColor: T.orangeLt,
-    paddingHorizontal: 10,
-    paddingVertical: 5,
+    paddingHorizontal: SPACE.md,
+    paddingVertical: SPACE.xs,
     borderRadius: 20,
   },
   sortLabel: { fontSize: 11, fontWeight: "500", color: T.orange },
 
   searchTypeRow: {
     flexDirection: "row",
-    gap: 8,
-    paddingHorizontal: 18,
-    paddingVertical: 8,
+    gap: SPACE.sm,
+    paddingHorizontal: SPACE.lg,
+    paddingVertical: SPACE.sm,
   },
   searchTypeBtn: {
     flex: 1,
-    paddingVertical: 8,
-    paddingHorizontal: 12,
+    paddingVertical: SPACE.sm,
+    paddingHorizontal: SPACE.md,
     borderRadius: 8,
     borderWidth: 1,
     borderColor: T.border,
@@ -305,9 +306,9 @@ const styles = StyleSheet.create({
   clientCard: {
     flexDirection: "row",
     alignItems: "flex-start",
-    padding: 14,
-    marginHorizontal: 18,
-    marginBottom: 8,
+    padding: SPACE.lg,
+    marginHorizontal: SPACE.lg,
+    marginBottom: SPACE.sm,
     backgroundColor: T.bg2,
     borderRadius: 16,
     borderWidth: 0.5,
@@ -315,8 +316,8 @@ const styles = StyleSheet.create({
   },
   emptyContainer: {
     alignItems: "center",
-    marginTop: 60,
-    paddingHorizontal: 32,
+    marginTop: SPACE.huge,
+    paddingHorizontal: SPACE.xxl,
   },
   emptyIconCircle: {
     width: 72,
@@ -325,23 +326,23 @@ const styles = StyleSheet.create({
     backgroundColor: T.orangeLt,
     alignItems: "center",
     justifyContent: "center",
-    marginBottom: 16,
+    marginBottom: SPACE.lg,
   },
   emptyIcon: { fontSize: 30 },
   emptyTitle: {
     fontSize: 18,
     fontWeight: "700",
     color: T.text1,
-    marginBottom: 8,
+    marginBottom: SPACE.sm,
   },
   emptySubtitle: {
     fontSize: 13,
     color: T.text3,
     textAlign: "center",
     lineHeight: 20,
-    marginBottom: 24,
+    marginBottom: SPACE.xl,
   },
-  searchInputWrapper: { paddingHorizontal: 20 },
+  searchInputWrapper: { paddingHorizontal: SPACE.lg },
 
   avatar: {
     width: 44,
@@ -350,8 +351,8 @@ const styles = StyleSheet.create({
     backgroundColor: T.orangeLt,
     justifyContent: "center",
     alignItems: "center",
-    marginRight: 12,
-    marginTop: 2,
+    marginRight: SPACE.md,
+    marginTop: SPACE.xxs,
   },
   avatarText: { color: T.orange, fontWeight: "700", fontSize: 14 },
   name: { fontSize: 15, fontWeight: "600", color: T.text1, flex: 1 },
@@ -360,8 +361,8 @@ const styles = StyleSheet.create({
     fontWeight: "600",
     color: T.orange,
     backgroundColor: T.orangeLt,
-    paddingHorizontal: 8,
-    paddingVertical: 4,
+    paddingHorizontal: SPACE.sm,
+    paddingVertical: SPACE.xs,
     borderRadius: 6,
     alignSelf: "flex-start",
   },

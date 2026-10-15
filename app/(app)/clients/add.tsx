@@ -28,6 +28,7 @@ import { Client, CollectionFrequency } from "@/types/client";
 import { Numpad } from "@/app/components/ui/numpad";
 import { usePermissions } from "@/hooks/usePermissions";
 
+import { SPACE } from "@/constants/spacing";
 const T = KAURIDORR_THEME;
 
 // ── Constants ─────────────────────────────────────────────────────────────────
@@ -277,13 +278,13 @@ export default function AddClientScreen() {
           backgroundColor: T.bg,
         }}
       >
-        <Text style={{ fontSize: 32, marginBottom: 12 }}>🔒</Text>
+        <Text style={{ fontSize: 32, marginBottom: SPACE.md }}>🔒</Text>
         <Text
           style={{
             fontSize: 15,
             fontWeight: "600",
             color: T.text1,
-            marginBottom: 6,
+            marginBottom: SPACE.xs,
           }}
         >
           Accès refusé
@@ -293,7 +294,7 @@ export default function AddClientScreen() {
             fontSize: 13,
             color: T.text3,
             textAlign: "center",
-            paddingHorizontal: 32,
+            paddingHorizontal: SPACE.xxl,
           }}
         >
           {isEdit
@@ -709,7 +710,7 @@ export default function AddClientScreen() {
                   style={[
                     styles.fieldInput,
                     savingsGoal.length > 0 && styles.fieldInputFilled,
-                    { paddingRight: 50 },
+                    { paddingRight: SPACE.xxxl },
                   ]}
                   placeholder="Ex. 78 000"
                   placeholderTextColor={T.text3}
@@ -827,7 +828,7 @@ export default function AddClientScreen() {
               )}
             </View>
 
-            <Text style={[styles.reviewSectionTitle, { marginTop: 16 }]}>
+            <Text style={[styles.reviewSectionTitle, { marginTop: SPACE.lg }]}>
               Projections
             </Text>
             <View style={styles.projChips}>
@@ -855,7 +856,7 @@ export default function AddClientScreen() {
               </View>
             </View>
 
-            <Text style={[styles.reviewSectionTitle, { marginTop: 16 }]}>
+            <Text style={[styles.reviewSectionTitle, { marginTop: SPACE.lg }]}>
               Agent responsable
             </Text>
             <View style={styles.reviewCard}>
@@ -872,7 +873,7 @@ export default function AddClientScreen() {
             <Pressable
               style={[
                 styles.btnMain,
-                { marginTop: 18 },
+                { marginTop: SPACE.lg },
                 isSubmitting && styles.btnMainDisabled,
               ]}
               onPress={handleConfirm}
@@ -987,7 +988,7 @@ export default function AddClientScreen() {
         </View>
 
         <Pressable
-          style={[styles.btnOutline, { width: "100%", marginTop: 8 }]}
+          style={[styles.btnOutline, { width: "100%", marginTop: SPACE.sm }]}
           onPress={() => router.push("/(app)/clients")}
         >
           <Text style={styles.btnOutlineText}>Voir la liste des clients</Text>
@@ -1025,49 +1026,49 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
-    paddingHorizontal: 18,
-    paddingTop: 12,
+    paddingHorizontal: SPACE.lg,
+    paddingTop: SPACE.md,
   },
-  backBtn: { flexDirection: "row", alignItems: "center", gap: 4 },
+  backBtn: { flexDirection: "row", alignItems: "center", gap: SPACE.xs },
   backLabel: { fontSize: 13, color: T.text3 },
   stepBadge: {
     backgroundColor: T.bg2,
     borderWidth: 0.5,
     borderColor: T.border,
     borderRadius: 20,
-    paddingHorizontal: 9,
-    paddingVertical: 3,
+    paddingHorizontal: SPACE.sm,
+    paddingVertical: SPACE.xs,
   },
   stepBadgeText: { fontSize: 11, fontWeight: "500", color: T.text3 },
 
-  body: { flex: 1, paddingHorizontal: 18, paddingTop: 0 },
+  body: { flex: 1, paddingHorizontal: SPACE.lg, paddingTop: 0 },
   screenTitle: {
     fontSize: 20,
     fontWeight: "600",
     color: T.text1,
     letterSpacing: -0.4,
     lineHeight: 26,
-    marginTop: 14,
-    marginBottom: 4,
+    marginTop: SPACE.md,
+    marginBottom: SPACE.xs,
   },
-  screenSub: { fontSize: 13, color: T.text2, lineHeight: 20, marginBottom: 22 },
+  screenSub: { fontSize: 13, color: T.text2, lineHeight: 20, marginBottom: SPACE.xl },
 
-  field: { marginBottom: 14 },
+  field: { marginBottom: SPACE.md },
   fieldLabel: {
     fontSize: 11,
     fontWeight: "500",
     color: T.text3,
     textTransform: "uppercase",
     letterSpacing: 0.55,
-    marginBottom: 6,
+    marginBottom: SPACE.xs,
   },
   fieldInput: {
     backgroundColor: T.bg2,
     borderWidth: 0.5,
     borderColor: T.border,
     borderRadius: 11,
-    paddingHorizontal: 13,
-    paddingVertical: 12,
+    paddingHorizontal: SPACE.md,
+    paddingVertical: SPACE.md,
     fontSize: 14,
     color: T.text1,
   },
@@ -1075,30 +1076,30 @@ const styles = StyleSheet.create({
   fieldHintOk: {
     flexDirection: "row",
     alignItems: "center",
-    gap: 4,
-    marginTop: 5,
+    gap: SPACE.xs,
+    marginTop: SPACE.xs,
   },
   fieldHintOkText: { fontSize: 11, color: T.textSuccess },
-  fieldHintInfo: { fontSize: 11, color: T.text3, marginTop: 5 },
+  fieldHintInfo: { fontSize: 11, color: T.text3, marginTop: SPACE.xs },
 
-  phoneRow: { flexDirection: "row", gap: 7 },
+  phoneRow: { flexDirection: "row", gap: SPACE.sm },
   countryPill: {
     flexDirection: "row",
     alignItems: "center",
-    gap: 4,
+    gap: SPACE.xs,
     backgroundColor: T.bg2,
     borderWidth: 0.5,
     borderColor: T.border,
     borderRadius: 11,
-    paddingHorizontal: 10,
-    paddingVertical: 12,
+    paddingHorizontal: SPACE.md,
+    paddingVertical: SPACE.md,
   },
   countryPillText: { fontSize: 13, color: T.text1 },
 
   ctaWrap: {
-    paddingHorizontal: 18,
+    paddingHorizontal: SPACE.lg,
     paddingBottom: Platform.OS === "ios" ? 8 : 16,
-    paddingTop: 8,
+    paddingTop: SPACE.sm,
     backgroundColor: T.bg,
     borderTopWidth: 0.5,
     borderTopColor: T.border,
@@ -1106,11 +1107,11 @@ const styles = StyleSheet.create({
   btnMain: {
     backgroundColor: T.orange,
     borderRadius: 13,
-    paddingVertical: 14,
+    paddingVertical: SPACE.lg,
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",
-    gap: 7,
+    gap: SPACE.sm,
   },
   btnMainDisabled: { opacity: 0.35 },
   btnMainText: { color: "white", fontSize: 14, fontWeight: "500" },
@@ -1119,9 +1120,9 @@ const styles = StyleSheet.create({
     flex: 1,
     alignItems: "center",
     justifyContent: "center",
-    paddingHorizontal: 18,
+    paddingHorizontal: SPACE.lg,
   },
-  amountLabel: { fontSize: 12, color: T.text3, marginBottom: 6 },
+  amountLabel: { fontSize: 12, color: T.text3, marginBottom: SPACE.xs },
   amountValue: {
     fontSize: 65,
     fontWeight: "600",
@@ -1129,18 +1130,18 @@ const styles = StyleSheet.create({
     lineHeight: 50,
   },
   amountCurrency: { fontSize: 18, fontWeight: "400", color: T.text3 },
-  unitBaseHint: { fontSize: 11, color: T.text3, marginTop: 6 },
+  unitBaseHint: { fontSize: 11, color: T.text3, marginTop: SPACE.xs },
 
   chipsRow: {
     flexDirection: "row",
     alignItems: "flex-end",
-    gap: 8,
-    paddingHorizontal: 18,
-    paddingVertical: 18,
-    marginVertical: 2,
+    gap: SPACE.sm,
+    paddingHorizontal: SPACE.lg,
+    paddingVertical: SPACE.lg,
+    marginVertical: SPACE.xxs,
   },
   chip: {
-    paddingHorizontal: 14,
+    paddingHorizontal: SPACE.lg,
     height: 36,
     borderRadius: 18,
     backgroundColor: T.bg2,
@@ -1156,31 +1157,32 @@ const styles = StyleSheet.create({
   freqGrid: {
     flexDirection: "row",
     flexWrap: "wrap",
-    gap: 8,
-    marginBottom: 16,
+    gap: SPACE.sm,
+    marginBottom: SPACE.lg,
   },
   freqCard: {
-    width: "47%",
+    flexGrow: 1,
+    flexBasis: "40%",
     borderWidth: 0.5,
     borderColor: T.border2,
     borderRadius: 13,
-    padding: 13,
+    padding: SPACE.md,
   },
   freqCardActive: { borderColor: T.orange, backgroundColor: T.orangeLt },
   freqName: {
     fontSize: 13,
     fontWeight: "500",
     color: T.text1,
-    marginBottom: 3,
+    marginBottom: SPACE.xxs,
   },
   freqNameActive: { color: T.orangeDk },
   freqDesc: { fontSize: 10, color: T.text2, lineHeight: 14 },
   freqDescActive: { color: T.orangeDk, opacity: 0.7 },
 
-  daysRow: { flexDirection: "row", gap: 5, marginTop: 2 },
+  daysRow: { flexDirection: "row", gap: SPACE.xs, marginTop: SPACE.xxs },
   dayBtn: {
     flex: 1,
-    paddingVertical: 8,
+    paddingVertical: SPACE.sm,
     alignItems: "center",
     borderRadius: 9,
     backgroundColor: T.bg2,
@@ -1195,15 +1197,15 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
-    paddingHorizontal: 14,
-    paddingVertical: 13,
+    paddingHorizontal: SPACE.lg,
+    paddingVertical: SPACE.md,
     backgroundColor: T.bg2,
     borderWidth: 0.5,
     borderColor: T.border,
     borderRadius: 12,
-    marginBottom: 12,
+    marginBottom: SPACE.md,
   },
-  goalToggleLeft: { flexDirection: "row", alignItems: "center", gap: 10 },
+  goalToggleLeft: { flexDirection: "row", alignItems: "center", gap: SPACE.sm },
   goalToggleIcon: {
     width: 30,
     height: 30,
@@ -1218,21 +1220,21 @@ const styles = StyleSheet.create({
     position: "absolute",
     right: 13,
     top: "50%",
-    marginTop: -9,
+    marginTop: -SPACE.sm,
     fontSize: 12,
     color: T.text3,
   },
 
   reviewHeader: {
     backgroundColor: T.orange,
-    paddingHorizontal: 18,
-    paddingTop: 20,
-    paddingBottom: 24,
+    paddingHorizontal: SPACE.lg,
+    paddingTop: SPACE.xl,
+    paddingBottom: SPACE.xl,
   },
   reviewLabel: {
     fontSize: 12,
     color: "rgba(255,255,255,0.65)",
-    marginBottom: 4,
+    marginBottom: SPACE.xs,
   },
   reviewName: {
     fontSize: 22,
@@ -1243,39 +1245,39 @@ const styles = StyleSheet.create({
   reviewNameRow: {
     flexDirection: "row",
     alignItems: "center",
-    gap: 10,
-    marginTop: 4,
+    gap: SPACE.sm,
+    marginTop: SPACE.xs,
   },
   reviewCodeBadge: {
     backgroundColor: "rgba(255,255,255,0.2)",
-    paddingHorizontal: 10,
-    paddingVertical: 4,
+    paddingHorizontal: SPACE.md,
+    paddingVertical: SPACE.xs,
     borderRadius: 6,
     borderWidth: 1,
     borderColor: "rgba(255,255,255,0.3)",
   },
   reviewCodeBadgeText: { fontSize: 11, fontWeight: "600", color: "white" },
-  reviewPhone: { fontSize: 13, color: "rgba(255,255,255,0.6)", marginTop: 2 },
+  reviewPhone: { fontSize: 13, color: "rgba(255,255,255,0.6)", marginTop: SPACE.xxs },
   reviewCommit: {
     flexDirection: "row",
     alignItems: "center",
     backgroundColor: "rgba(255,255,255,0.18)",
     borderRadius: 20,
-    paddingHorizontal: 12,
-    paddingVertical: 5,
+    paddingHorizontal: SPACE.md,
+    paddingVertical: SPACE.xs,
     alignSelf: "flex-start",
-    marginTop: 10,
+    marginTop: SPACE.sm,
   },
   reviewCommitAmount: { fontSize: 13, fontWeight: "600", color: "white" },
   reviewCommitPeriod: { fontSize: 11, color: "rgba(255,255,255,0.65)" },
-  reviewBody: { paddingHorizontal: 18, paddingTop: 16 },
+  reviewBody: { paddingHorizontal: SPACE.lg, paddingTop: SPACE.lg },
   reviewSectionTitle: {
     fontSize: 11,
     fontWeight: "500",
     color: T.text3,
     textTransform: "uppercase",
     letterSpacing: 0.55,
-    marginBottom: 8,
+    marginBottom: SPACE.sm,
   },
   reviewCard: {
     backgroundColor: T.bg2,
@@ -1289,8 +1291,8 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
-    paddingHorizontal: 14,
-    paddingVertical: 10,
+    paddingHorizontal: SPACE.lg,
+    paddingVertical: SPACE.md,
     borderBottomWidth: 0.5,
     borderBottomColor: T.border,
   },
@@ -1302,7 +1304,7 @@ const styles = StyleSheet.create({
     color: T.text1,
     flexShrink: 1,
     textAlign: "right",
-    marginLeft: 8,
+    marginLeft: SPACE.sm,
   },
   rValueOrange: { color: T.orange },
   rValueGreen: { color: T.green },
@@ -1310,12 +1312,12 @@ const styles = StyleSheet.create({
   projChips: {
     flexDirection: "row",
     flexWrap: "wrap",
-    gap: 6,
-    marginBottom: 4,
+    gap: SPACE.xs,
+    marginBottom: SPACE.xs,
   },
   projChip: {
-    paddingHorizontal: 10,
-    paddingVertical: 5,
+    paddingHorizontal: SPACE.md,
+    paddingVertical: SPACE.xs,
     borderRadius: 8,
     backgroundColor: T.bg2,
     borderWidth: 0.5,
@@ -1327,9 +1329,9 @@ const styles = StyleSheet.create({
 
   successContainer: {
     alignItems: "center",
-    paddingHorizontal: 22,
-    paddingTop: 48,
-    paddingBottom: 28,
+    paddingHorizontal: SPACE.xl,
+    paddingTop: SPACE.xxxl,
+    paddingBottom: SPACE.xxl,
   },
   successRing: {
     width: 76,
@@ -1338,20 +1340,20 @@ const styles = StyleSheet.create({
     backgroundColor: T.orangeLt,
     justifyContent: "center",
     alignItems: "center",
-    marginBottom: 20,
+    marginBottom: SPACE.lg,
   },
   successH: {
     fontSize: 22,
     fontWeight: "600",
     color: T.text1,
     letterSpacing: -0.44,
-    marginBottom: 6,
+    marginBottom: SPACE.xs,
   },
   successP: {
     fontSize: 13,
     color: T.text2,
     lineHeight: 21,
-    marginBottom: 22,
+    marginBottom: SPACE.xl,
     textAlign: "center",
   },
 
@@ -1362,15 +1364,15 @@ const styles = StyleSheet.create({
     borderColor: T.border,
     borderRadius: 16,
     overflow: "hidden",
-    marginBottom: 16,
+    marginBottom: SPACE.lg,
   },
   memberCardTop: {
     backgroundColor: T.orange,
-    paddingHorizontal: 16,
-    paddingVertical: 14,
+    paddingHorizontal: SPACE.lg,
+    paddingVertical: SPACE.lg,
     flexDirection: "row",
     alignItems: "center",
-    gap: 12,
+    gap: SPACE.md,
   },
   memberAv: {
     width: 44,
@@ -1384,14 +1386,14 @@ const styles = StyleSheet.create({
   memberName: { fontSize: 16, fontWeight: "600", color: "white" },
   memberId: { fontSize: 11, color: "rgba(255,255,255,0.6)" },
 
-  actionPair: { flexDirection: "row", gap: 8, width: "100%" },
+  actionPair: { flexDirection: "row", gap: SPACE.sm, width: "100%" },
   btnOutline: {
     flex: 1,
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",
-    gap: 5,
-    paddingVertical: 13,
+    gap: SPACE.xs,
+    paddingVertical: SPACE.md,
     borderRadius: 13,
     borderWidth: 0.5,
     borderColor: T.border2,
@@ -1402,7 +1404,7 @@ const styles = StyleSheet.create({
     flex: 1,
     alignItems: "center",
     justifyContent: "center",
-    paddingVertical: 13,
+    paddingVertical: SPACE.md,
     borderRadius: 13,
     backgroundColor: T.orange,
   },
@@ -1411,8 +1413,8 @@ const styles = StyleSheet.create({
   applyBtn: {
     backgroundColor: T.orange,
     borderRadius: 11,
-    paddingHorizontal: 16,
-    paddingVertical: 12,
+    paddingHorizontal: SPACE.lg,
+    paddingVertical: SPACE.md,
     justifyContent: "center",
   },
   applyBtnText: { color: "white", fontSize: 13, fontWeight: "600" },

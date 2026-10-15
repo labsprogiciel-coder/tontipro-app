@@ -3,6 +3,7 @@ import { View, TextInput, StyleSheet } from "react-native";
 import { Feather } from "@expo/vector-icons";
 import { KAURIDORR_THEME } from "@/constants/colors";
 
+import { SPACE } from "@/constants/spacing";
 const T = KAURIDORR_THEME;
 
 interface SearchBarProps {
@@ -33,15 +34,15 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     backgroundColor: T.bg2,
-    marginHorizontal: 18,
-    marginVertical: 10,
-    paddingHorizontal: 12,
+    marginHorizontal: SPACE.lg,
+    marginVertical: SPACE.sm,
+    paddingHorizontal: SPACE.md,
     borderRadius: 12,
     height: 44,
     borderWidth: 0.5,
     borderColor: T.border,
   },
-  input: { flex: 1, marginLeft: 8, fontSize: 14, color: T.text1 },
+  input: { flex: 1, marginLeft: SPACE.sm, fontSize: 14, color: T.text1 },
 });
 
 export default SearchBar;

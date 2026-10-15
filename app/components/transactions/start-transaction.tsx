@@ -5,6 +5,7 @@ import { ArrowDown, ArrowUp, UserPlus } from "lucide-react-native";
 import ClientCard from "../clients/clients";
 import SearchInput from "../quickactions/search-input";
 
+import { SPACE } from "@/constants/spacing";
 const StartTransaction = () => {
   const [searchId, setSearchId] = useState("");
   const [foundClient, setFoundClient] = useState<any>(null);
@@ -60,21 +61,21 @@ const StartTransaction = () => {
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: "#eeede8" },
-  header: { padding: 20, paddingTop: 40, backgroundColor: "#D85A30" },
+  header: { padding: SPACE.xl, paddingTop: SPACE.xxxl, backgroundColor: "#D85A30" },
   title: { fontSize: 22, fontWeight: "700", color: "#fff" },
-  subtitle: { fontSize: 13, color: "rgba(255,255,255,0.8)", marginTop: 4 },
-  body: { padding: 16 },
+  subtitle: { fontSize: 13, color: "rgba(255,255,255,0.8)", marginTop: SPACE.xs },
+  body: { padding: SPACE.lg },
   sectionLabel: {
     fontSize: 11,
     fontWeight: "600",
     color: "#888780",
     textTransform: "uppercase",
-    marginBottom: 12,
+    marginBottom: SPACE.md,
   },
-  resultSection: { marginTop: 10 },
-  actionRow: { flexDirection: "row", gap: 12, marginTop: 20 },
-  emptyState: { alignItems: "center", marginTop: 60, opacity: 0.5 },
-  emptyText: { marginTop: 12, color: "#888780", fontSize: 14 },
+  resultSection: { marginTop: SPACE.sm },
+  actionRow: { flexDirection: "row", gap: SPACE.md, marginTop: SPACE.lg },
+  emptyState: { alignItems: "center", marginTop: SPACE.huge, opacity: 0.5 },
+  emptyText: { marginTop: SPACE.md, color: "#888780", fontSize: 14 },
 });
 
 export default StartTransaction;

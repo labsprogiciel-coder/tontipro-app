@@ -7,6 +7,7 @@ import {
   Text,
   View,
   TextInput,
+  Keyboard,
   KeyboardAvoidingView,
   Platform,
   ActivityIndicator,
@@ -15,8 +16,8 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import {
   ShieldCheck,
   Phone,
-  Lock,
   ArrowRight,
+  ArrowLeft,
   Smartphone,
   Eye,
   EyeOff,
@@ -34,7 +35,9 @@ import { withAuthRetry } from "@/lib/withAuthRetry";
 import { getOrCreateDeviceInstallId } from "@/utils/device-id";
 import { isConnected } from "@/utils/network";
 import { saveOfflineCredential, verifyOfflineCredential } from "@/utils/secure-storage";
+import { PinEntry } from "@/app/components/ui/pin-entry";
 
+import { SPACE } from "@/constants/spacing";
 const T = {
   orange: "#D85A30",
   orangeDark: "#993C1D",
@@ -58,6 +61,9 @@ export default function LoginScreen() {
   const [phoneNumber, setPhoneNumber] = useState("");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
+  // Two steps: the phone number first (system keyboard), then the code on
+  // its own screen with the app's pad — never both fields on one screen.
+  const [loginStep, setLoginStep] = useState<"phone" | "code">("phone");
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState("");
   const [authComplete, setAuthComplete] = useState(false);
@@ -97,15 +103,6 @@ export default function LoginScreen() {
       }
     })();
   }, []);
-
-  const existingDevice = useQuery(
-    api.devices.getBySerial,
-    deviceSerial ? { serialNumber: deviceSerial } : "skip",
-  );
-
-  const isDeviceAlreadyRegistered =
-    existingDevice !== null && existingDevice !== undefined;
-  const isDeviceLoading = deviceSerial === null || existingDevice === undefined;
 
   // Agent déjà connu (session persistée d'une ouverture précédente) mais pas
   // encore déverrouillé cette session (cold start) : on affiche un écran de
@@ -223,8 +220,22 @@ useEffect(() => {
     })();
   }, [pendingLink, convexAuthed]);
 
-  const handleAuth = async () => {
-    if (!phoneNumber || !password) {
+  const goToCodeStep = () => {
+    // Spaces, dots and dashes are formatting only; the rest must be digits
+    // (with an optional leading +) — at least 8 of them.
+    const digits = phoneNumber.replace(/[\s.-]/g, "");
+    if (!/^\+?\d{8,15}$/.test(digits)) {
+      setError("Entrez un numéro de téléphone valide.");
+      return;
+    }
+    setError("");
+    setPassword("");
+    Keyboard.dismiss();
+    setLoginStep("code");
+  };
+
+  const handleAuth = async (code: string = password) => {
+    if (!phoneNumber || !code) {
       setError("Veuillez remplir tous les champs");
       return;
     }
@@ -252,10 +263,11 @@ useEffect(() => {
       if (eligibility.status === "invited") {
         const check = await convex.action(api.otp.checkActivationCode, {
           phoneNumber: phone,
-          code: password,
+          code,
         });
         if (!check.valid) {
           setError(check.message ?? "Code incorrect ou expiré.");
+          setPassword("");
           setIsLoading(false);
           return;
         }
@@ -264,7 +276,7 @@ useEffect(() => {
           await signIn("password", {
             flow: "signUp",
             phoneNumber: phone,
-            password,
+            password: code,
           });
         } catch (signUpError: any) {
           // Reliquat d'une activation précédente restée bloquée (signUp
@@ -279,7 +291,7 @@ useEffect(() => {
           await signIn("password", {
             flow: "signUp",
             phoneNumber: phone,
-            password,
+            password: code,
           });
         }
         setPendingLink(true);
@@ -291,22 +303,23 @@ useEffect(() => {
         // lui-même n'incrémente aucun compteur en cas d'échec.
         const check = await convex.action(api.users.verifyLoginPassword, {
           phoneNumber: phone,
-          password,
+          password: code,
         });
         if (!check.valid) {
           setError(check.message ?? "Mot de passe incorrect.");
+          setPassword("");
           setIsLoading(false);
           return;
         }
         await signIn("password", {
           flow: "signIn",
           phoneNumber: phone,
-          password,
+          password: code,
         });
         // Ce mot de passe vient d'être confirmé en ligne — on rafraîchit le
         // secret de déverrouillage hors-ligne (utils/secure-storage.ts) pour
         // qu'il fonctionne aussi sur cet appareil sans réseau.
-        await saveOfflineCredential(phone, password);
+        await saveOfflineCredential(phone, code);
       }
 
       setAuthComplete(true);
@@ -327,6 +340,7 @@ useEffect(() => {
       }
 
       setError(errorMessage);
+      setPassword("");
       setIsLoading(false);
     }
   };
@@ -339,9 +353,15 @@ useEffect(() => {
    * ligne, la vérification se fait entièrement en local (SecureStore), sans
    * appel réseau — c'est le coeur du besoin "agent sur le terrain".
    */
-  const handleUnlock = async () => {
-    if (!user?.phone) return;
-    if (!/^\d{4}$/.test(unlockCode)) {
+  const handleUnlock = async (code: string) => {
+    if (!user?.phone) {
+      // Saved session without a phone number: nothing to check the code
+      // against — don't leave a full, silent PIN on screen.
+      setUnlockCode("");
+      setError("Session incomplète. Déconnectez-vous puis reconnectez-vous.");
+      return;
+    }
+    if (!/^\d{4}$/.test(code)) {
       setError("Entrez votre code à 4 chiffres.");
       return;
     }
@@ -354,10 +374,11 @@ useEffect(() => {
       if (online) {
         const check = await convex.action(api.users.verifyLoginPassword, {
           phoneNumber: user.phone,
-          password: unlockCode,
+          password: code,
         });
         if (!check.valid) {
           setError(check.message ?? "Code incorrect.");
+          setUnlockCode("");
           setIsLoading(false);
           return;
         }
@@ -365,14 +386,15 @@ useEffect(() => {
           await signIn("password", {
             flow: "signIn",
             phoneNumber: user.phone,
-            password: unlockCode,
+            password: code,
           });
         }
-        await saveOfflineCredential(user.phone, unlockCode);
+        await saveOfflineCredential(user.phone, code);
       } else {
-        const check = await verifyOfflineCredential(user.phone, unlockCode);
+        const check = await verifyOfflineCredential(user.phone, code);
         if (!check.valid) {
           setError(check.message ?? "Code incorrect.");
+          setUnlockCode("");
           setIsLoading(false);
           return;
         }
@@ -380,6 +402,7 @@ useEffect(() => {
       setAuthComplete(true);
     } catch (e: any) {
       setError(e?.message ?? "Une erreur est survenue lors du déverrouillage.");
+      setUnlockCode("");
       setIsLoading(false);
     }
   };
@@ -401,79 +424,134 @@ useEffect(() => {
 
   if (isUnlockMode) {
     return (
-      <SafeAreaView style={styles.container} edges={["top"]}>
-        <KeyboardAvoidingView
-          behavior={Platform.OS === "ios" ? "padding" : "height"}
-          style={{ flex: 1 }}
-        >
-          <View style={styles.screen}>
-            <View style={styles.header}>
-              <View style={styles.logoCircle}>
-                <ShieldCheck size={32} color="white" />
-              </View>
-              <Text style={styles.appName}>Kauridorr</Text>
-              <Text style={styles.title}>{user?.name ?? "Bienvenue"}</Text>
-              <Text style={styles.subtitle}>
-                Entrez votre code à 4 chiffres pour continuer.
-              </Text>
+      <SafeAreaView style={styles.container} edges={["top", "bottom"]}>
+        <View style={[styles.screen, styles.pinScreen]}>
+          <View style={[styles.header, styles.pinHeader]}>
+            <View style={styles.logoCircle}>
+              <ShieldCheck size={32} color="white" />
             </View>
+            <Text style={styles.appName}>Kauridorr</Text>
+            <Text style={styles.title}>{user?.name ?? "Bienvenue"}</Text>
+            <Text style={styles.subtitle}>
+              Entrez votre code à 4 chiffres pour continuer.
+            </Text>
+          </View>
 
-            <View style={styles.form}>
-              <View style={styles.fieldGroup}>
-                <Text style={styles.fieldLabel}>Code</Text>
-                <View style={styles.inputWrapper}>
-                  <Lock size={18} color={T.textTertiary} style={styles.inputIcon} />
-                  <TextInput
-                    style={styles.input}
-                    placeholder="••••"
-                    placeholderTextColor={T.textTertiary}
-                    value={unlockCode}
-                    onChangeText={setUnlockCode}
-                    secureTextEntry
-                    keyboardType="number-pad"
-                    maxLength={4}
-                    autoFocus
-                  />
-                </View>
-              </View>
+          <PinEntry
+            length={4}
+            value={unlockCode}
+            onChange={(v) => {
+              setUnlockCode(v);
+              if (error) setError("");
+            }}
+            onComplete={handleUnlock}
+            disabled={isLoading}
+            error={error}
+            accessibilityLabel="Code de déverrouillage"
+          />
 
-              {error ? <Text style={styles.errorText}>{error}</Text> : null}
+          <View style={styles.pinStatus}>
+            {isLoading ? (
+              <ActivityIndicator color={T.orange} />
+            ) : error ? (
+              <Text style={styles.errorText}>{error}</Text>
+            ) : null}
+          </View>
 
-              <Pressable
-                onPress={handleUnlock}
-                disabled={isLoading}
-                style={({ pressed }) => [
-                  styles.submitBtn,
-                  isLoading && styles.btnDisabled,
-                  pressed && !isLoading && styles.btnPressed,
-                ]}
-              >
-                {isLoading ? (
-                  <ActivityIndicator color="white" />
-                ) : (
-                  <>
-                    <Text style={styles.submitBtnText}>Déverrouiller</Text>
-                    <ArrowRight size={18} color="white" />
-                  </>
-                )}
-              </Pressable>
-            </View>
+          <Pressable
+            onPress={() => {
+              logout();
+              setUnlockCode("");
+              setError("");
+            }}
+            style={styles.pinFooterLink}
+          >
+            <Text style={styles.footerText}>
+              Ce n&apos;est pas vous ?{" "}
+              <Text style={styles.footerLinkText}>Se déconnecter</Text>
+            </Text>
+          </Pressable>
+        </View>
+      </SafeAreaView>
+    );
+  }
 
+  if (loginStep === "code") {
+    return (
+      <SafeAreaView style={styles.container} edges={["top", "bottom"]}>
+        <View style={[styles.screen, styles.pinScreen]}>
+          <Pressable
+            onPress={() => {
+              setLoginStep("phone");
+              setPassword("");
+              setError("");
+            }}
+            hitSlop={8}
+            style={styles.backLink}
+          >
+            <ArrowLeft size={18} color={T.textSecondary} />
+            <Text style={styles.backLinkText}>Changer de numéro</Text>
+          </Pressable>
+
+          <View style={[styles.header, styles.pinHeader]}>
+            <Text style={styles.title}>
+              {isActivation ? "Code d'activation" : "Entrez votre code"}
+            </Text>
+            <Text style={styles.subtitle}>
+              Code à 4 chiffres pour le{" "}
+              <Text style={styles.phoneStrong}>{phoneNumber.trim()}</Text>
+              {"\n"}(première connexion : code reçu par WhatsApp/SMS)
+            </Text>
+          </View>
+
+          <PinEntry
+            length={4}
+            value={password}
+            onChange={(v) => {
+              setPassword(v);
+              if (error) setError("");
+            }}
+            onComplete={(code) => handleAuth(code)}
+            masked={!showPassword}
+            disabled={isLoading}
+            error={error}
+            accessibilityLabel="Code"
+          />
+
+          <View style={styles.pinStatus}>
+            {isLoading ? (
+              <ActivityIndicator color={T.orange} />
+            ) : error ? (
+              <Text style={styles.errorText}>{error}</Text>
+            ) : null}
+          </View>
+
+          <View style={styles.codeLinks}>
             <Pressable
-              onPress={() => {
-                logout();
-                setUnlockCode("");
-                setError("");
-              }}
-              style={styles.footerLink}
+              onPress={() => setShowPassword((v) => !v)}
+              hitSlop={8}
+              style={styles.revealBtn}
             >
+              {showPassword ? (
+                <EyeOff size={16} color={T.textSecondary} />
+              ) : (
+                <Eye size={16} color={T.textSecondary} />
+              )}
               <Text style={styles.footerText}>
-                Ce n&apos;est pas vous ?{" "}
-                <Text style={styles.footerLinkText}>Se déconnecter</Text>
+                {showPassword ? "Masquer" : "Afficher"}
+              </Text>
+            </Pressable>
+            <Pressable onPress={handleResendCode} hitSlop={8}>
+              <Text style={styles.footerLinkText}>
+                {resendState === "sending"
+                  ? "Envoi en cours..."
+                  : resendState === "sent"
+                    ? "Code renvoyé ✓"
+                    : "Code non reçu ? Renvoyer"}
               </Text>
             </Pressable>
           </View>
-        </KeyboardAvoidingView>
+        </View>
       </SafeAreaView>
     );
   }
@@ -484,30 +562,6 @@ useEffect(() => {
         behavior={Platform.OS === "ios" ? "padding" : "height"}
         style={{ flex: 1 }}
       >
-        <Pressable
-          style={[
-            styles.bindBtn,
-            isDeviceAlreadyRegistered && styles.bindBtnDisabled,
-          ]}
-          onPress={() => router.push("/(auth)/register-device")}
-          disabled={isDeviceAlreadyRegistered || isDeviceLoading}
-        >
-          {isDeviceAlreadyRegistered ? (
-            <CheckCircle2 size={20} color={T.textTertiary} />
-          ) : (
-            <Smartphone
-              size={20}
-              color={isDeviceLoading ? T.textTertiary : T.orange}
-            />
-          )}
-        </Pressable>
-
-        {isDeviceAlreadyRegistered && (
-          <View style={styles.deviceStatusBadge}>
-            <Text style={styles.deviceStatusText}>TPE déjà enregistré</Text>
-          </View>
-        )}
-
         <View style={styles.screen}>
           <View style={styles.header}>
             <View style={styles.logoCircle}>
@@ -542,75 +596,22 @@ useEffect(() => {
                   autoCapitalize="none"
                   keyboardType="phone-pad"
                   autoComplete="tel"
+                  autoFocus
                 />
               </View>
-            </View>
-
-            <View style={styles.fieldGroup}>
-              <Text style={styles.fieldLabel}>
-                Mot de passe{"\n"}(première connexion : code reçu par WhatsApp/SMS)
-              </Text>
-              <View style={styles.inputWrapper}>
-                <Lock
-                  size={18}
-                  color={T.textTertiary}
-                  style={styles.inputIcon}
-                />
-                <TextInput
-                  style={styles.input}
-                  placeholder="••••"
-                  placeholderTextColor={T.textTertiary}
-                  value={password}
-                  onChangeText={setPassword}
-                  secureTextEntry={!showPassword}
-                  keyboardType="number-pad"
-                  maxLength={4}
-                  autoComplete="password"
-                />
-                <Pressable
-                  onPress={() => setShowPassword((v) => !v)}
-                  style={styles.eyeBtn}
-                  hitSlop={8}
-                >
-                  {showPassword ? (
-                    <EyeOff size={18} color={T.textTertiary} />
-                  ) : (
-                    <Eye size={18} color={T.textTertiary} />
-                  )}
-                </Pressable>
-              </View>
-              <Pressable onPress={handleResendCode} hitSlop={8}>
-                <Text style={styles.footerLinkText}>
-                  {resendState === "sending"
-                    ? "Envoi en cours..."
-                    : resendState === "sent"
-                      ? "Code renvoyé ✓"
-                      : "Code non reçu ? Renvoyer"}
-                </Text>
-              </Pressable>
             </View>
 
             {error ? <Text style={styles.errorText}>{error}</Text> : null}
 
             <Pressable
-              onPress={handleAuth}
-              disabled={isLoading}
+              onPress={goToCodeStep}
               style={({ pressed }) => [
                 styles.submitBtn,
-                isLoading && styles.btnDisabled,
-                pressed && !isLoading && styles.btnPressed,
+                pressed && styles.btnPressed,
               ]}
             >
-              {isLoading ? (
-                <ActivityIndicator color="white" />
-              ) : (
-                <>
-                  <Text style={styles.submitBtnText}>
-                    {isActivation ? "Activer mon compte" : "Se connecter"}
-                  </Text>
-                  <ArrowRight size={18} color="white" />
-                </>
-              )}
+              <Text style={styles.submitBtnText}>Continuer</Text>
+              <ArrowRight size={18} color="white" />
             </Pressable>
           </View>
 
@@ -633,9 +634,28 @@ useEffect(() => {
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: T.bgPrimary },
-  screen: { flex: 1, paddingHorizontal: 28, paddingTop: 40 },
+  screen: { flex: 1, paddingHorizontal: SPACE.xl, paddingTop: SPACE.xxxl },
 
-  header: { alignItems: "center", marginBottom: 40, gap: 8 },
+  header: { alignItems: "center", marginBottom: SPACE.xxl, gap: SPACE.sm },
+  backLink: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: SPACE.xs,
+    marginBottom: SPACE.xl,
+  },
+  backLinkText: { fontSize: 14, color: T.textSecondary, fontWeight: "500" },
+  phoneStrong: { fontWeight: "700", color: T.textPrimary },
+  codeLinks: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    marginTop: SPACE.xs,
+  },
+  revealBtn: { flexDirection: "row", alignItems: "center", gap: SPACE.xs },
+  pinScreen: { paddingTop: SPACE.xl },
+  pinHeader: { marginBottom: SPACE.xl },
+  pinStatus: { minHeight: 36, justifyContent: "center", marginTop: SPACE.md },
+  pinFooterLink: { marginTop: SPACE.sm, alignItems: "center" },
   logoCircle: {
     width: 64,
     height: 64,
@@ -643,7 +663,7 @@ const styles = StyleSheet.create({
     backgroundColor: T.orange,
     justifyContent: "center",
     alignItems: "center",
-    marginBottom: 12,
+    marginBottom: SPACE.md,
   },
   appName: {
     fontSize: 18,
@@ -663,16 +683,16 @@ const styles = StyleSheet.create({
     color: T.textSecondary,
     textAlign: "center",
     lineHeight: 20,
-    paddingHorizontal: 20,
+    paddingHorizontal: SPACE.lg,
   },
 
-  form: { gap: 20 },
-  fieldGroup: { gap: 8 },
+  form: { gap: SPACE.lg },
+  fieldGroup: { gap: SPACE.sm },
   fieldLabel: {
     fontSize: 12,
     fontWeight: "600",
     color: T.textSecondary,
-    marginLeft: 4,
+    marginLeft: SPACE.xs,
   },
   inputWrapper: {
     flexDirection: "row",
@@ -681,10 +701,9 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     borderWidth: 1,
     borderColor: T.border,
-    paddingHorizontal: 12,
+    paddingHorizontal: SPACE.md,
   },
-  inputIcon: { marginRight: 10 },
-  eyeBtn: { padding: 4, marginLeft: 4 },
+  inputIcon: { marginRight: SPACE.sm },
   input: {
     flex: 1,
     height: 50,
@@ -699,8 +718,8 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     justifyContent: "center",
     alignItems: "center",
-    gap: 10,
-    marginTop: 10,
+    gap: SPACE.sm,
+    marginTop: SPACE.sm,
     shadowColor: T.orange,
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.2,
@@ -711,7 +730,7 @@ const styles = StyleSheet.create({
   btnDisabled: { opacity: 0.6 },
   btnPressed: { opacity: 0.9, transform: [{ scale: 0.98 }] },
 
-  footerLink: { marginTop: 32, alignItems: "center" },
+  footerLink: { marginTop: SPACE.xxl, alignItems: "center" },
   footerText: { fontSize: 14, color: T.textSecondary },
   footerLinkText: { color: T.orange, fontWeight: "600" },
 
@@ -720,7 +739,7 @@ const styles = StyleSheet.create({
     top: 16,
     right: 16,
     zIndex: 10,
-    padding: 8,
+    padding: SPACE.sm,
     borderRadius: 10,
     backgroundColor: T.bgSecondary,
   },
@@ -734,8 +753,8 @@ const styles = StyleSheet.create({
     right: 16,
     zIndex: 10,
     backgroundColor: T.bgSecondary,
-    paddingHorizontal: 10,
-    paddingVertical: 4,
+    paddingHorizontal: SPACE.md,
+    paddingVertical: SPACE.xs,
     borderRadius: 8,
     borderWidth: 1,
     borderColor: T.border,

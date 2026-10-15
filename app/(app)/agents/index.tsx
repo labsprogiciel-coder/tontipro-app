@@ -17,6 +17,7 @@ import { useAgentStore, Agent, AgentRole } from "@/stores/agent-store";
 import { useQuery } from "convex/react";
 import { api } from "@/convex/_generated/api";
 
+import { SPACE } from "@/constants/spacing";
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
 function getInitials(name: string): string {
@@ -132,7 +133,7 @@ function AgentCard({ agent, onPress }: { agent: Agent; onPress: () => void }) {
       <View style={s.right}>
         {isInvited && <Text style={s.invitedTag}>En attente</Text>}
         {isSuspended && <Text style={s.suspendedTag}>Suspendu</Text>}
-        <ChevronRight size={14} color={T.text3} style={{ marginTop: 4 }} />
+        <ChevronRight size={14} color={T.text3} style={{ marginTop: SPACE.xs }} />
       </View>
     </Pressable>
   );
@@ -170,13 +171,13 @@ export default function AgentsScreen() {
     return (
       <SafeAreaView style={s.root} edges={["top"]}>
         <View style={s.center}>
-          <Text style={{ fontSize: 32, marginBottom: 12 }}>🔒</Text>
+          <Text style={{ fontSize: 32, marginBottom: SPACE.md }}>🔒</Text>
           <Text
             style={{
               fontSize: 15,
               fontWeight: "600",
               color: T.text1,
-              marginBottom: 6,
+              marginBottom: SPACE.xs,
             }}
           >
             Accès refusé
@@ -186,7 +187,7 @@ export default function AgentsScreen() {
               fontSize: 13,
               color: T.text3,
               textAlign: "center",
-              paddingHorizontal: 32,
+              paddingHorizontal: SPACE.xxl,
             }}
           >
             Seuls les administrateurs et superviseurs peuvent gérer les agents.
@@ -333,13 +334,13 @@ const s = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
-    paddingHorizontal: 18,
-    paddingVertical: 14,
+    paddingHorizontal: SPACE.lg,
+    paddingVertical: SPACE.lg,
     backgroundColor: T.bg,
     borderBottomWidth: 0.5,
     borderBottomColor: T.border,
   },
-  topbarLeft: { flexDirection: "row", alignItems: "center", gap: 8 },
+  topbarLeft: { flexDirection: "row", alignItems: "center", gap: SPACE.sm },
   backBtn: {
     width: 30,
     height: 30,
@@ -371,14 +372,14 @@ const s = StyleSheet.create({
     borderBottomWidth: 0.5,
     borderBottomColor: T.border,
   },
-  stripCell: { flex: 1, paddingVertical: 10, alignItems: "center" },
+  stripCell: { flex: 1, paddingVertical: SPACE.md, alignItems: "center" },
   stripCellBorder: { borderLeftWidth: 0.5, borderLeftColor: T.border },
   stripVal: { fontSize: 15, fontWeight: "600", color: T.text1 },
-  stripLbl: { fontSize: 10, color: T.text3, marginTop: 1 },
+  stripLbl: { fontSize: 10, color: T.text3, marginTop: SPACE.xxs },
 
   searchWrap: {
-    paddingHorizontal: 18,
-    paddingVertical: 10,
+    paddingHorizontal: SPACE.lg,
+    paddingVertical: SPACE.md,
     backgroundColor: T.bg,
     borderBottomWidth: 0.5,
     borderBottomColor: T.border,
@@ -386,20 +387,20 @@ const s = StyleSheet.create({
   searchBar: {
     flexDirection: "row",
     alignItems: "center",
-    gap: 8,
+    gap: SPACE.sm,
     backgroundColor: T.bg2,
     borderWidth: 0.5,
     borderColor: T.border,
     borderRadius: 10,
-    paddingHorizontal: 12,
-    paddingVertical: 8,
+    paddingHorizontal: SPACE.md,
+    paddingVertical: SPACE.sm,
   },
   searchInput: { flex: 1, fontSize: 13, color: T.text1 },
 
   secLbl: {
-    paddingHorizontal: 18,
-    paddingTop: 8,
-    paddingBottom: 5,
+    paddingHorizontal: SPACE.lg,
+    paddingTop: SPACE.sm,
+    paddingBottom: SPACE.xs,
     fontSize: 11,
     fontWeight: "500",
     color: T.text3,
@@ -411,9 +412,9 @@ const s = StyleSheet.create({
   card: {
     flexDirection: "row",
     alignItems: "center",
-    gap: 12,
-    paddingHorizontal: 18,
-    paddingVertical: 13,
+    gap: SPACE.md,
+    paddingHorizontal: SPACE.lg,
+    paddingVertical: SPACE.md,
     backgroundColor: T.bg,
     borderBottomWidth: 0.5,
     borderBottomColor: T.border,
@@ -445,21 +446,21 @@ const s = StyleSheet.create({
   dotDanger: { backgroundColor: T.textDanger },
   dotInvited: { backgroundColor: T.textWarning },
 
-  info: { flex: 1, gap: 3 },
+  info: { flex: 1, gap: SPACE.xxs },
   name: { fontSize: 14, fontWeight: "500", color: T.text1 },
   badge: {
     alignSelf: "flex-start",
-    paddingHorizontal: 8,
-    paddingVertical: 2,
+    paddingHorizontal: SPACE.sm,
+    paddingVertical: SPACE.xxs,
     borderRadius: 5,
   },
   badgeText: { fontSize: 10 },
   phone: { fontSize: 11, color: T.text3 },
 
-  right: { alignItems: "flex-end", gap: 4 },
+  right: { alignItems: "flex-end", gap: SPACE.xs },
   invitedTag: { fontSize: 10, color: T.textWarning },
   suspendedTag: { fontSize: 10, color: T.textDanger },
 
-  empty: { paddingVertical: 48, alignItems: "center" },
+  empty: { paddingVertical: SPACE.xxxl, alignItems: "center" },
   emptyTxt: { fontSize: 13, color: T.text3 },
 });

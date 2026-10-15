@@ -29,6 +29,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { colors } from "@/constants/colors";
 
+import { SPACE } from "@/constants/spacing";
 const ID_BARCODE_TYPES: (
   | "pdf417"
   | "code128"
@@ -387,8 +388,8 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
-    paddingHorizontal: 16,
-    paddingVertical: 12,
+    paddingHorizontal: SPACE.lg,
+    paddingVertical: SPACE.md,
   },
   topBarBtn: {
     width: 40,
@@ -460,18 +461,18 @@ const styles = StyleSheet.create({
     opacity: 0.8,
   },
   bottomSection: {
-    paddingHorizontal: 24,
-    paddingBottom: 48,
-    gap: 16,
+    paddingHorizontal: SPACE.xl,
+    paddingBottom: SPACE.xxxl,
+    gap: SPACE.lg,
   },
   instructionCard: {
     flexDirection: "row",
     alignItems: "center",
     backgroundColor: "rgba(255,255,255,0.92)",
     borderRadius: 12,
-    paddingHorizontal: 16,
-    paddingVertical: 14,
-    gap: 12,
+    paddingHorizontal: SPACE.lg,
+    paddingVertical: SPACE.lg,
+    gap: SPACE.md,
   },
   instructionText: {
     flex: 1,
@@ -482,9 +483,9 @@ const styles = StyleSheet.create({
   resultCard: {
     backgroundColor: "rgba(255,255,255,0.95)",
     borderRadius: 12,
-    padding: 20,
+    padding: SPACE.xl,
     alignItems: "center",
-    gap: 8,
+    gap: SPACE.sm,
   },
   resultLabel: {
     fontSize: 13,
@@ -498,9 +499,9 @@ const styles = StyleSheet.create({
     letterSpacing: 0.5,
   },
   retryBtn: {
-    marginTop: 8,
-    paddingVertical: 8,
-    paddingHorizontal: 16,
+    marginTop: SPACE.sm,
+    paddingVertical: SPACE.sm,
+    paddingHorizontal: SPACE.lg,
     borderRadius: 8,
     backgroundColor: colors.card,
   },
@@ -513,8 +514,8 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",
-    gap: 8,
-    paddingVertical: 14,
+    gap: SPACE.sm,
+    paddingVertical: SPACE.lg,
     borderRadius: 12,
     backgroundColor: "rgba(255,255,255,0.15)",
     borderWidth: 1,
@@ -529,7 +530,7 @@ const styles = StyleSheet.create({
     flex: 1,
     justifyContent: "center",
     alignItems: "center",
-    paddingHorizontal: 32,
+    paddingHorizontal: SPACE.xxl,
     backgroundColor: colors.background,
   },
   permissionIconWrap: {
@@ -539,13 +540,13 @@ const styles = StyleSheet.create({
     backgroundColor: colors.primaryLight + "20",
     justifyContent: "center",
     alignItems: "center",
-    marginBottom: 24,
+    marginBottom: SPACE.xl,
   },
   permissionTitle: {
     fontSize: 22,
     fontWeight: "700" as const,
     color: colors.text,
-    marginBottom: 12,
+    marginBottom: SPACE.md,
     textAlign: "center",
   },
   permissionDesc: {
@@ -553,14 +554,14 @@ const styles = StyleSheet.create({
     color: colors.textSecondary,
     textAlign: "center",
     lineHeight: 22,
-    marginBottom: 32,
+    marginBottom: SPACE.xxl,
   },
   permissionBtn: {
     backgroundColor: colors.primary,
     borderRadius: 12,
-    paddingVertical: 14,
-    paddingHorizontal: 32,
-    marginBottom: 16,
+    paddingVertical: SPACE.lg,
+    paddingHorizontal: SPACE.xxl,
+    marginBottom: SPACE.lg,
   },
   permissionBtnText: {
     color: "#fff",
@@ -568,7 +569,7 @@ const styles = StyleSheet.create({
     fontWeight: "600" as const,
   },
   manualEntryLink: {
-    paddingVertical: 8,
+    paddingVertical: SPACE.sm,
   },
   manualEntryText: {
     color: colors.primary,
@@ -580,12 +581,12 @@ const styles = StyleSheet.create({
     backgroundColor: "rgba(0,0,0,0.5)",
     justifyContent: "center",
     alignItems: "center",
-    paddingHorizontal: 24,
+    paddingHorizontal: SPACE.xl,
   },
   manualCard: {
     backgroundColor: colors.background,
     borderRadius: 16,
-    padding: 24,
+    padding: SPACE.xl,
     width: "100%",
     maxWidth: 360,
   },
@@ -593,27 +594,27 @@ const styles = StyleSheet.create({
     fontSize: 18,
     fontWeight: "600" as const,
     color: colors.text,
-    marginBottom: 16,
+    marginBottom: SPACE.lg,
   },
   manualInput: {
     backgroundColor: colors.card,
     borderRadius: 10,
     borderWidth: 1,
     borderColor: colors.border,
-    paddingHorizontal: 14,
+    paddingHorizontal: SPACE.lg,
     height: 48,
     fontSize: 16,
     color: colors.text,
-    marginBottom: 20,
+    marginBottom: SPACE.lg,
   },
   manualActions: {
     flexDirection: "row",
-    gap: 12,
+    gap: SPACE.md,
   },
   manualActionBtn: {
     flex: 1,
     borderRadius: 10,
-    paddingVertical: 12,
+    paddingVertical: SPACE.md,
     alignItems: "center",
   },
   manualCancelBtn: {
@@ -636,14 +637,14 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
-    paddingHorizontal: 16,
-    paddingVertical: 12,
+    paddingHorizontal: SPACE.lg,
+    paddingVertical: SPACE.md,
     borderBottomWidth: 1,
     borderBottomColor: colors.border,
     backgroundColor: colors.background,
   },
   backBtn: {
-    padding: 8,
+    padding: SPACE.sm,
   },
   webHeaderTitle: {
     fontSize: 18,
@@ -652,7 +653,7 @@ const styles = StyleSheet.create({
   },
   webContent: {
     flex: 1,
-    padding: 24,
+    padding: SPACE.xl,
     backgroundColor: colors.background,
   },
   webIconContainer: {
@@ -663,38 +664,38 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     alignItems: "center",
     alignSelf: "center",
-    marginBottom: 20,
-    marginTop: 32,
+    marginBottom: SPACE.lg,
+    marginTop: SPACE.xxl,
   },
   webTitle: {
     fontSize: 22,
     fontWeight: "700" as const,
     color: colors.text,
     textAlign: "center",
-    marginBottom: 8,
+    marginBottom: SPACE.sm,
   },
   webSubtitle: {
     fontSize: 14,
     color: colors.textSecondary,
     textAlign: "center",
     lineHeight: 20,
-    marginBottom: 32,
+    marginBottom: SPACE.xxl,
   },
   webInputGroup: {
-    marginBottom: 24,
+    marginBottom: SPACE.xl,
   },
   webLabel: {
     fontSize: 14,
     fontWeight: "600" as const,
     color: colors.text,
-    marginBottom: 8,
+    marginBottom: SPACE.sm,
   },
   webInput: {
     backgroundColor: colors.card,
     borderRadius: 10,
     borderWidth: 1,
     borderColor: colors.border,
-    paddingHorizontal: 14,
+    paddingHorizontal: SPACE.lg,
     height: 50,
     fontSize: 16,
     color: colors.text,
@@ -702,7 +703,7 @@ const styles = StyleSheet.create({
   webSubmitBtn: {
     backgroundColor: colors.primary,
     borderRadius: 12,
-    paddingVertical: 14,
+    paddingVertical: SPACE.lg,
     alignItems: "center",
   },
   webSubmitText: {

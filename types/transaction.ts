@@ -8,4 +8,8 @@ export interface Transaction {
   status: "completed" | "pending" | "reversed";
   agentId?: string;
   notes?: string;
+  /** Idempotency key sent with the server mutation (queued transactions). */
+  clientRef?: string;
+  /** Set when the server permanently rejected a queued transaction. */
+  syncError?: string;
 }

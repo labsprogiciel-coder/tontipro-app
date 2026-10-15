@@ -1,6 +1,7 @@
 import { TouchableOpacity, View, Text, StyleSheet } from "react-native";
 import { KAURIDORR_THEME } from "@/constants/colors";
 
+import { SPACE } from "@/constants/spacing";
 const T = KAURIDORR_THEME;
 
 type TransactionToggleType = "deposit" | "withdraw";
@@ -49,14 +50,14 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     backgroundColor: T.bg2,
     borderRadius: 12,
-    padding: 3,
-    gap: 3,
-    marginHorizontal: 18,
-    marginVertical: 14,
+    padding: SPACE.xs,
+    gap: SPACE.xxs,
+    marginHorizontal: SPACE.lg,
+    marginVertical: SPACE.md,
   },
   opt: {
     flex: 1,
-    padding: 9,
+    padding: SPACE.sm,
     borderRadius: 10,
     alignItems: "center",
   },

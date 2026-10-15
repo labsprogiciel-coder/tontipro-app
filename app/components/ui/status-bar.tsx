@@ -2,6 +2,7 @@ import React from "react";
 import { View, Text, StyleSheet } from "react-native";
 import { KAURIDORR_THEME } from "@/constants/colors";
 
+import { SPACE } from "@/constants/spacing";
 const T = KAURIDORR_THEME;
 
 interface StatusBadgeProps {
@@ -46,7 +47,7 @@ export const StatusBadge: React.FC<StatusBadgeProps> = ({ status }) => {
 };
 
 const styles = StyleSheet.create({
-  badge: { paddingVertical: 2, paddingHorizontal: 8, borderRadius: 6 },
+  badge: { paddingVertical: SPACE.xxs, paddingHorizontal: SPACE.sm, borderRadius: 6 },
   text: { fontSize: 10, fontWeight: "600" },
 });
 

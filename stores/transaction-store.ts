@@ -12,6 +12,15 @@ import { Transaction } from "@/types/transaction";
 import { useClientStore } from "./client-store";
 import { useAuthStore } from "./auth-store";
 import { DEV_MOCKS_ENABLED } from "@/__dev__/config";
+import * as Crypto from "expo-crypto";
+import {
+  balanceDelta,
+  isLocalClient,
+  isPermanentSyncError,
+  onClientIdRemapped,
+  registerPendingDeltaProvider,
+  syncErrorMessage,
+} from "./sync-bridge";
 
 // ─── helpers ─────────────────────────────────────────────────────────────────
 
@@ -29,8 +38,14 @@ export function mergeTransactionsSorted(
   pending: Transaction[],
 ): Transaction[] {
   const byId = new Map<string, Transaction>();
-  for (const t of synced) byId.set(t.id, t);
+  const syncedRefs = new Set<string>();
+  for (const t of synced) {
+    byId.set(t.id, t);
+    if (t.clientRef) syncedRefs.add(t.clientRef);
+  }
   for (const p of pending) {
+    // Already recorded server-side (sync response lost) — shown once.
+    if (syncedRefs.has(p.clientRef ?? p.id)) continue;
     if (!byId.has(p.id)) byId.set(p.id, p);
   }
   return [...byId.values()].sort(sortByTimestampDesc);
@@ -59,6 +74,7 @@ export function convexRowToTransaction(
     status: row.status as "completed" | "pending" | "reversed",
     agentId: row.agentId as string | undefined,
     notes: row.notes,
+    clientRef: row.clientRef,
   };
 }
 
@@ -67,6 +83,8 @@ export function convexRowToTransaction(
 interface TransactionStoreState {
   transactions: Transaction[];
   pendingTransactions: Transaction[];
+  /** Queued transactions the server permanently refused (kept for review). */
+  rejectedTransactions: Transaction[];
   isLoading: boolean;
   error: string | null;
   /** Number of pending transactions whose last sync attempt failed. */
@@ -94,6 +112,7 @@ export const useTransactionStore = create<TransactionStoreState>()(
     (set, get) => ({
       transactions: [],
       pendingTransactions: [],
+      rejectedTransactions: [],
       isLoading: false,
       error: null,
       transactionSyncFailures: 0,
@@ -154,8 +173,12 @@ export const useTransactionStore = create<TransactionStoreState>()(
 
           set((state) => {
             const serverIds = new Set(fromServer.map((t) => t.id));
+            const serverRefs = new Set(
+              fromServer.flatMap((t) => (t.clientRef ? [t.clientRef] : [])),
+            );
             const stillPending = state.pendingTransactions.filter(
-              (p) => !serverIds.has(p.id),
+              (p) =>
+                !serverIds.has(p.id) && !serverRefs.has(p.clientRef ?? p.id),
             );
             return {
               transactions: fromServer,
@@ -198,32 +221,26 @@ export const useTransactionStore = create<TransactionStoreState>()(
           const localId = generateId("TR");
           const newTransaction: Transaction = {
             id: localId,
+            clientRef: Crypto.randomUUID(),
             clientId: transactionData.clientId,
             clientName: client.name,
             amount: transactionData.amount,
             type: transactionData.type,
             date: new Date(now).toISOString(),
-            status: online ? "completed" : "pending",
+            status: "pending",
             agentId: useAuthStore.getState().user?.id,
           };
 
-          const balanceDelta =
-            transactionData.type === "deposit"
-              ? transactionData.amount
-              : -transactionData.amount;
-
-          if (online) {
-            const authStore = useAuthStore.getState();
-            const tpeId = authStore.user?.device?.serialNumber ?? "web";
-
-            let serverIdStr: string | null = null;
-            let serverNewBalance: number | null = null;
-
+          // A client created on this device has no Convex id yet: queue until
+          // syncPendingClients has created it and remapped the id.
+          if (online && !isLocalClient(client)) {
+            const tpeId =
+              useAuthStore.getState().user?.device?.serialNumber ?? "web";
             try {
               // createDeposit/createWithdrawal dérivent l'agent et l'agence
-              // du token côté serveur (pas de agentId/branchId à fournir) et
-              // mettent à jour le solde du client de façon atomique dans la
-              // même mutation — voir convex/transactions.ts.
+              // du token côté serveur et mettent à jour le solde du client de
+              // façon atomique — voir convex/transactions.ts. Le clientRef
+              // rend un rejeu (réponse perdue → file d'attente) sans effet.
               const createFn =
                 transactionData.type === "deposit"
                   ? api.transactions.createDeposit
@@ -232,32 +249,16 @@ export const useTransactionStore = create<TransactionStoreState>()(
                 customerId: transactionData.clientId as Id<"customers">,
                 amount: transactionData.amount,
                 tpeId,
+                clientRef: newTransaction.clientRef,
               });
-              serverIdStr = result.transactionId as string;
-              serverNewBalance = result.newBalance;
-            } catch (mutErr) {
-              // Customer not yet synced, solde insuffisant ou autre erreur
-              // transitoire — bascule vers la file d'attente.
-              console.warn("Transaction sync deferred:", mutErr);
-            }
 
-            if (serverIdStr && serverNewBalance !== null) {
-              // Le solde vient d'être mis à jour de façon atomique côté
-              // serveur — on reflète cette valeur faisant autorité plutôt que
-              // de rappliquer le delta localement (clientStore.updateClientBalance
-              // ferait un second appel Convex qui doublerait le changement).
-              useClientStore.setState((state) => ({
-                clients: state.clients.map((c) =>
-                  c.id === transactionData.clientId
-                    ? { ...c, balance: serverNewBalance!, syncStatus: "synced" as const }
-                    : c,
-                ),
-              }));
+              // Reflect the authoritative server balance (plus anything still
+              // queued for this client) rather than re-applying the delta.
+              setServerBalance(transactionData.clientId, result.newBalance);
 
-              // Use the server-assigned id so the local record matches Convex.
               const syncedTransaction: Transaction = {
                 ...newTransaction,
-                id: serverIdStr,
+                id: result.transactionId as string,
                 status: "completed",
               };
               set((state) => ({
@@ -265,35 +266,28 @@ export const useTransactionStore = create<TransactionStoreState>()(
                 isLoading: false,
               }));
               return syncedTransaction;
-            } else {
-              // Queued as pending — keep local id for reconciliation.
-              await clientStore.updateClientBalance(
-                transactionData.clientId,
-                balanceDelta,
-              );
-              set((state) => ({
-                pendingTransactions: [
-                  newTransaction,
-                  ...state.pendingTransactions,
-                ],
-                isLoading: false,
-              }));
+            } catch (mutErr) {
+              // Rejet définitif (solde insuffisant côté serveur, client
+              // inconnu…) : on remonte l'erreur, rien n'est mis en file.
+              if (isPermanentSyncError(mutErr)) {
+                throw new Error(syncErrorMessage(mutErr));
+              }
+              // Erreur transitoire — bascule vers la file d'attente.
+              console.warn("Transaction sync deferred:", mutErr);
             }
-          } else {
-            // Offline path — update local balance, queue for later sync.
-            await clientStore.updateClientBalance(
-              transactionData.clientId,
-              balanceDelta,
-            );
-            set((state) => ({
-              pendingTransactions: [
-                newTransaction,
-                ...state.pendingTransactions,
-              ],
-              isLoading: false,
-            }));
           }
 
+          // Offline / deferred path — update local balance, queue for later sync.
+          await clientStore.updateClientBalance(
+            transactionData.clientId,
+            balanceDelta(newTransaction),
+          );
+          // Appended: the queue is kept in recording order, which breaks
+          // replay-order ties between transactions stamped the same instant.
+          set((state) => ({
+            pendingTransactions: [...state.pendingTransactions, newTransaction],
+            isLoading: false,
+          }));
           return newTransaction;
         } catch (error) {
           set({
@@ -310,10 +304,12 @@ export const useTransactionStore = create<TransactionStoreState>()(
       // ── Getters ───────────────────────────────────────────────────────────
 
       getTransactionById: (id) => {
-        const { transactions, pendingTransactions } = get();
+        const { transactions, pendingTransactions, rejectedTransactions } =
+          get();
         return (
           transactions.find((t) => t.id === id) ||
-          pendingTransactions.find((t) => t.id === id)
+          pendingTransactions.find((t) => t.id === id) ||
+          rejectedTransactions.find((t) => t.id === id)
         );
       },
 
@@ -326,80 +322,23 @@ export const useTransactionStore = create<TransactionStoreState>()(
 
       // ── Sync pending queue ────────────────────────────────────────────────
 
-      syncPendingTransactions: async (branchId) => {
-        const pending = get().pendingTransactions;
-        if (pending.length === 0) {
-          set({ transactionSyncFailures: 0 });
+      // `branchId` is kept for callers; the server derives it from the token.
+      syncPendingTransactions: async (_branchId) => {
+        // The network hook, a client-id remap and the manual button can all
+        // trigger a sync; a second caller just asks the running loop for one
+        // more pass (e.g. to pick up transactions whose client was created).
+        if (syncInFlight) {
+          syncRerunRequested = true;
           return;
         }
-
-        set({ isLoading: true, error: null, transactionSyncFailures: 0 });
+        syncInFlight = true;
         try {
-          const authStore = useAuthStore.getState();
-          const tpeId = authStore.user?.device?.serialNumber ?? "web";
-          const agentConvexId = authStore.user?.id;
-
-          if (!agentConvexId) throw new Error("No authenticated user");
-
-          let failures = 0;
-          const toMove: Transaction[] = [];
-          const stillPending: Transaction[] = [];
-
-          for (const tx of pending) {
-            try {
-              const createFn =
-                tx.type === "deposit"
-                  ? api.transactions.createDeposit
-                  : api.transactions.createWithdrawal;
-              const result = await convex.mutation(createFn, {
-                customerId: tx.clientId as Id<"customers">,
-                amount: tx.amount,
-                tpeId: tpeId ?? "web",
-              });
-
-              toMove.push({
-                ...tx,
-                id: result.transactionId as string,
-                status: "completed",
-              });
-              // Le solde local a été mis à jour de façon optimiste (delta)
-              // au moment de la mise en file d'attente hors-ligne — on le
-              // recale ici sur la valeur faisant autorité renvoyée par le
-              // serveur, pour éviter toute dérive après plusieurs opérations
-              // en attente.
-              useClientStore.setState((state) => ({
-                clients: state.clients.map((c) =>
-                  c.id === tx.clientId
-                    ? { ...c, balance: result.newBalance, syncStatus: "synced" as const }
-                    : c,
-                ),
-              }));
-            } catch (err) {
-              failures++;
-              stillPending.push(tx);
-              console.error("Sync transaction failed:", err, tx.id);
-            }
-          }
-
-          set((state) => ({
-            transactions: [...toMove, ...state.transactions].sort(
-              sortByTimestampDesc,
-            ),
-            pendingTransactions: stillPending,
-            isLoading: false,
-            transactionSyncFailures: failures,
-            error:
-              failures > 0
-                ? `${failures} transaction(s) n'ont pas pu être synchronisée(s)`
-                : null,
-          }));
-        } catch (error) {
-          console.error("Sync transactions failed:", error);
-          set({
-            isLoading: false,
-            error: error instanceof Error ? error.message : "Sync failed",
-            transactionSyncFailures: get().pendingTransactions.length,
-          });
+          do {
+            syncRerunRequested = false;
+            await syncPendingOnce();
+          } while (syncRerunRequested);
+        } finally {
+          syncInFlight = false;
         }
       },
 
@@ -409,6 +348,7 @@ export const useTransactionStore = create<TransactionStoreState>()(
         set({
           transactions: [],
           pendingTransactions: [],
+          rejectedTransactions: [],
           isLoading: false,
           error: null,
           transactionSyncFailures: 0,
@@ -421,14 +361,152 @@ export const useTransactionStore = create<TransactionStoreState>()(
       partialize: (state) => ({
         transactions: state.transactions,
         pendingTransactions: state.pendingTransactions,
+        rejectedTransactions: state.rejectedTransactions,
       }),
       onRehydrateStorage: () => (state) => {
         if (state) {
           state.isLoading = false;
           state.error = null;
           state.transactionSyncFailures = 0;
+          state.rejectedTransactions ??= [];
         }
       },
     },
   ),
 );
+
+// ─── Offline queue replay ─────────────────────────────────────────────────────
+
+let syncInFlight = false;
+let syncRerunRequested = false;
+
+/**
+ * Replays queued transactions oldest-first (a withdrawal can depend on a
+ * deposit queued before it). Each one carries its clientRef, so a replay of
+ * something the server already recorded is a no-op there.
+ */
+async function syncPendingOnce(): Promise<void> {
+  const store = useTransactionStore;
+  const queue = [...store.getState().pendingTransactions].sort(
+    (a, b) => new Date(a.date).getTime() - new Date(b.date).getTime(),
+  );
+  if (queue.length === 0) {
+    store.setState({ transactionSyncFailures: 0 });
+    return;
+  }
+
+  store.setState({ isLoading: true, error: null });
+  const tpeId = useAuthStore.getState().user?.device?.serialNumber ?? "web";
+  let transient = 0;
+  let rejected = 0;
+
+  for (const tx of queue) {
+    const client = useClientStore.getState().getClientById(tx.clientId);
+    // Client not created on the server yet — it will be remapped, then retried.
+    if (client && isLocalClient(client)) continue;
+
+    try {
+      const createFn =
+        tx.type === "deposit"
+          ? api.transactions.createDeposit
+          : api.transactions.createWithdrawal;
+      const result = await convex.mutation(createFn, {
+        customerId: tx.clientId as Id<"customers">,
+        amount: tx.amount,
+        tpeId,
+        // Transactions queued before clientRef existed use their local id.
+        clientRef: tx.clientRef ?? tx.id,
+      });
+
+      const synced: Transaction = {
+        ...tx,
+        id: result.transactionId as string,
+        status: "completed",
+      };
+      // Committed one by one so an interrupted sync resumes where it stopped.
+      store.setState((state) => ({
+        pendingTransactions: state.pendingTransactions.filter(
+          (p) => p.id !== tx.id,
+        ),
+        transactions: [
+          synced,
+          ...state.transactions.filter((t) => t.id !== synced.id),
+        ].sort(sortByTimestampDesc),
+      }));
+      setServerBalance(tx.clientId, result.newBalance);
+    } catch (err) {
+      if (isPermanentSyncError(err)) {
+        // Le serveur a refusé l'opération (solde insuffisant, client
+        // inconnu…) : la rejouer ne changera rien. On la sort de la file,
+        // on annule son effet sur le solde local et on la garde visible.
+        rejected++;
+        store.setState((state) => ({
+          pendingTransactions: state.pendingTransactions.filter(
+            (p) => p.id !== tx.id,
+          ),
+          rejectedTransactions: [
+            { ...tx, syncError: syncErrorMessage(err) },
+            ...state.rejectedTransactions,
+          ],
+        }));
+        await useClientStore
+          .getState()
+          .updateClientBalance(tx.clientId, -balanceDelta(tx));
+        console.error("Transaction rejected by server:", err, tx.id);
+      } else {
+        transient++;
+        console.error("Sync transaction failed:", err, tx.id);
+      }
+    }
+  }
+
+  const messages = [
+    rejected > 0 && `${rejected} transaction(s) rejetée(s) par le serveur`,
+    transient > 0 &&
+      `${transient} transaction(s) n'ont pas pu être synchronisée(s)`,
+  ].filter(Boolean);
+  store.setState({
+    isLoading: false,
+    transactionSyncFailures: transient + rejected,
+    error: messages.length > 0 ? messages.join(" · ") : null,
+  });
+}
+
+/**
+ * Set a client's displayed balance from an authoritative server value, plus
+ * the net effect of its transactions still waiting in the queue.
+ */
+function setServerBalance(clientId: string, serverBalance: number) {
+  const pendingDelta = pendingBalanceDeltas().get(clientId) ?? 0;
+  useClientStore.setState((state) => ({
+    clients: state.clients.map((c) =>
+      c.id === clientId ? { ...c, balance: serverBalance + pendingDelta } : c,
+    ),
+  }));
+}
+
+function pendingBalanceDeltas(): Map<string, number> {
+  const deltas = new Map<string, number>();
+  for (const tx of useTransactionStore.getState().pendingTransactions) {
+    deltas.set(tx.clientId, (deltas.get(tx.clientId) ?? 0) + balanceDelta(tx));
+  }
+  return deltas;
+}
+
+registerPendingDeltaProvider(pendingBalanceDeltas);
+
+// A client created offline just got its Convex id: repoint its queued
+// transactions, then let them sync.
+onClientIdRemapped((oldId, newId) => {
+  const { pendingTransactions } = useTransactionStore.getState();
+  if (!pendingTransactions.some((t) => t.clientId === oldId)) return;
+  useTransactionStore.setState({
+    pendingTransactions: pendingTransactions.map((t) =>
+      t.clientId === oldId ? { ...t, clientId: newId } : t,
+    ),
+  });
+  const branchId = useAuthStore.getState().user?.branchId;
+  if (branchId) {
+    void useTransactionStore.getState().syncPendingTransactions(branchId);
+  }
+});

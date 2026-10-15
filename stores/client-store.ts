@@ -10,6 +10,11 @@ import { api } from "@/convex/_generated/api"; // ← generated API surface
 import { Id } from "@/convex/_generated/dataModel";
 import { Client } from "@/types/client";
 import { DEV_MOCKS_ENABLED } from "@/__dev__/config";
+import {
+  getPendingBalanceDeltas,
+  isLocalClient,
+  notifyClientIdRemapped,
+} from "./sync-bridge";
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
@@ -82,6 +87,35 @@ function buildMetadata(
     accountNumber: data.accountNumber,
     email: data.email,
   };
+}
+
+/**
+ * Refreshing from Convex must not drop offline work: clients created on the
+ * device are kept, unsynced local edits win over server fields, and balances
+ * are the server's value plus the net effect of still-queued transactions.
+ */
+function mergeServerClients(
+  fromServer: Client[],
+  local: Client[],
+  pendingDeltas: Map<string, number>,
+): Client[] {
+  const localById = new Map(local.map((c) => [c.id, c]));
+  const merged = fromServer.map((server) => {
+    const mine = localById.get(server.id);
+    const base =
+      mine?.syncStatus === "pending"
+        ? { ...mine, balance: server.balance }
+        : server;
+    return {
+      ...base,
+      balance: base.balance + (pendingDeltas.get(server.id) ?? 0),
+    };
+  });
+  const serverIds = new Set(fromServer.map((c) => c.id));
+  const localOnly = local.filter(
+    (c) => isLocalClient(c) && !serverIds.has(c.id),
+  );
+  return [...localOnly, ...merged];
 }
 
 // ── Store types ───────────────────────────────────────────────────────────────
@@ -172,8 +206,15 @@ export const useClientStore = create<ClientStoreState>()(
           const rawCustomers = await withAuthRetry(() =>
             convex.query(api.customers.list, {}),
           );
-          const clients: Client[] = rawCustomers.map(customerToClient);
-          set({ clients, isLoadingClients: false });
+          const fromServer: Client[] = rawCustomers.map(customerToClient);
+          set((state) => ({
+            clients: mergeServerClients(
+              fromServer,
+              state.clients,
+              getPendingBalanceDeltas(),
+            ),
+            isLoadingClients: false,
+          }));
         } catch (error) {
           // Offline-first: keep whatever is already persisted locally
           set({
@@ -224,7 +265,9 @@ export const useClientStore = create<ClientStoreState>()(
             idNumber: clientData.idNumber,
             kycVerified: !!clientData.idNumber,
             kycDate: clientData.idNumber ? new Date().toISOString() : undefined,
-            syncStatus: online ? ("synced" as const) : ("pending" as const),
+            // Pending until Convex confirms the create and assigns a real id.
+            syncStatus: "pending" as const,
+            localOnly: true,
           };
 
           // Optimistic update — add to local store immediately
@@ -256,19 +299,17 @@ export const useClientStore = create<ClientStoreState>()(
                           ...c,
                           id: convexId as string,
                           syncStatus: "synced" as const,
+                          localOnly: false,
                         }
                       : c,
                   ),
                 }));
+                // Transactions recorded while the create was in flight still
+                // point at the temp id.
+                notifyClientIdRemapped(tempId, convexId as string);
               } catch (error) {
+                // Stays pending/localOnly — syncPendingClients creates it later.
                 console.error("Failed to sync new client to Convex:", error);
-                set((state) => ({
-                  clients: state.clients.map((c) =>
-                    c.id === tempId
-                      ? { ...c, syncStatus: "pending" as const }
-                      : c,
-                  ),
-                }));
               }
             })();
           }
@@ -290,6 +331,26 @@ export const useClientStore = create<ClientStoreState>()(
         set({ isLoading: true, error: null });
         try {
           const online = await isConnected();
+          const existing = get().clients.find((c) => c.id === id);
+          if (!existing) throw new Error("Client not found");
+          const local = isLocalClient(existing);
+
+          // A manual balance correction is an absolute value: it is applied on
+          // the server right away and never queued — replaying it later would
+          // overwrite whatever queued transactions did in the meantime.
+          const { balance: correctedBalance, ...fields } = clientData;
+          if (correctedBalance !== undefined) {
+            if (!online || local) {
+              throw new Error(
+                "La correction du solde nécessite une connexion au serveur",
+              );
+            }
+            await convex.mutation(api.customers.update, {
+              id: id as Id<"customers">,
+              balance: correctedBalance,
+            });
+          }
+
           let updatedClient: Client | undefined;
 
           // Optimistic update locally
@@ -298,10 +359,16 @@ export const useClientStore = create<ClientStoreState>()(
               if (client.id === id) {
                 updatedClient = {
                   ...client,
-                  ...clientData,
-                  syncStatus: online
-                    ? ("synced" as const)
-                    : ("pending" as const),
+                  ...fields,
+                  ...(correctedBalance !== undefined && {
+                    balance:
+                      correctedBalance +
+                      (getPendingBalanceDeltas().get(id) ?? 0),
+                  }),
+                  syncStatus:
+                    online && !local
+                      ? ("synced" as const)
+                      : ("pending" as const),
                 };
                 return updatedClient;
               }
@@ -312,13 +379,14 @@ export const useClientStore = create<ClientStoreState>()(
 
           if (!updatedClient) throw new Error("Client not found");
 
-          // Sync to Convex in background if online
-          if (online) {
+          // Sync to Convex in background if online. A local-only client is
+          // created (with these fields) by syncPendingClients instead.
+          if (online && !local) {
             (async () => {
               try {
                 // Separate top-level fields from metadata fields
-                const { name, phone, idNumber, balance, status, ...rest } =
-                  clientData as any;
+                const { name, phone, idNumber, status, ...rest } =
+                  fields as any;
 
                 // Build the metadata patch from whatever was changed
                 const metadataPatch = buildMetadata(rest);
@@ -331,7 +399,6 @@ export const useClientStore = create<ClientStoreState>()(
                   ...(name !== undefined && { fullName: name }),
                   ...(phone !== undefined && { phoneNumber: phone }),
                   ...(idNumber !== undefined && { idNumber }),
-                  ...(balance !== undefined && { balance }),
                   ...(status !== undefined && {
                     // Map local status string to Convex enum
                     status: status === "active" ? "prospect" : "rejected",
@@ -377,51 +444,21 @@ export const useClientStore = create<ClientStoreState>()(
       // ── updateClientBalance ──────────────────────────────────────────────────
 
       updateClientBalance: async (id, amount) => {
-        set({ isLoading: true, error: null });
-        try {
-          const online = await isConnected();
-
-          // Optimistic balance update
-          set((state) => {
-            const updatedClients = state.clients.map((client) => {
-              if (client.id === id) {
-                return {
+        // Local display only. The server balance changes exclusively through
+        // createDeposit/createWithdrawal (atomic with the transaction row), so
+        // this never talks to Convex and never marks the client pending.
+        set((state) => ({
+          clients: state.clients.map((client) =>
+            client.id === id
+              ? {
                   ...client,
                   balance: client.balance + amount,
                   lastDeposit:
                     amount > 0 ? new Date().toISOString() : client.lastDeposit,
-                  syncStatus: online
-                    ? ("synced" as const)
-                    : ("pending" as const),
-                };
-              }
-              return client;
-            });
-            return { clients: updatedClients, isLoading: false };
-          });
-
-          if (online) {
-            (async () => {
-              try {
-                await convex.mutation(api.customers.updateBalance, {
-                  id: id as Id<"customers">,
-                  delta: amount,
-                });
-              } catch (error) {
-                console.error("Failed to sync balance to Convex:", error);
-              }
-            })();
-          }
-        } catch (error) {
-          set({
-            isLoading: false,
-            error:
-              error instanceof Error
-                ? error.message
-                : "Failed to update balance",
-          });
-          throw error;
-        }
+                }
+              : client,
+          ),
+        }));
       },
 
       // ── syncPendingClients ───────────────────────────────────────────────────
@@ -437,40 +474,52 @@ export const useClientStore = create<ClientStoreState>()(
         try {
           for (const client of pendingClients) {
             try {
-              // Attempt upsert: try update first, fall back to create
-              let convexId: string | null = null;
-              try {
-                await convex.mutation(api.customers.update, {
-                  id: client.id as Id<"customers">,
-                  fullName: client.name,
-                  phoneNumber: client.phone,
-                  idNumber: client.idNumber,
-                  balance: client.balance,
-                  metadata: buildMetadata(client),
-                });
-                convexId = client.id;
-              } catch {
-                // Customer doesn't exist yet — create it
-                const newId = await convex.mutation(
+              // Never send `balance`: the local value already includes queued
+              // transactions, which syncPendingTransactions applies on the
+              // server afterwards — sending it too would count them twice.
+              if (isLocalClient(client)) {
+                const convexId = (await convex.mutation(
                   api.customers.createProspect,
                   {
                     fullName: client.name,
                     phoneNumber: client.phone,
                     idNumber: client.idNumber,
-                    balance: client.balance,
                     metadata: buildMetadata(client),
                   },
-                );
-                convexId = newId as string;
-              }
+                )) as string;
 
-              set((state) => ({
-                clients: state.clients.map((c) =>
-                  c.id === client.id
-                    ? { ...c, id: convexId!, syncStatus: "synced" as const }
-                    : c,
-                ),
-              }));
+                set((state) => ({
+                  clients: state.clients.map((c) =>
+                    c.id === client.id
+                      ? {
+                          ...c,
+                          id: convexId,
+                          syncStatus: "synced" as const,
+                          localOnly: false,
+                        }
+                      : c,
+                  ),
+                }));
+                notifyClientIdRemapped(client.id, convexId);
+              } else {
+                // Existing customer with offline edits. On failure it stays
+                // pending — falling back to createProspect here would
+                // duplicate the customer on a mere network error.
+                await convex.mutation(api.customers.update, {
+                  id: client.id as Id<"customers">,
+                  fullName: client.name,
+                  phoneNumber: client.phone,
+                  idNumber: client.idNumber,
+                  metadata: buildMetadata(client),
+                });
+                set((state) => ({
+                  clients: state.clients.map((c) =>
+                    c.id === client.id
+                      ? { ...c, syncStatus: "synced" as const }
+                      : c,
+                  ),
+                }));
+              }
             } catch (error) {
               console.error(`Failed to sync client ${client.id}:`, error);
               // Leave as pending — will retry on next call

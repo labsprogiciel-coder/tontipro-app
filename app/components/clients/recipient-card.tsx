@@ -4,6 +4,7 @@ import React from "react";
 import { View, Text, StyleSheet } from "react-native";
 import { KAURIDORR_THEME } from "@/constants/colors";
 
+import { SPACE } from "@/constants/spacing";
 const T = KAURIDORR_THEME;
 
 interface ReceiptCardProps {
@@ -53,20 +54,20 @@ const styles = StyleSheet.create({
     backgroundColor: T.bg2,
     borderRadius: 16,
     overflow: "hidden",
-    marginVertical: 20,
+    marginVertical: SPACE.lg,
   },
-  header: { padding: 16, alignItems: "center" },
+  header: { padding: SPACE.lg, alignItems: "center" },
   amount: { fontSize: 28, fontWeight: "600", color: "#fff" },
-  sub: { fontSize: 11, color: "rgba(255,255,255,0.7)", marginTop: 4 },
+  sub: { fontSize: 11, color: "rgba(255,255,255,0.7)", marginTop: SPACE.xs },
   row: {
     flexDirection: "row",
     justifyContent: "space-between",
-    padding: 12,
+    padding: SPACE.md,
     borderBottomWidth: 0.5,
     borderColor: T.border,
   },
   label: { color: T.text3, fontSize: 12 },
   value: { color: T.text1, fontWeight: "500", fontSize: 13 },
-  ref: { textAlign: "center", padding: 8, fontSize: 10, color: T.text3 },
+  ref: { textAlign: "center", padding: SPACE.sm, fontSize: 10, color: T.text3 },
 });
 export default ReceiptCard;

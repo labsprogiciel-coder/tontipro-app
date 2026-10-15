@@ -1,5 +1,6 @@
 import { Pressable, View, Text, StyleSheet } from "react-native";
 
+import { SPACE } from "@/constants/spacing";
 interface SectionHeaderProps {
   title: string;
   linkText?: string;
@@ -26,7 +27,7 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
-    marginBottom: 10,
+    marginBottom: SPACE.sm,
   },
   title: {
     fontSize: 11,

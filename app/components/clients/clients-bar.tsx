@@ -3,6 +3,7 @@ import { View, Text, StyleSheet } from "react-native";
 import { Feather } from "@expo/vector-icons";
 import { KAURIDORR_THEME } from "@/constants/colors";
 
+import { SPACE } from "@/constants/spacing";
 const T = KAURIDORR_THEME;
 
 interface ClientBarProps {
@@ -38,8 +39,8 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     backgroundColor: T.bg2,
-    padding: 12,
-    marginHorizontal: 18,
+    padding: SPACE.md,
+    marginHorizontal: SPACE.lg,
     borderRadius: 12,
     borderWidth: 0.5,
     borderColor: T.border,
@@ -51,7 +52,7 @@ const styles = StyleSheet.create({
     backgroundColor: T.greenLt,
     justifyContent: "center",
     alignItems: "center",
-    marginRight: 10,
+    marginRight: SPACE.sm,
   },
   avatarText: { color: T.green, fontWeight: "600", fontSize: 12 },
   name: { fontSize: 13, fontWeight: "500", color: T.text1 },

@@ -21,4 +21,6 @@ export interface Client {
   kycVerified?: boolean;
   kycDate?: string;
   syncStatus?: "synced" | "pending";
+  /** Created on the device and not yet confirmed by Convex (id is local). */
+  localOnly?: boolean;
 }

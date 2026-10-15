@@ -34,6 +34,7 @@ import { useAuthStore } from "@/stores/auth-store";
 import { Transaction } from "@/types/transaction";
 import { Client } from "@/types/client";
 
+import { SPACE } from "@/constants/spacing";
 // ─── helpers ─────────────────────────────────────────────────────────────────
 
 function initials(name: string): string {
@@ -447,7 +448,7 @@ export default function TransactionDetailScreen() {
             offset={[0, 1]}
           >
             <View style={styles.infoCard}>
-              <View style={{ padding: 14, paddingBottom: 2 }}>
+              <View style={{ padding: SPACE.lg, paddingBottom: SPACE.xxs }}>
                 {timeline.map((item, i) => (
                   <View key={i} style={styles.tlItem}>
                     <View style={styles.tlLeft}>
@@ -490,8 +491,22 @@ export default function TransactionDetailScreen() {
           </Shadow>
         </View>
 
+        {/* ── Rejected by server ── */}
+        {transaction.syncError && (
+          <View style={styles.section}>
+            <View style={styles.pendingCard}>
+              <Text style={styles.pendingText}>
+                Transaction refusée par le serveur : {transaction.syncError}.{" "}
+                {
+                  "Elle n'a pas été enregistrée et le solde du client a été rétabli."
+                }
+              </Text>
+            </View>
+          </View>
+        )}
+
         {/* ── Pending sync notice ── */}
-        {transaction.status === "pending" && (
+        {transaction.status === "pending" && !transaction.syncError && (
           <View style={styles.section}>
             <View style={styles.pendingCard}>
               <Text style={styles.pendingText}>
@@ -543,15 +558,15 @@ const styles = StyleSheet.create({
   scroll: { flex: 1 },
   scrollContent: { paddingBottom: 0 },
 
-  heroBlock: { paddingBottom: 36 },
+  heroBlock: { paddingBottom: SPACE.xxl },
   backRow: {
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
-    paddingHorizontal: 18,
-    paddingTop: 14,
+    paddingHorizontal: SPACE.lg,
+    paddingTop: SPACE.lg,
   },
-  backBtn: { flexDirection: "row", alignItems: "center", gap: 4 },
+  backBtn: { flexDirection: "row", alignItems: "center", gap: SPACE.xs },
   backLabel: { fontSize: 13, color: "rgba(255,255,255,0.75)" },
   iconBtn: {
     width: 32,
@@ -561,18 +576,18 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
   },
-  heroContent: { alignItems: "center", paddingTop: 16, gap: 6 },
+  heroContent: { alignItems: "center", paddingTop: SPACE.lg, gap: SPACE.xs },
   typeBadge: {
     flexDirection: "row",
     alignItems: "center",
-    gap: 5,
+    gap: SPACE.xs,
     backgroundColor: "rgba(255,255,255,0.18)",
-    paddingHorizontal: 12,
-    paddingVertical: 4,
+    paddingHorizontal: SPACE.md,
+    paddingVertical: SPACE.xs,
     borderRadius: 20,
   },
   typeBadgeText: { fontSize: 11, fontWeight: "500", color: "white" },
-  heroAmountRow: { flexDirection: "row", alignItems: "flex-end", gap: 4 },
+  heroAmountRow: { flexDirection: "row", alignItems: "flex-end", gap: SPACE.xs },
   heroAmount: {
     fontSize: 46,
     fontWeight: "700",
@@ -584,20 +599,20 @@ const styles = StyleSheet.create({
     fontSize: 18,
     fontWeight: "400",
     color: "rgba(255,255,255,0.65)",
-    marginBottom: 6,
+    marginBottom: SPACE.xs,
   },
   heroDate: { fontSize: 12, color: "rgba(255,255,255,0.55)" },
 
-  balanceBridgeShadow: { marginHorizontal: 18, marginTop: -16, zIndex: 2 },
+  balanceBridgeShadow: { marginHorizontal: SPACE.lg, marginTop: -SPACE.lg, zIndex: 2 },
   balanceBridge: {
     backgroundColor: K.bg,
     borderWidth: 0.5,
     borderColor: K.border,
     borderRadius: 16,
-    padding: 14,
+    padding: SPACE.lg,
     flexDirection: "row",
     alignItems: "center",
-    gap: 8,
+    gap: SPACE.sm,
   },
   balCol: { flex: 1 },
   balColRight: { alignItems: "flex-end" },
@@ -606,7 +621,7 @@ const styles = StyleSheet.create({
     color: K.text3,
     textTransform: "uppercase",
     letterSpacing: 0.5,
-    marginBottom: 2,
+    marginBottom: SPACE.xxs,
   },
   balVal: { fontSize: 15, fontWeight: "600", color: K.text1 },
   balUnit: { fontSize: 10, color: K.text3 },
@@ -618,14 +633,14 @@ const styles = StyleSheet.create({
     justifyContent: "center",
   },
 
-  section: { paddingHorizontal: 18, paddingTop: 16 },
+  section: { paddingHorizontal: SPACE.lg, paddingTop: SPACE.lg },
   sectionTitle: {
     fontSize: 11,
     fontWeight: "500",
     color: K.text3,
     textTransform: "uppercase",
     letterSpacing: 0.6,
-    marginBottom: 8,
+    marginBottom: SPACE.sm,
   },
 
   infoCard: {
@@ -639,8 +654,8 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
-    paddingHorizontal: 14,
-    paddingVertical: 11,
+    paddingHorizontal: SPACE.lg,
+    paddingVertical: SPACE.md,
     borderBottomWidth: 0.5,
     borderBottomColor: K.border,
   },
@@ -651,7 +666,7 @@ const styles = StyleSheet.create({
     color: K.text3,
     fontVariant: ["tabular-nums"],
   },
-  statusBadge: { paddingHorizontal: 9, paddingVertical: 3, borderRadius: 6 },
+  statusBadge: { paddingHorizontal: SPACE.sm, paddingVertical: SPACE.xs, borderRadius: 6 },
   statusText: { fontSize: 11, fontWeight: "500" },
 
   commRow: {
@@ -662,10 +677,10 @@ const styles = StyleSheet.create({
     borderWidth: 0.5,
     borderColor: K.border,
     borderRadius: 12,
-    padding: 11,
-    paddingHorizontal: 14,
+    padding: SPACE.md,
+    paddingHorizontal: SPACE.lg,
   },
-  commLeft: { flexDirection: "row", alignItems: "center", gap: 8 },
+  commLeft: { flexDirection: "row", alignItems: "center", gap: SPACE.sm },
   commIcon: {
     width: 28,
     height: 28,
@@ -682,13 +697,13 @@ const styles = StyleSheet.create({
   clientMini: {
     flexDirection: "row",
     alignItems: "center",
-    gap: 10,
+    gap: SPACE.sm,
     backgroundColor: K.bg,
     borderWidth: 0.5,
     borderColor: K.border,
     borderRadius: 14,
-    padding: 12,
-    paddingHorizontal: 14,
+    padding: SPACE.md,
+    paddingHorizontal: SPACE.lg,
   },
   avatar: {
     width: 40,
@@ -700,21 +715,21 @@ const styles = StyleSheet.create({
   avatarText: { fontSize: 13, fontWeight: "600" },
   clientInfo: { flex: 1 },
   clientName: { fontSize: 14, fontWeight: "500", color: K.text1 },
-  clientPhone: { fontSize: 11, color: K.text3, marginTop: 1 },
+  clientPhone: { fontSize: 11, color: K.text3, marginTop: SPACE.xxs },
   clientRight: { alignItems: "flex-end" },
   clientBal: { fontSize: 12, fontWeight: "500", color: K.text1 },
-  clientLink: { fontSize: 11, marginTop: 2 },
+  clientLink: { fontSize: 11, marginTop: SPACE.xxs },
 
   agentMini: {
     flexDirection: "row",
     alignItems: "center",
-    gap: 10,
+    gap: SPACE.sm,
     backgroundColor: K.bg,
     borderWidth: 0.5,
     borderColor: K.border,
     borderRadius: 14,
-    padding: 12,
-    paddingHorizontal: 14,
+    padding: SPACE.md,
+    paddingHorizontal: SPACE.lg,
   },
   agentAvatar: {
     width: 34,
@@ -726,12 +741,12 @@ const styles = StyleSheet.create({
   },
   agentAvatarText: { fontSize: 12, fontWeight: "600", color: K.orangeDk },
   agentName: { fontSize: 13, fontWeight: "500", color: K.text1 },
-  agentRole: { fontSize: 11, color: K.text3, marginTop: 1 },
+  agentRole: { fontSize: 11, color: K.text3, marginTop: SPACE.xxs },
   agentTime: { marginLeft: "auto", alignItems: "flex-end" },
   agentTimeText: { fontSize: 11, color: K.text3 },
-  agentDate: { fontSize: 10, color: K.text3, marginTop: 1 },
+  agentDate: { fontSize: 10, color: K.text3, marginTop: SPACE.xxs },
 
-  tlItem: { flexDirection: "row", gap: 12, alignItems: "flex-start" },
+  tlItem: { flexDirection: "row", gap: SPACE.md, alignItems: "flex-start" },
   tlLeft: { width: 28, alignItems: "center", flexShrink: 0 },
   tlDot: { width: 10, height: 10, borderRadius: 5, flexShrink: 0 },
   tlLine: {
@@ -739,18 +754,18 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: K.border2,
     minHeight: 22,
-    marginTop: 2,
+    marginTop: SPACE.xxs,
   },
-  tlContent: { paddingBottom: 16, flex: 1 },
+  tlContent: { paddingBottom: SPACE.lg, flex: 1 },
   tlEvent: { fontSize: 13, fontWeight: "500", color: K.text1 },
-  tlTime: { fontSize: 11, color: K.text3, marginTop: 2 },
+  tlTime: { fontSize: 11, color: K.text3, marginTop: SPACE.xxs },
 
   pendingCard: {
     backgroundColor: "#faeeda",
     borderRadius: 12,
-    padding: 14,
+    padding: SPACE.lg,
     alignItems: "center",
-    gap: 12,
+    gap: SPACE.md,
   },
   pendingText: {
     fontSize: 13,
@@ -760,25 +775,25 @@ const styles = StyleSheet.create({
   },
   syncBtn: {
     backgroundColor: K.orange,
-    paddingVertical: 9,
-    paddingHorizontal: 20,
+    paddingVertical: SPACE.sm,
+    paddingHorizontal: SPACE.lg,
     borderRadius: 8,
   },
   syncBtnText: { color: "white", fontSize: 13, fontWeight: "600" },
 
   actionRow: {
     flexDirection: "row",
-    gap: 8,
-    paddingHorizontal: 18,
-    paddingTop: 16,
+    gap: SPACE.sm,
+    paddingHorizontal: SPACE.lg,
+    paddingTop: SPACE.lg,
   },
   btnShare: {
     flex: 1,
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",
-    gap: 6,
-    paddingVertical: 12,
+    gap: SPACE.xs,
+    paddingVertical: SPACE.md,
     borderRadius: 12,
     borderWidth: 0.5,
     borderColor: K.border2,
@@ -789,7 +804,7 @@ const styles = StyleSheet.create({
     flex: 1,
     alignItems: "center",
     justifyContent: "center",
-    paddingVertical: 12,
+    paddingVertical: SPACE.md,
     borderRadius: 12,
   },
   btnClientText: { fontSize: 12, fontWeight: "500", color: "white" },

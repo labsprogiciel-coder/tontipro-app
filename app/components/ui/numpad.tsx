@@ -1,6 +1,7 @@
 import { Pressable, StyleSheet, Text, View } from "react-native";
 import { KAURIDORR_THEME } from "@/constants/colors";
 
+import { SPACE } from "@/constants/spacing";
 const T = KAURIDORR_THEME;
 
 const KEYS = [
@@ -72,13 +73,13 @@ const styles = StyleSheet.create({
   numpad: {
     flexDirection: "column",
     alignSelf: "stretch",
-    paddingHorizontal: 18,
-    paddingBottom: 16,
-    gap: 8,
+    paddingHorizontal: SPACE.lg,
+    paddingBottom: SPACE.lg,
+    gap: SPACE.sm,
   },
   row: {
     flexDirection: "row",
-    gap: 8,
+    gap: SPACE.sm,
   },
   key: {
     flex: 1,

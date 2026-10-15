@@ -1,6 +1,7 @@
 import React from "react";
 import { View, Text, StyleSheet, TouchableOpacity } from "react-native";
 
+import { SPACE } from "@/constants/spacing";
 export interface TransactionProps {
   name: string;
   type: "deposit" | "withdrawal";
@@ -75,7 +76,7 @@ const styles = StyleSheet.create({
   item: {
     flexDirection: "row",
     alignItems: "center",
-    padding: 11,
+    padding: SPACE.md,
     borderBottomWidth: 0.5,
     borderBottomColor: "rgba(0,0,0,0.1)",
   },
@@ -87,19 +88,19 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     alignItems: "center",
   },
-  textContainer: { marginLeft: 11, flex: 1 },
+  textContainer: { marginLeft: SPACE.md, flex: 1 },
   name: { fontSize: 13, fontWeight: "500", color: "#1a1a18" },
   meta: { fontSize: 11, color: "#888780" },
   right: { alignItems: "flex-end" },
-  amountRow: { flexDirection: "row", alignItems: "center", gap: 5 },
+  amountRow: { flexDirection: "row", alignItems: "center", gap: SPACE.xs },
   multiplierBadge: {
-    paddingHorizontal: 6,
-    paddingVertical: 2,
+    paddingHorizontal: SPACE.sm,
+    paddingVertical: SPACE.xxs,
     borderRadius: 6,
   },
   multiplierText: { fontSize: 10, fontWeight: "700" },
   val: { fontSize: 13, fontWeight: "500" },
-  bal: { fontSize: 10, color: "#888780", marginTop: 1 },
+  bal: { fontSize: 10, color: "#888780", marginTop: SPACE.xxs },
 });
 
 export default TransactionItem;

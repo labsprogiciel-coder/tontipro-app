@@ -4,20 +4,13 @@ import { useAction } from "convex/react";
 import { useAuthStore } from "@/stores/auth-store";
 import { useAppLockStore } from "@/stores/app-lock-store";
 import { saveOfflineCredential } from "@/utils/secure-storage";
-import {
-  ActivityIndicator,
-  KeyboardAvoidingView,
-  Platform,
-  Pressable,
-  StyleSheet,
-  Text,
-  TextInput,
-  View,
-} from "react-native";
+import { ActivityIndicator, Pressable, StyleSheet, Text, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { KeyRound, ArrowRight, Eye, EyeOff } from "lucide-react-native";
+import { KeyRound, ArrowLeft } from "lucide-react-native";
+import { PinEntry } from "@/app/components/ui/pin-entry";
 import { api } from "@/convex/_generated/api";
 
+import { SPACE } from "@/constants/spacing";
 const T = {
   orange: "#D85A30",
   orangeDark: "#993C1D",
@@ -31,18 +24,23 @@ const T = {
 
 type Reason = "first_login" | "expired" | "manual";
 
+type Step = "current" | "next" | "confirm";
+
+const STEPS: Step[] = ["current", "next", "confirm"];
+
 export default function ChangePasswordScreen() {
   const { reason } = useLocalSearchParams<{ reason?: Reason }>();
   const router = useRouter();
   const changePassword = useAction(api.users.changePassword);
   const phoneNumber = useAuthStore((s) => s.user?.phone);
 
-  const [currentPassword, setCurrentPassword] = useState("");
-  const [newPassword, setNewPassword] = useState("");
-  const [confirmPassword, setConfirmPassword] = useState("");
-  const [showCurrentPassword, setShowCurrentPassword] = useState(false);
-  const [showNewPassword, setShowNewPassword] = useState(false);
-  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+  // One code per step, entered on the app's own pad and auto-advancing.
+  const [step, setStep] = useState<Step>("current");
+  const [codes, setCodes] = useState<Record<Step, string>>({
+    current: "",
+    next: "",
+    confirm: "",
+  });
   const [error, setError] = useState("");
   const [isLoading, setIsLoading] = useState(false);
 
@@ -54,22 +52,19 @@ export default function ChangePasswordScreen() {
     manual: "Changez votre mot de passe à tout moment.",
   };
 
-  const handleSubmit = async () => {
-    setError("");
+  const stepLabels: Record<Step, string> = {
+    current:
+      reason === "first_login"
+        ? "Code reçu par WhatsApp/SMS"
+        : "Code actuel",
+    next: "Nouveau code à 4 chiffres",
+    confirm: "Confirmez le nouveau code",
+  };
 
-    if (!currentPassword || !newPassword || !confirmPassword) {
-      setError("Veuillez remplir tous les champs");
-      return;
-    }
-    if (!/^\d{4}$/.test(newPassword)) {
-      setError("Le nouveau mot de passe doit être un code à 4 chiffres");
-      return;
-    }
-    if (newPassword !== confirmPassword) {
-      setError("Les mots de passe ne correspondent pas");
-      return;
-    }
-
+  const handleSubmit = async (
+    currentPassword: string,
+    newPassword: string,
+  ) => {
     setIsLoading(true);
 
     try {
@@ -114,149 +109,100 @@ export default function ChangePasswordScreen() {
       // à faire ici, première connexion ou pas. Direction dashboard.
       router.replace("/(app)/dashboard" as any);
     } catch (e: any) {
-      setError(e.message ?? "Mot de passe actuel incorrect");
+      // Le plus souvent : code actuel refusé — on repart de la 1re étape.
+      setError(e.message ?? "Code actuel incorrect");
+      setCodes({ current: "", next: "", confirm: "" });
+      setStep("current");
     } finally {
       setIsLoading(false);
     }
   };
 
+  const onComplete = (value: string) => {
+    if (step === "current") {
+      setStep("next");
+      return;
+    }
+    if (step === "next") {
+      setStep("confirm");
+      return;
+    }
+    if (value !== codes.next) {
+      setError("Les codes ne correspondent pas");
+      setCodes((c) => ({ ...c, next: "", confirm: "" }));
+      setStep("next");
+      return;
+    }
+    handleSubmit(codes.current, codes.next);
+  };
+
+  const goBack = () => {
+    const i = STEPS.indexOf(step);
+    if (i === 0) return;
+    setError("");
+    setCodes((c) => ({ ...c, [step]: "", [STEPS[i - 1]]: "" }));
+    setStep(STEPS[i - 1]);
+  };
+
   return (
-    <SafeAreaView style={styles.container} edges={["top"]}>
-      <KeyboardAvoidingView
-        behavior={Platform.OS === "ios" ? "padding" : "height"}
-        style={styles.keyboard}
-      >
-        <View style={styles.screen}>
-          <View style={styles.header}>
-            <View style={styles.logoCircle}>
-              <KeyRound size={32} color="white" />
-            </View>
-            <Text style={styles.title}>Mot de passe</Text>
-            <Text style={styles.subtitle}>{messages[reason ?? "manual"]}</Text>
+    <SafeAreaView style={styles.container} edges={["top", "bottom"]}>
+      <View style={styles.screen}>
+        <View style={styles.header}>
+          <View style={styles.logoCircle}>
+            <KeyRound size={32} color="white" />
           </View>
-
-          <View style={styles.form}>
-            <View style={styles.fieldGroup}>
-              <Text style={styles.fieldLabel}>Mot de passe actuel</Text>
-              <View style={styles.inputWrapper}>
-                <TextInput
-                  style={styles.input}
-                  value={currentPassword}
-                  onChangeText={setCurrentPassword}
-                  secureTextEntry={!showCurrentPassword}
-                  autoComplete="current-password"
-                  keyboardType="number-pad"
-                  maxLength={4}
-                  placeholder="••••"
-                  placeholderTextColor={T.textTertiary}
-                  editable={!isLoading}
-                />
-                <Pressable
-                  onPress={() => setShowCurrentPassword((v) => !v)}
-                  style={styles.eyeBtn}
-                  hitSlop={8}
-                >
-                  {showCurrentPassword ? (
-                    <EyeOff size={18} color={T.textTertiary} />
-                  ) : (
-                    <Eye size={18} color={T.textTertiary} />
-                  )}
-                </Pressable>
-              </View>
-            </View>
-
-            <View style={styles.fieldGroup}>
-              <Text style={styles.fieldLabel}>Nouveau mot de passe</Text>
-              <View style={styles.inputWrapper}>
-                <TextInput
-                  style={styles.input}
-                  value={newPassword}
-                  onChangeText={setNewPassword}
-                  secureTextEntry={!showNewPassword}
-                  autoComplete="password-new"
-                  keyboardType="number-pad"
-                  maxLength={4}
-                  placeholder="••••"
-                  placeholderTextColor={T.textTertiary}
-                  editable={!isLoading}
-                />
-                <Pressable
-                  onPress={() => setShowNewPassword((v) => !v)}
-                  style={styles.eyeBtn}
-                  hitSlop={8}
-                >
-                  {showNewPassword ? (
-                    <EyeOff size={18} color={T.textTertiary} />
-                  ) : (
-                    <Eye size={18} color={T.textTertiary} />
-                  )}
-                </Pressable>
-              </View>
-            </View>
-
-            <View style={styles.fieldGroup}>
-              <Text style={styles.fieldLabel}>
-                Confirmer le mot de passe
-              </Text>
-              <View style={styles.inputWrapper}>
-                <TextInput
-                  style={styles.input}
-                  value={confirmPassword}
-                  onChangeText={setConfirmPassword}
-                  secureTextEntry={!showConfirmPassword}
-                  autoComplete="password-new"
-                  keyboardType="number-pad"
-                  maxLength={4}
-                  placeholder="••••"
-                  placeholderTextColor={T.textTertiary}
-                  editable={!isLoading}
-                />
-                <Pressable
-                  onPress={() => setShowConfirmPassword((v) => !v)}
-                  style={styles.eyeBtn}
-                  hitSlop={8}
-                >
-                  {showConfirmPassword ? (
-                    <EyeOff size={18} color={T.textTertiary} />
-                  ) : (
-                    <Eye size={18} color={T.textTertiary} />
-                  )}
-                </Pressable>
-              </View>
-            </View>
-
-            {error ? <Text style={styles.errorText}>{error}</Text> : null}
-
-            <Pressable
-              onPress={handleSubmit}
-              disabled={isLoading}
-              style={({ pressed }) => [
-                styles.submitBtn,
-                isLoading && styles.btnDisabled,
-                pressed && !isLoading && styles.btnPressed,
-              ]}
-            >
-              {isLoading ? (
-                <ActivityIndicator color="white" />
-              ) : (
-                <>
-                  <Text style={styles.submitBtnText}>Continuer</Text>
-                  <ArrowRight size={18} color="white" />
-                </>
-              )}
-            </Pressable>
-          </View>
+          <Text style={styles.title}>Mot de passe</Text>
+          <Text style={styles.subtitle}>{messages[reason ?? "manual"]}</Text>
         </View>
-      </KeyboardAvoidingView>
+
+        <View style={styles.steps}>
+          {STEPS.map((st, i) => (
+            <View
+              key={st}
+              style={[
+                styles.stepDot,
+                STEPS.indexOf(step) >= i && styles.stepDotDone,
+              ]}
+            />
+          ))}
+        </View>
+        <Text style={styles.stepLabel}>{stepLabels[step]}</Text>
+
+        <PinEntry
+          key={step}
+          length={4}
+          value={codes[step]}
+          onChange={(v) => {
+            setCodes((c) => ({ ...c, [step]: v }));
+            if (error) setError("");
+          }}
+          onComplete={onComplete}
+          disabled={isLoading}
+          error={error}
+          accessibilityLabel={stepLabels[step]}
+        />
+
+        <View style={styles.status}>
+          {isLoading ? (
+            <ActivityIndicator color={T.orange} />
+          ) : error ? (
+            <Text style={styles.errorText}>{error}</Text>
+          ) : step !== "current" ? (
+            <Pressable onPress={goBack} hitSlop={8} style={styles.backBtn}>
+              <ArrowLeft size={16} color={T.textSecondary} />
+              <Text style={styles.backText}>Étape précédente</Text>
+            </Pressable>
+          ) : null}
+        </View>
+      </View>
     </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: T.bgPrimary },
-  keyboard: { flex: 1 },
-  screen: { flex: 1, paddingHorizontal: 28, paddingTop: 48 },
-  header: { alignItems: "center", marginBottom: 36, gap: 8 },
+  screen: { flex: 1, paddingHorizontal: SPACE.xl, paddingTop: SPACE.xxl },
+  header: { alignItems: "center", marginBottom: SPACE.xl, gap: SPACE.sm },
   logoCircle: {
     width: 64,
     height: 64,
@@ -264,7 +210,7 @@ const styles = StyleSheet.create({
     backgroundColor: T.orange,
     justifyContent: "center",
     alignItems: "center",
-    marginBottom: 12,
+    marginBottom: SPACE.md,
   },
   title: { fontSize: 24, fontWeight: "700", color: T.textPrimary },
   subtitle: {
@@ -273,43 +219,33 @@ const styles = StyleSheet.create({
     textAlign: "center",
     lineHeight: 20,
   },
-  form: { gap: 20 },
-  fieldGroup: { gap: 8 },
-  fieldLabel: {
-    fontSize: 12,
-    fontWeight: "600",
-    color: T.textSecondary,
-    marginLeft: 4,
-  },
-  inputWrapper: {
+  steps: {
     flexDirection: "row",
-    alignItems: "center",
-    height: 50,
-    borderRadius: 12,
-    borderWidth: 1,
-    borderColor: T.border,
-    backgroundColor: T.bgSecondary,
-    paddingHorizontal: 14,
-  },
-  input: {
-    flex: 1,
-    height: "100%",
-    fontSize: 15,
-    color: T.textPrimary,
-  },
-  eyeBtn: { padding: 4, marginLeft: 4 },
-  errorText: { color: T.orangeDark, fontSize: 13, textAlign: "center" },
-  submitBtn: {
-    flexDirection: "row",
-    backgroundColor: T.orange,
-    height: 54,
-    borderRadius: 12,
     justifyContent: "center",
-    alignItems: "center",
-    gap: 10,
-    marginTop: 8,
+    gap: SPACE.sm,
+    marginBottom: SPACE.md,
   },
-  submitBtnText: { color: "white", fontSize: 16, fontWeight: "600" },
-  btnDisabled: { opacity: 0.6 },
-  btnPressed: { opacity: 0.9, transform: [{ scale: 0.98 }] },
+  stepDot: {
+    width: 28,
+    height: 4,
+    borderRadius: 2,
+    backgroundColor: T.border,
+  },
+  stepDotDone: { backgroundColor: T.orange },
+  stepLabel: {
+    fontSize: 14,
+    fontWeight: "600",
+    color: T.textPrimary,
+    textAlign: "center",
+    marginBottom: SPACE.lg,
+  },
+  status: { minHeight: 36, justifyContent: "center", marginTop: SPACE.md },
+  backBtn: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: SPACE.xs,
+  },
+  backText: { fontSize: 14, color: T.textSecondary, fontWeight: "500" },
+  errorText: { color: T.orangeDark, fontSize: 13, textAlign: "center" },
 });

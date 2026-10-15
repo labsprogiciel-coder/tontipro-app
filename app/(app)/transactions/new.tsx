@@ -37,6 +37,7 @@ import { usePermissions } from "@/hooks/usePermissions";
 import SearchInput from "@/app/components/quickactions/search-input";
 import StatusBadge from "@/app/components/ui/status-bar";
 
+import { SPACE } from "@/constants/spacing";
 const T = KAURIDORR_THEME;
 
 const DEPOSIT_CHIPS = ["2000", "5000", "15000", "25000", "50000"];
@@ -496,7 +497,7 @@ const TransactionEntryScreen = () => {
                         flexDirection: "row",
                         alignItems: "center",
                         justifyContent: "space-between",
-                        marginBottom: 4,
+                        marginBottom: SPACE.xs,
                       }}
                     >
                       <Text style={styles.name}>{item.name}</Text>
@@ -515,7 +516,7 @@ const TransactionEntryScreen = () => {
                       <StatusBadge status={item.status} />
                     </View>
                     {item.accountNumber && (
-                      <View style={{ marginTop: 8 }}>
+                      <View style={{ marginTop: SPACE.sm }}>
                         <Text style={styles.code}>{item.accountNumber}</Text>
                       </View>
                     )}
@@ -584,30 +585,30 @@ export default TransactionEntryScreen;
 const styles = StyleSheet.create({
   screen: { flex: 1, backgroundColor: T.bg },
   contentScroll: { flex: 1 },
-  contentScrollContainer: { paddingBottom: 16 },
+  contentScrollContainer: { paddingBottom: SPACE.lg },
 
   backRow: {
     flexDirection: "row",
     alignItems: "center",
-    paddingHorizontal: 18,
-    paddingTop: 10,
-    gap: 5,
+    paddingHorizontal: SPACE.lg,
+    paddingTop: SPACE.md,
+    gap: SPACE.xs,
   },
-  backBtn: { padding: 2 },
+  backBtn: { padding: SPACE.xxs },
   backChevron: { fontSize: 22, color: T.text3, lineHeight: 24 },
   backLabel: { fontSize: 13, color: T.text3 },
 
   clientBar: {
     flexDirection: "row",
     alignItems: "center",
-    marginHorizontal: 18,
+    marginHorizontal: SPACE.lg,
     backgroundColor: T.bg2,
     borderWidth: 0.5,
     borderColor: T.border,
     borderRadius: 12,
-    paddingVertical: 10,
-    paddingHorizontal: 13,
-    gap: 10,
+    paddingVertical: SPACE.md,
+    paddingHorizontal: SPACE.md,
+    gap: SPACE.sm,
   },
   avatar: {
     width: 34,
@@ -626,10 +627,10 @@ const styles = StyleSheet.create({
 
   amountDisplay: {
     alignItems: "center",
-    paddingVertical: 20,
-    paddingHorizontal: 18,
+    paddingVertical: SPACE.xl,
+    paddingHorizontal: SPACE.lg,
   },
-  amountLabel: { fontSize: 12, color: T.text3, marginBottom: 6 },
+  amountLabel: { fontSize: 12, color: T.text3, marginBottom: SPACE.xs },
   amountValue: {
     fontSize: 42,
     fontWeight: "600",
@@ -641,15 +642,15 @@ const styles = StyleSheet.create({
   warningPill: {
     flexDirection: "row",
     alignItems: "center",
-    marginHorizontal: 18,
-    marginBottom: 12,
+    marginHorizontal: SPACE.lg,
+    marginBottom: SPACE.md,
     backgroundColor: T.bgWarning,
     borderWidth: 0.5,
     borderColor: "rgba(133,79,11,0.2)",
     borderRadius: 10,
-    paddingVertical: 9,
-    paddingHorizontal: 12,
-    gap: 8,
+    paddingVertical: SPACE.sm,
+    paddingHorizontal: SPACE.md,
+    gap: SPACE.sm,
   },
   warningIcon: { fontSize: 12, color: T.textWarning },
   warningText: { fontSize: 11, color: T.textWarning, flex: 1 },
@@ -658,13 +659,13 @@ const styles = StyleSheet.create({
   chipRow: {
     flexDirection: "row",
     flexWrap: "wrap",
-    gap: 7,
-    paddingHorizontal: 18,
-    paddingBottom: 16,
+    gap: SPACE.sm,
+    paddingHorizontal: SPACE.lg,
+    paddingBottom: SPACE.lg,
   },
   chip: {
-    paddingVertical: 6,
-    paddingHorizontal: 12,
+    paddingVertical: SPACE.sm,
+    paddingHorizontal: SPACE.md,
     borderRadius: 20,
     borderWidth: 0.5,
     borderColor: T.border2,
@@ -673,12 +674,12 @@ const styles = StyleSheet.create({
   chipText: { fontSize: 12, fontWeight: "500", color: T.text2 },
 
   permDenied: {
-    marginHorizontal: 18,
-    marginBottom: 8,
+    marginHorizontal: SPACE.lg,
+    marginBottom: SPACE.sm,
     backgroundColor: "#fff3cd",
     borderRadius: 10,
-    paddingVertical: 10,
-    paddingHorizontal: 12,
+    paddingVertical: SPACE.md,
+    paddingHorizontal: SPACE.md,
   },
   permDeniedText: { fontSize: 12, color: "#856404" },
 
@@ -698,8 +699,8 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
-    paddingHorizontal: 18,
-    paddingVertical: 14,
+    paddingHorizontal: SPACE.lg,
+    paddingVertical: SPACE.lg,
     borderBottomWidth: 0.5,
     borderBottomColor: T.border,
   },
@@ -708,16 +709,16 @@ const styles = StyleSheet.create({
 
   searchTypeRow: {
     flexDirection: "row",
-    marginHorizontal: 18,
-    marginTop: 10,
-    marginBottom: 10,
+    marginHorizontal: SPACE.lg,
+    marginTop: SPACE.sm,
+    marginBottom: SPACE.sm,
     backgroundColor: T.bg2,
     borderRadius: 10,
-    padding: 4,
+    padding: SPACE.xs,
   },
   searchTypeBtn: {
     flex: 1,
-    paddingVertical: 8,
+    paddingVertical: SPACE.sm,
     alignItems: "center",
     borderRadius: 8,
   },
@@ -732,26 +733,26 @@ const styles = StyleSheet.create({
   searchTypeText: { fontSize: 14, color: T.text3 },
   searchTypeTextActive: { color: T.text1, fontWeight: "500" },
 
-  searchInputWrapper: { marginHorizontal: 18, marginBottom: 16 },
-  listContainer: { paddingHorizontal: 18, paddingBottom: 10 },
+  searchInputWrapper: { marginHorizontal: SPACE.lg, marginBottom: SPACE.lg },
+  listContainer: { paddingHorizontal: SPACE.lg, paddingBottom: SPACE.md },
 
   emptySearchState: {
-    marginHorizontal: 18,
-    marginBottom: 14,
+    marginHorizontal: SPACE.lg,
+    marginBottom: SPACE.md,
     backgroundColor: T.bg2,
     borderRadius: 10,
     borderWidth: 0.5,
     borderColor: T.border,
-    paddingVertical: 12,
-    paddingHorizontal: 14,
+    paddingVertical: SPACE.md,
+    paddingHorizontal: SPACE.lg,
   },
   emptySearchText: { fontSize: 12, color: T.text3, textAlign: "center" },
 
   clientCard: {
     backgroundColor: T.bg,
     borderRadius: 14,
-    padding: 13,
-    marginBottom: 8,
+    padding: SPACE.md,
+    marginBottom: SPACE.sm,
     flexDirection: "row",
     alignItems: "center",
     borderWidth: 0.5,
@@ -773,17 +774,17 @@ const styles = StyleSheet.create({
     borderTopRightRadius: 20,
     maxHeight: "85%",
   },
-  overlayContent: { padding: 20, paddingBottom: 32 },
+  overlayContent: { padding: SPACE.xl, paddingBottom: SPACE.xxl },
   overlayTitle: {
     fontSize: 16,
     fontWeight: "600",
     color: T.text1,
     textAlign: "center",
-    marginBottom: 16,
+    marginBottom: SPACE.lg,
   },
   doneBtn: {
-    marginTop: 4,
-    padding: 15,
+    marginTop: SPACE.xs,
+    padding: SPACE.lg,
     borderRadius: 13,
     alignItems: "center",
   },
@@ -792,7 +793,7 @@ const styles = StyleSheet.create({
 
 const s = StyleSheet.create({
   holdBtn: {
-    marginHorizontal: 18,
+    marginHorizontal: SPACE.lg,
     marginBottom: Platform.OS === "ios" ? 0 : 24,
     height: 52,
     borderRadius: 13,

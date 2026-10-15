@@ -17,6 +17,7 @@ import { ChevronLeft } from "lucide-react-native";
 import { KAURIDORR_THEME as T } from "@/constants/colors";
 import { useAuthStore } from "@/stores/auth-store";
 
+import { SPACE } from "@/constants/spacing";
 function initials(name: string): string {
   return name
     .split(" ")
@@ -161,13 +162,13 @@ const styles = StyleSheet.create({
   header: {
     flexDirection: "row",
     alignItems: "center",
-    paddingHorizontal: 16,
-    paddingVertical: 12,
+    paddingHorizontal: SPACE.lg,
+    paddingVertical: SPACE.md,
     backgroundColor: T.bg,
     borderBottomWidth: 0.5,
     borderBottomColor: T.border,
   },
-  backBtn: { padding: 4 },
+  backBtn: { padding: SPACE.xs },
   headerTitle: {
     flex: 1,
     textAlign: "center",
@@ -177,9 +178,9 @@ const styles = StyleSheet.create({
   },
   headerSpacer: { width: 30 },
 
-  content: { padding: 20, paddingBottom: 40 },
+  content: { padding: SPACE.xl, paddingBottom: SPACE.xxxl },
 
-  avatarWrap: { alignItems: "center", marginBottom: 28 },
+  avatarWrap: { alignItems: "center", marginBottom: SPACE.xl },
   avatar: {
     width: 72,
     height: 72,
@@ -190,8 +191,8 @@ const styles = StyleSheet.create({
   },
   avatarText: { fontSize: 26, fontWeight: "700", color: "#fff" },
 
-  form: { gap: 16, marginBottom: 28 },
-  fieldGroup: { gap: 6 },
+  form: { gap: SPACE.lg, marginBottom: SPACE.xl },
+  fieldGroup: { gap: SPACE.xs },
   label: {
     fontSize: 11,
     fontWeight: "600",
@@ -204,8 +205,8 @@ const styles = StyleSheet.create({
     borderWidth: 0.5,
     borderColor: T.border2,
     borderRadius: 12,
-    paddingHorizontal: 14,
-    paddingVertical: 13,
+    paddingHorizontal: SPACE.lg,
+    paddingVertical: SPACE.md,
     fontSize: 15,
     color: T.text1,
   },
@@ -213,7 +214,7 @@ const styles = StyleSheet.create({
   saveBtn: {
     backgroundColor: T.orange,
     borderRadius: 13,
-    paddingVertical: 15,
+    paddingVertical: SPACE.lg,
     alignItems: "center",
   },
   saveBtnPressed: { opacity: 0.85 },
