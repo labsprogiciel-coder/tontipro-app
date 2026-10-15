@@ -8,7 +8,6 @@ import * as adminApi from "@/lib/admin-api";
 import type { AdminMe } from "@/lib/admin-api";
 import { useClientStore } from "@/stores/client-store";
 import { useTransactionStore } from "@/stores/transaction-store";
-import { useAgentStore } from "@/stores/agent-store";
 import { generateId } from "@/utils/id-generator";
 import { AgentPermissions, AgentRole, permissionsForRole } from "@/types/agent";
 import { clearOfflineCredential } from "@/utils/secure-storage";
@@ -42,6 +41,7 @@ export interface User {
   phone?: string;
   role: ConvexRole | "agent"; // "agent" = legacy / offline
   branchId?: string;
+  branchName?: string;
   currency?: string; // e.g. "FCFA"
   device?: any | null; // null = unbound → triggers binding flow
   status?: string;
@@ -76,9 +76,6 @@ interface AuthState {
     pin: string,
   ) => Promise<void>;
 
-  updateUser: (
-    fields: Partial<Pick<User, "name" | "email" | "phone">>,
-  ) => Promise<void>;
   logout: () => void;
 }
 
@@ -96,6 +93,7 @@ export function userFromMe(me: Extract<AdminMe, { active: true }>): User {
     phone: me.phoneNumber,
     role: role ?? "agent",
     branchId: me.branchId,
+    branchName: me.branch ?? undefined,
     currency: me.organization?.currency ?? "FCFA",
     device: me.device,
     status: "active",
@@ -155,15 +153,6 @@ export const useAuthStore = create<AuthState>()(
               await useTransactionStore
                 .getState()
                 .loadTransactions(user.branchId);
-              // La liste des agents de l'agence est réservée à admin/supervisor
-              // côté serveur (voir assertCanManage dans convex/users.ts) — un
-              // field_agent n'a accès qu'à ses propres informations, appeler
-              // loadAgents pour lui ne fait que produire une erreur 403.
-              if (user.role === "admin" || user.role === "supervisor") {
-                await useAgentStore
-                  .getState()
-                  .loadAgents(user.branchId as any);
-              }
             }
           } catch (error) {
             console.error("Failed to load data after Convex auth:", error);
@@ -246,10 +235,6 @@ export const useAuthStore = create<AuthState>()(
         const localRaw = await AsyncStorage.getItem(`user_${matchedPhone}`);
         const localUser: User | null = localRaw ? JSON.parse(localRaw) : null;
 
-        const pinAgentRecord = useAgentStore
-          .getState()
-          .agents.find((a) => a.phoneNumber === matchedPhone);
-
         set({
           isAuthenticated: true,
           isLoadingClients: true,
@@ -258,9 +243,6 @@ export const useAuthStore = create<AuthState>()(
             name: "Agent",
             phone: matchedPhone,
             role: "agent",
-            permissions: pinAgentRecord
-              ? permissionsForRole(pinAgentRecord.role)
-              : undefined,
           },
         });
 
@@ -271,19 +253,6 @@ export const useAuthStore = create<AuthState>()(
           // offline — local data is enough
         }
         set({ isLoadingClients: false });
-      },
-
-      updateUser: async (fields) => {
-        const current = get().user;
-        if (!current) return;
-        const updated = { ...current, ...fields };
-        set({ user: updated });
-        if (updated.phone) {
-          await AsyncStorage.setItem(
-            `user_${updated.phone}`,
-            JSON.stringify(updated),
-          );
-        }
       },
 
       logout: () => {
