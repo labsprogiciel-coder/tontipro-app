@@ -26,7 +26,11 @@ export interface AgentPermissions {
   importData: boolean;
 }
 
-/** Derive permissions from role — no more per-agent JSON toggles */
+/**
+ * Derive permissions from role — no more per-agent JSON toggles. Withdrawals
+ * are off for everyone until the admin backend has them (direct debit or
+ * supervisor-approved request: TontiPro-Admin#13).
+ */
 export function permissionsForRole(role: AgentRole): AgentPermissions {
   switch (role) {
     case "admin":
@@ -36,7 +40,7 @@ export function permissionsForRole(role: AgentRole): AgentPermissions {
         editClient: true,
         editSensitiveClient: true,
         deposit: true,
-        withdrawal: true,
+        withdrawal: false,
         exportReports: true,
         manageAgents: true,
         importData: true,
@@ -47,7 +51,7 @@ export function permissionsForRole(role: AgentRole): AgentPermissions {
         editClient: true,
         editSensitiveClient: true,
         deposit: true,
-        withdrawal: true,
+        withdrawal: false,
         exportReports: true,
         manageAgents: false,
         importData: false,

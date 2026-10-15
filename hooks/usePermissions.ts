@@ -6,7 +6,7 @@ const ALL_PERMISSIONS: AgentPermissions = {
   editClient: true,
   editSensitiveClient: true,
   deposit: true,
-  withdrawal: true,
+  withdrawal: false, // not on the admin backend yet (types/agent.ts)
   exportReports: true,
   manageAgents: true,
   importData: true,
