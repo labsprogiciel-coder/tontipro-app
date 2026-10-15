@@ -24,7 +24,7 @@ import {
 import { KAURIDORR_THEME as T } from "@/constants/colors";
 import { useAgentStore, AgentRole } from "@/stores/agent-store";
 import { useQuery } from "convex/react";
-import { api } from "@/convex/_generated/api";
+import * as adminApi from "@/lib/admin-api";
 import { Id } from "@/convex/_generated/dataModel";
 
 import { SPACE } from "@/constants/spacing";
@@ -583,10 +583,10 @@ function IdRow({
 
 export default function AddAgentScreen() {
   const router = useRouter();
-  const me = useQuery(api.users.currentUser);
+  const me = useQuery(adminApi.me);
   const addAgent = useAgentStore((s) => s.addAgent);
 
-  const canAccess = me?.role === "admin" || me?.role === "supervisor";
+  const canAccess = me?.active === true && me.can.manageStaff;
 
   const [step, setStep] = useState<Step>(1);
   const [isSubmitting, setSubmitting] = useState(false);
@@ -660,14 +660,14 @@ export default function AddAgentScreen() {
   };
 
   const handleConfirm = async () => {
-    if (isSubmitting || !me?.branchId) return;
+    if (isSubmitting || !me?.active) return;
     setSubmitting(true);
     try {
       const agent = await addAgent({
         fullName: form.fullName,
         phoneNumber: form.phoneNumber,
         email: form.email,
-        branchId: me.branchId,
+        branchId: me.branchId as Id<"branches">,
         role: form.role,
         pin: form.pin || undefined,
       });

@@ -15,7 +15,8 @@ import { Plus, Search, ChevronRight, ChevronLeft } from "lucide-react-native";
 import { KAURIDORR_THEME as T } from "@/constants/colors";
 import { useAgentStore, Agent, AgentRole } from "@/stores/agent-store";
 import { useQuery } from "convex/react";
-import { api } from "@/convex/_generated/api";
+import * as adminApi from "@/lib/admin-api";
+import { Id } from "@/convex/_generated/dataModel";
 
 import { SPACE } from "@/constants/spacing";
 // ── Helpers ───────────────────────────────────────────────────────────────────
@@ -146,15 +147,16 @@ export default function AgentsScreen() {
   const { agents, isLoading, loadAgents } = useAgentStore();
   const [query, setQuery] = useState("");
 
-  // Gate: only admin or supervisor can reach this screen
-  const me = useQuery(api.users.currentUser);
-  const canAccess = me?.role === "admin" || me?.role === "supervisor";
+  // Gate: staff management (staff:manage) is reserved to the IT admin
+  const me = useQuery(adminApi.me);
+  const canAccess = me?.active === true && me.can.manageStaff;
+  const branchId = me?.active ? me.branchId : undefined;
 
   useEffect(() => {
-    if (me?.branchId) {
-      loadAgents(me.branchId);
+    if (branchId) {
+      loadAgents(branchId as Id<"branches">);
     }
-  }, [me?.branchId]);
+  }, [branchId]);
 
   if (me === undefined) {
     // Still loading current user

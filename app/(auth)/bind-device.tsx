@@ -11,17 +11,9 @@ import { useRouter } from "expo-router";
 import * as Device from "expo-device";
 import { Check, Smartphone } from "lucide-react-native";
 import { useQuery } from "convex/react";
-import { makeFunctionReference } from "convex/server";
+import { myDevice } from "@/lib/admin-api";
 import { getOrCreateDeviceInstallId } from "@/utils/device-id";
 import { KAURIDORR_THEME as T } from "@/constants/colors";
-
-// Served by the admin backend (convex/devices.ts); referenced by name because
-// this app's generated API types come from a different deployment.
-const myDevice = makeFunctionReference<
-  "query",
-  Record<string, never>,
-  { serialNumber: string; model: string } | null
->("devices:myDevice");
 
 /** Same serial the admin sees on the device list: BRAND-MODEL-INSTALLID */
 async function getPhoneSerial(): Promise<string> {

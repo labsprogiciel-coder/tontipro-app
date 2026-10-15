@@ -32,6 +32,21 @@ permissions.
 - Serial format is `BRAND-MODEL-INSTALLID`, uppercase, max 50 characters. The
   admin must enter exactly what the phone displays.
 
+### Phase 1, profile (labsprogiciel-coder/tontipro-app#12)
+
+- The app reads its profile from admin `users.me` (`stores/auth-store.ts`,
+  `userFromMe`). The first role becomes the app's `AgentRole`. `active:
+  false` (suspended) signs the agent out locally. Admin `users.me` also
+  returns `branchId`, `phoneNumber` and `organization` (TontiPro-Admin#18).
+- Admin functions are referenced by name with `makeFunctionReference` in
+  `lib/admin-api.ts`, which also holds their result types. Keep it in step
+  with the admin repo until the generated API is shared (phase 5).
+- `.env.example` points at the admin dev deployment; put the URL in
+  `.env.local`.
+- The admin backend has no forced password change, password expiry or
+  server lockout, so `mustChangePassword`, `passwordSetAt` and `lockedUntil`
+  are always unset.
+
 ## Gap: calls the mobile app makes that the admin backend lacks
 
 Counts are call sites in `app/ lib/ hooks/ stores/ utils/ components/`. The
@@ -39,7 +54,7 @@ last column is the closest thing the admin backend has today.
 
 | Area | Missing functions | Admin equivalent |
 |---|---|---|
-| Session / profile | `users.currentUser` (6), `users.update`, `users.changePassword` | `users.me` (profile, roles, `device`, `can`). No self-service profile edit or password change; forgotten passwords use an admin-issued reset code (`staff.issueResetCode` → `passwordReset.resetPassword`) |
+| Session / profile | `users.update`, `users.changePassword` (`users.currentUser` replaced by `users.me`) | `users.me` (profile, roles, `device`, `can`). No self-service profile edit or password change; forgotten passwords use an admin-issued reset code (`staff.issueResetCode` → `passwordReset.resetPassword`) |
 | Login eligibility | `users.checkLoginEligibility`, `users.verifyLoginPassword`, `users.linkAgentAccount`, `users.clearStaleActivationAccount` | None needed: Convex Auth `signIn("password", …)` with `flow: "signIn"` / `"signUp"` + `code` |
 | Activation | `otp.checkActivationCode`, `otp.resendActivationCode` | Activation code issued by IT from the dashboard (`staff.issueActivationCode`) or CLI (`users:issueActivationCode`) |
 | Agents | `users.create`, `users.suspend`, `users.listByBranch` | `staff.create`, `staff.setStatus`, `staff.setRole`, `staff.get` (all `staff:manage`); `admin.listAgents` (not branch-scoped) |
