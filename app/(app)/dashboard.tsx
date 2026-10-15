@@ -10,6 +10,7 @@ import {
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useRouter } from "expo-router";
 import { useQuery } from "convex/react";
+import * as adminApi from "@/lib/admin-api";
 import { api } from "@/convex/_generated/api";
 import {
   TrendingUp,
@@ -113,7 +114,7 @@ const AgentDashboard: React.FC = () => {
   // their own once auth is ready, which is why `users:me` in
   // app/_layout.tsx already worked reliably while the imperative loads here
   // kept failing forever after the first race.
-  const customersData = useQuery(api.customers.list);
+  const customersData = useQuery(adminApi.listCustomers);
   const transactionsData = useQuery(api.transactions.list);
 
   // Clients ajoutés hors-ligne restent en local (syncStatus "pending") tant

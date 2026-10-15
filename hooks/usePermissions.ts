@@ -4,6 +4,7 @@ import { AgentPermissions, AgentRole, permissionsForRole } from "@/types/agent";
 const ALL_PERMISSIONS: AgentPermissions = {
   addClient: true,
   editClient: true,
+  editSensitiveClient: true,
   deposit: true,
   withdrawal: true,
   exportReports: true,
