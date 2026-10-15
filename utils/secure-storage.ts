@@ -2,11 +2,12 @@ import * as SecureStore from "expo-secure-store";
 import * as Crypto from "expo-crypto";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 
-// Paliers de verrouillage après des codes erronés répétés, en local — même
-// principe et mêmes valeurs que `LOGIN_LOCKOUT_TIERS` dans convex/users.ts
-// (verrouillage côté serveur), à garder synchronisé avec ce fichier. Ce
-// verrouillage local a son propre compteur car la vérification hors-ligne
-// n'a par définition aucun accès au compteur serveur.
+// Code PIN de déverrouillage local (4 chiffres), choisi par l'agent après sa
+// connexion avec téléphone + mot de passe (app/(auth)/set-pin.tsx). Il ne
+// sert jamais à se connecter au serveur : il ouvre seulement, à chaque
+// lancement de l'app, la session Convex déjà présente sur l'appareil.
+//
+// Paliers de verrouillage après des codes erronés répétés.
 const LOGIN_LOCKOUT_TIERS: { attempts: number; lockoutMs: number }[] = [
   { attempts: 5, lockoutMs: 5 * 60 * 1000 }, // 5 min
   { attempts: 10, lockoutMs: 30 * 60 * 1000 }, // 30 min
@@ -50,12 +51,10 @@ async function hashCode(phoneNumber: string, code: string): Promise<string> {
 }
 
 /**
- * Enregistre le mot de passe courant (4 chiffres) comme secret de
- * déverrouillage hors-ligne. À appeler à chaque fois que ce mot de passe est
- * confirmé fonctionnel côté serveur (changement de mot de passe, connexion
- * en ligne réussie) — jamais stocké en clair, seulement son hash SHA-256
- * dans SecureStore (chiffré par l'OS). Réinitialise aussi le verrouillage
- * local, puisqu'un nouveau secret mérite un nouveau budget de tentatives.
+ * Enregistre le code PIN de déverrouillage (4 chiffres) de cet agent sur cet
+ * appareil — jamais en clair, seulement son hash SHA-256 dans SecureStore
+ * (chiffré par l'OS). Réinitialise aussi le verrouillage local, puisqu'un
+ * nouveau code mérite un nouveau budget de tentatives.
  */
 export async function saveOfflineCredential(
   phoneNumber: string,
@@ -68,9 +67,9 @@ export async function saveOfflineCredential(
 }
 
 /**
- * Vérifie un code à 4 chiffres saisi hors-ligne contre le hash stocké
- * localement, avec le même verrouillage progressif que la connexion en
- * ligne (voir LOGIN_LOCKOUT_TIERS). Ne fait aucun appel réseau.
+ * Vérifie le code PIN saisi contre le hash stocké localement, avec un
+ * verrouillage progressif (voir LOGIN_LOCKOUT_TIERS). Ne fait aucun appel
+ * réseau : marche en ligne comme hors-ligne.
  */
 export async function verifyOfflineCredential(
   phoneNumber: string,
@@ -123,6 +122,11 @@ export async function verifyOfflineCredential(
   }
 
   return { valid: false, message: "Code incorrect." };
+}
+
+/** Un code PIN de déverrouillage est-il enregistré pour ce numéro ? */
+export async function hasOfflineCredential(phoneNumber: string): Promise<boolean> {
+  return (await SecureStore.getItemAsync(credentialKey(phoneNumber))) !== null;
 }
 
 /** Efface le secret de déverrouillage hors-ligne — à appeler au logout. */

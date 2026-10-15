@@ -190,7 +190,7 @@ function RootLayoutNav() {
     const inAppGroup = segments[0] === "(app)";
     const currentAuthScreen = segments[1];
     const isAuthEntryScreen =
-      !currentAuthScreen || ["login", "register", "splash"].includes(currentAuthScreen);
+      !currentAuthScreen || ["login", "splash"].includes(currentAuthScreen);
     const user = useAuthStore.getState().user;
 
     // Verrou dur : tant que mustChangePassword est true côté serveur, aucun
@@ -226,7 +226,7 @@ function RootLayoutNav() {
     }
 
     if (isAuthenticated && inAuthGroup && isAuthEntryScreen) {
-      // Doit rester en phase avec la logique de login.tsx/register.tsx : sinon
+      // Doit rester en phase avec la logique de login.tsx : sinon
       // ce guard global route vers /dashboard une fraction de seconde avant
       // que l'écran de login n'ait eu le temps de rediriger vers welcome →
       // change-password, et gagne la course (welcome/change-password ne
@@ -240,7 +240,9 @@ function RootLayoutNav() {
             next: "change-password",
           },
         });
-      } else if (user && user.device === null && user.branchId) {
+      } else if (isUnlocked && user && user.device === null && user.branchId) {
+        // Seulement une fois déverrouillé : avant, login.tsx doit encore
+        // faire choisir le code PIN local (set-pin.tsx) ou le faire saisir.
         // @ts-ignore
         router.replace("/(auth)/bind-device");
       } else if (isUnlocked) {
