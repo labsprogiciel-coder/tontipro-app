@@ -250,6 +250,11 @@ const TransactionEntryScreen = () => {
       Alert.alert("Erreur", "Veuillez entrer un montant valide");
       return;
     }
+    // The server checks again; this saves a round trip for the obvious case
+    if (!isDeposit && numericAmount > displayBalance) {
+      Alert.alert("Solde insuffisant", `Le solde du client est de ${formattedBalance} FCFA.`);
+      return;
+    }
 
     setIsLoading(true);
     try {
@@ -261,10 +266,13 @@ const TransactionEntryScreen = () => {
         notes: undefined,
       });
       setSuccessTx(result);
-    } catch {
+    } catch (err) {
+      // The store throws French messages for server refusals and withdrawals
       Alert.alert(
         "Erreur",
-        "Impossible d'enregistrer la transaction. Veuillez réessayer.",
+        err instanceof Error && err.message !== "Client not found"
+          ? err.message
+          : "Impossible d'enregistrer la transaction. Veuillez réessayer.",
       );
     } finally {
       setIsLoading(false);

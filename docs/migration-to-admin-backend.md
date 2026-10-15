@@ -70,7 +70,7 @@ last column is the closest thing the admin backend has today.
 | Activation | `otp.checkActivationCode`, `otp.resendActivationCode` | Activation code issued by IT from the dashboard (`staff.issueActivationCode`) or CLI (`users:issueActivationCode`) |
 | Agents | None left: the app's agent screens were removed (phase 4) | `staff.create`, `staff.setStatus`, `staff.setRole`, `staff.get` (all `staff:manage`); `admin.listAgents` (not branch-scoped) |
 | Customers | None left (phase 2) | `customers.list`, `createProspect`, `update` (branch-scoped) |
-| Transactions | `transactions.createWithdrawal` (deposits and history done) | `transactions.createDeposit`, `list`, `listMineInRange`, `listByAgent`, `listByBranch`, `reverseTransaction` |
+| Transactions | None left (phase 3) | `transactions.createDeposit`, `createWithdrawal`, `list`, `listMineInRange`, `listByAgent`, `listByBranch`, `reverseTransaction` |
 
 The admin backend also has read queries for the dashboard (`admin.*`) and
 `disbursements.*` / `reconciliation.*`. Reuse their tables and permissions; do
@@ -133,7 +133,8 @@ Done: backend in TontiPro-Admin#19, app in #14.
 
 ### Phase 3 - Transactions
 
-Deposits and history done: backend TontiPro-Admin#21, app #15.
+Done: deposits and history (backend TontiPro-Admin#21), withdrawals
+(TontiPro-Admin#22); app #15.
 
 - `transaction-store` records deposits with `transactions:createDeposit`
   (`customerId`, `amount`, `clientId`). The `clientId` is the UUID made when
@@ -145,9 +146,14 @@ Deposits and history done: backend TontiPro-Admin#21, app #15.
   message (they lift the next day / once IT binds a TPE); the others move it
   to "rejected" and undo its effect on the local balance. Online, every
   refusal is shown at once and nothing is queued.
-- **Withdrawals are off** in the app (`withdrawal: false` for every role)
-  until the backend has them: direct debit or a supervisor-approved
-  `disbursements` request (TontiPro-Admin#13).
+- **Withdrawals are a direct debit** (decided: no supervisor approval).
+  `transactions:createWithdrawal` takes the same arguments and rules as
+  deposits, plus `INSUFFICIENT_BALANCE`. Field agents and supervisors have
+  `transactions:withdraw`. They are online only: cash leaves the agent's
+  hands, so the server must confirm the balance first. A failed call is
+  retried once with the same `clientId`; if that fails too the agent is told
+  not to pay out and to check the history. A withdrawal queued by an older
+  app version is rejected, not replayed.
 
 ### Phase 4 - Agent management
 
