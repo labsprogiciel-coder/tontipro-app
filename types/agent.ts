@@ -23,7 +23,6 @@ export interface AgentPermissions {
   withdrawal: boolean;
   exportReports: boolean;
   manageAgents: boolean;
-  importData: boolean;
 }
 
 /**
@@ -42,7 +41,6 @@ export function permissionsForRole(role: AgentRole): AgentPermissions {
         withdrawal: false,
         exportReports: true,
         manageAgents: true,
-        importData: true,
       };
     case "supervisor":
       return {
@@ -53,7 +51,6 @@ export function permissionsForRole(role: AgentRole): AgentPermissions {
         withdrawal: true,
         exportReports: true,
         manageAgents: false,
-        importData: false,
       };
     case "accountant":
       return {
@@ -64,7 +61,6 @@ export function permissionsForRole(role: AgentRole): AgentPermissions {
         withdrawal: false,
         exportReports: true,
         manageAgents: false,
-        importData: false,
       };
     case "field_agent":
     default:
@@ -76,7 +72,6 @@ export function permissionsForRole(role: AgentRole): AgentPermissions {
         withdrawal: true,
         exportReports: false,
         manageAgents: false,
-        importData: false,
       };
   }
 }

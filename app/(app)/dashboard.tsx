@@ -286,7 +286,7 @@ const AgentDashboard: React.FC = () => {
               }
             />
             <ActionButton
-              label="Importer"
+              label="Exporter"
               icon={DownloadCloudIcon}
               bgVariant="#EEEDFE"
               iconColor="#534AB7"

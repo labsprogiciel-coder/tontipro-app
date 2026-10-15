@@ -9,7 +9,6 @@ const ALL_PERMISSIONS: AgentPermissions = {
   withdrawal: false, // online-only and role-checked: needs a signed-in role
   exportReports: true,
   manageAgents: true,
-  importData: true,
 };
 
 /**
