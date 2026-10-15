@@ -5,7 +5,7 @@ export default function AuthLayout() {
     <Stack screenOptions={{ headerShown: false }}>
       <Stack.Screen name="splash" />
       <Stack.Screen name="login" />
-      <Stack.Screen name="register" />
+      <Stack.Screen name="set-pin" />
       <Stack.Screen name="reg" />
       <Stack.Screen name="bind-device" />
       <Stack.Screen name="change-password" />

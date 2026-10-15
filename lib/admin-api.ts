@@ -120,3 +120,15 @@ export function refusalMessage(error: unknown): string | null {
   const code = (error as { data?: unknown } | null)?.data;
   return typeof code === "string" && code in REFUSALS ? REFUSALS[code] : null;
 }
+
+// ── Password reset (admin convex/passwordReset.ts) ───────────────────────────
+
+/**
+ * Trade an administrator-issued reset code for a new password. Throws a
+ * ConvexError `WEAK_PASSWORD` (under 8 characters) or `RESET_REFUSED`.
+ */
+export const resetPassword = makeFunctionReference<
+  "action",
+  { phone: string; code: string; newPassword: string },
+  null
+>("passwordReset:resetPassword");

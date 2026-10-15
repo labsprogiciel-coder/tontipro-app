@@ -47,6 +47,17 @@ permissions.
   server lockout, so `mustChangePassword`, `passwordSetAt` and `lockedUntil`
   are always unset.
 
+### Phase 1, login (labsprogiciel-coder/tontipro-app#13)
+
+- `app/(auth)/login.tsx`: phone + password (`signIn("phone", …)`),
+  "Première connexion" (phone + IT activation code + new password) and
+  "Mot de passe oublié" (phone + IT reset code + new password, via
+  `passwordReset:resetPassword`). `register.tsx` and every call to
+  `checkLoginEligibility`, `verifyLoginPassword`, `linkAgentAccount`,
+  `clearStaleActivationAccount` and `otp.*` are gone.
+- `change-password.tsx` is no longer reachable; it still calls the old
+  `users.changePassword` until TontiPro-Admin#11 is decided.
+
 ## Gap: calls the mobile app makes that the admin backend lacks
 
 Counts are call sites in `app/ lib/ hooks/ stores/ utils/ components/`. The
@@ -67,17 +78,18 @@ not copy the mobile schema over.
 
 ## Decisions needed before phase 1
 
-1. **Login identifier.** Admin uses email. Mobile agents log in with a phone
-   number. Choose: agents get an email too, or add phone as a second lookup.
-   This drives `auth.ts` and the whole activation screen set (`reg.tsx`,
-   `register.tsx`, `login.tsx`).
+1. **Login identifier.** Decided: **phone number.** Staff keep one password
+   account keyed on their email; the admin backend's `phone` provider finds
+   the staff member by phone and checks that same password, so the dashboard
+   (email) and the app (phone) share one password (TontiPro-Admin#20).
 2. **Activation.** Admin issues a one-time code per user, from the staff
    drawer on the dashboard or `users:issueActivationCode`. The same mechanism
    now covers forgotten passwords. Mobile uses SMS OTP (`otp.ts`, Twilio).
    Keep one. Recommended: keep the admin code, drop OTP for activation.
-3. **Offline PIN unlock.** `verifyPin` and `utils/secure-storage.ts` unlock the
-   app offline. Keep as a local convenience layered on top of the Convex
-   session, not as a login method.
+3. **Offline PIN unlock.** Decided: the server password (8+ characters) is
+   only typed to sign in on a device. The agent then picks a 4-digit PIN kept
+   on the device (`app/(auth)/set-pin.tsx`, hashed in SecureStore); each
+   launch asks for it, online or offline. It never signs in to the server.
 4. **Data move.** The mobile deployment holds real or test customers and
    transactions. Decide whether to export/import them or start clean.
 

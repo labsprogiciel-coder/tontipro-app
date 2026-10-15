@@ -175,7 +175,7 @@ const SettingsScreen = () => {
           <SettingItem
             icon={ShieldCheck}
             label="Modifier le PIN"
-            onPress={() => {}}
+            onPress={() => router.push("/(auth)/set-pin" as never)}
           />
           <View style={styles.divider} />
           <View style={styles.item}>
