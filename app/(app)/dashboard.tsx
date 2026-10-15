@@ -110,7 +110,7 @@ const AgentDashboard: React.FC = () => {
   // error instead of hitting the server again (see ConvexReactClient.query()
   // in node_modules/convex/dist/esm/react/client.js). Reactive `useQuery`
   // hooks don't have that problem: they resubscribe correctly and update on
-  // their own once auth is ready, which is why `currentUser` in
+  // their own once auth is ready, which is why `users:me` in
   // app/_layout.tsx already worked reliably while the imperative loads here
   // kept failing forever after the first race.
   const customersData = useQuery(api.customers.list);

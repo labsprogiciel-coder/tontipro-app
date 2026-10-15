@@ -16,7 +16,7 @@ import { ChevronLeft, MoreHorizontal, KeyRound } from "lucide-react-native";
 import { KAURIDORR_THEME as T } from "@/constants/colors";
 import { useAgentStore, AgentRole } from "@/stores/agent-store";
 import { useQuery } from "convex/react";
-import { api } from "@/convex/_generated/api";
+import * as adminApi from "@/lib/admin-api";
 import { Id } from "@/convex/_generated/dataModel";
 import { Numpad } from "@/app/components/ui/numpad";
 
@@ -76,7 +76,7 @@ const CAPABILITY_ROWS: { label: string; roles: AgentRole[] }[] = [
 export default function AgentDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const router = useRouter();
-  const me = useQuery(api.users.currentUser);
+  const me = useQuery(adminApi.me);
   const { getAgentById, updateAgent, suspendAgent, setAgentPin } =
     useAgentStore();
 
@@ -88,7 +88,7 @@ export default function AgentDetailScreen() {
 
   const agent = getAgentById(id as Id<"users">);
 
-  const canManage = me?.role === "admin" || me?.role === "supervisor";
+  const canManage = me?.active === true && me.can.manageStaff;
 
   if (!agent) {
     return (

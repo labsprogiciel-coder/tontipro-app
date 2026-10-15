@@ -4,7 +4,8 @@ import { createJSONStorage, persist } from "zustand/middleware";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { convex } from "@/lib/convex";
 import { withAuthRetry } from "@/lib/withAuthRetry";
-import { api } from "@/convex/_generated/api";
+import * as adminApi from "@/lib/admin-api";
+import type { AdminMe } from "@/lib/admin-api";
 import { useClientStore } from "@/stores/client-store";
 import { useTransactionStore } from "@/stores/transaction-store";
 import { useAgentStore } from "@/stores/agent-store";
@@ -14,7 +15,7 @@ import { clearOfflineCredential } from "@/utils/secure-storage";
 
 const PHONES_KEY = "kauridorr_registered_phones";
 
-// `currentUser` est une query réactive : elle se redéclenche à chaque
+// `users:me` est une query réactive : elle se redéclenche à chaque
 // changement du document (device, statut, etc.), pas seulement à la
 // connexion. Sans ce garde, `setConvexUser` relançait loadClients/
 // loadTransactions/loadAgents à chaque mise à jour, créant des appels
@@ -49,7 +50,6 @@ export interface User {
   passwordSetAt?: number | null;
   lockedUntil?: number | null;
   organization?: {
-    _id: string;
     name: string;
     currency: string;
   };
@@ -63,7 +63,7 @@ interface AuthState {
   registeredPhone: string | null;
 
   // Convex profile sync
-  setConvexUser: (convexUser: any) => void;
+  setConvexUser: (convexUser: AdminMe) => void;
   fetchCurrentUser: () => Promise<void>;
 
   // PIN offline login (unchanged)
@@ -82,6 +82,33 @@ interface AuthState {
   logout: () => void;
 }
 
+/**
+ * Build the store's user from the admin backend's users:me. The admin backend
+ * has no forced password change, password expiry or server-side lockout, so
+ * those fields are left unset. The first role decides the app's permissions.
+ */
+export function userFromMe(me: Extract<AdminMe, { active: true }>): User {
+  const role: AgentRole | undefined = me.roles[0];
+  return {
+    id: me.id,
+    name: me.name,
+    email: me.email,
+    phone: me.phoneNumber,
+    role: role ?? "agent",
+    branchId: me.branchId,
+    currency: me.organization?.currency ?? "FCFA",
+    device: me.device,
+    status: "active",
+    permissions: role ? permissionsForRole(role) : undefined,
+    mustChangePassword: false,
+    passwordSetAt: null,
+    lockedUntil: null,
+    organization: me.organization
+      ? { name: me.organization.name, currency: me.organization.currency }
+      : undefined,
+  };
+}
+
 // ── Store ────────────────────────────────────────────────────────────────────
 
 export const useAuthStore = create<AuthState>()(
@@ -94,36 +121,20 @@ export const useAuthStore = create<AuthState>()(
       registeredPhone: null,
 
       /**
-       * Called from RootLayoutNav when `useQuery(api.users.currentUser)` returns data.
+       * Called from RootLayoutNav when `useQuery(adminApi.me)` returns data.
        * Syncs the Convex user profile into the Zustand store.
        */
-      setConvexUser: (convexUser: any) => {
+      setConvexUser: (convexUser: AdminMe) => {
         if (!convexUser) return;
-
-        const user: User = {
-          id: convexUser._id,
-          name: convexUser.fullName ?? "Agent",
-          email: convexUser.email,
-          phone: convexUser.phoneNumber,
-          role: convexUser.role ?? "agent",
-          branchId: convexUser.branchId ?? convexUser.tenantId,
-          currency: convexUser.organization?.currency ?? "FCFA",
-          device: convexUser.device ?? null,
-          status: convexUser.status,
-          permissions: convexUser.role
-            ? permissionsForRole(convexUser.role as AgentRole)
-            : undefined,
-          mustChangePassword: convexUser.mustChangePassword ?? false,
-          passwordSetAt: convexUser.passwordSetAt ?? null,
-          lockedUntil: convexUser.lockedUntil ?? null,
-          organization: convexUser.organization
-            ? {
-                _id: convexUser.organization._id,
-                name: convexUser.organization.name,
-                currency: convexUser.organization.currency,
-              }
-            : undefined,
-        };
+        if (!convexUser.active) {
+          // Suspendu : le serveur ferme ses sessions et refuse toute nouvelle
+          // connexion ; on vide l'état local pour que le garde de navigation
+          // renvoie vers /login.
+          lastLoadedUserId = null;
+          set({ isAuthenticated: false, user: null });
+          return;
+        }
+        const user = userFromMe(convexUser);
 
         set({
           isAuthenticated: true,
@@ -131,7 +142,7 @@ export const useAuthStore = create<AuthState>()(
         });
 
         // Ne charger qu'une fois par session — pas à chaque re-déclenchement
-        // réactif de currentUser (voir `lastLoadedUserId` ci-dessus).
+        // réactif de users:me (voir `lastLoadedUserId` ci-dessus).
         if (lastLoadedUserId === user.id) return;
         lastLoadedUserId = user.id;
 
@@ -168,37 +179,15 @@ export const useAuthStore = create<AuthState>()(
        */
       fetchCurrentUser: async () => {
         try {
-          const convexUser = await withAuthRetry(() =>
-            convex.query(api.users.currentUser),
-          );
+          const convexUser = await withAuthRetry(() => convex.query(adminApi.me, {}));
           if (!convexUser) return;
-
-          const user: User = {
-            id: convexUser._id,
-            name: convexUser.fullName ?? "Agent",
-            email: convexUser.email,
-            phone: convexUser.phoneNumber,
-            role: convexUser.role ?? "agent",
-            branchId: convexUser.branchId ?? convexUser.tenantId,
-            currency: convexUser.organization?.currency ?? "FCFA",
-            device: convexUser.device ?? null,
-            status: convexUser.status,
-            permissions: convexUser.role
-              ? permissionsForRole(convexUser.role as AgentRole)
-              : undefined,
-            mustChangePassword: convexUser.mustChangePassword ?? false,
-            passwordSetAt: convexUser.passwordSetAt ?? null,
-            lockedUntil: convexUser.lockedUntil ?? null,
-            organization: convexUser.organization
-              ? {
-                  _id: convexUser.organization._id,
-                  name: convexUser.organization.name,
-                  currency: convexUser.organization.currency,
-                }
-              : undefined,
-          };
-
-          set({ isAuthenticated: true, user });
+          // Le serveur refuse déjà la connexion d'un compte suspendu ; ce cas
+          // ne survient que si la suspension tombe entre signIn et cette query.
+          if (!convexUser.active) {
+            set({ isAuthenticated: false, user: null });
+            return;
+          }
+          set({ isAuthenticated: true, user: userFromMe(convexUser) });
         } catch (e) {
           console.error("[Auth] fetchCurrentUser failed:", e);
         }

@@ -22,7 +22,7 @@ import ErrorBoundary from "@/app/error-boundary";
 import { useNavigationStore } from "@/stores/navigation-store";
 import { useAuthStore } from "@/stores/auth-store";
 import { useAppLockStore } from "@/stores/app-lock-store";
-import { api } from "@/convex/_generated/api";
+import * as adminApi from "@/lib/admin-api";
 
 /**
  * Adapter to make AsyncStorage compatible with ConvexAuthProvider's `storage` prop.
@@ -134,7 +134,7 @@ function RootLayoutNav() {
   const segments = useSegments();
   const { isAuthenticated: convexAuthed, isLoading: convexLoading } =
     useConvexAuth();
-  const convexUser = useQuery(api.users.currentUser);
+  const convexUser = useQuery(adminApi.me);
 
   const isAuthenticated = useAuthStore((s) => s.isAuthenticated);
   const isInitialized = useAuthStore((s) => s.isInitialized);
@@ -146,10 +146,11 @@ function RootLayoutNav() {
     if (convexLoading) return; // still checking
 
     if (convexAuthed && convexUser) {
-      // Convex session active → populate store
+      // Convex session active → populate store (a suspended account,
+      // `active: false`, is signed out locally by setConvexUser)
       setConvexUser(convexUser);
     } else if (convexAuthed && convexUser === undefined) {
-      // Authenticated but currentUser hasn't resolved yet — wait
+      // Authenticated but users:me hasn't resolved yet — wait
     } else if (convexAuthed && convexUser === null) {
       // Authenticated via Convex but no matching user profile (e.g. record
       // deleted server-side). Don't leave the app in limbo — mark
