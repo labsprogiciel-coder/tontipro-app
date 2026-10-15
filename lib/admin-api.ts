@@ -33,6 +33,7 @@ export type AdminMe =
       device: BoundDevice | null;
       // UI hints only: the server checks every mutation itself
       can: {
+        withdraw: boolean;
         reverse: boolean;
         approve: boolean;
         liquidate: boolean;
@@ -135,9 +136,10 @@ export const resetPassword = makeFunctionReference<
 
 // ── Transactions (admin convex/transactions.ts) ──────────────────────────────
 
-/** One of the signed-in agent's collections (transactions:list / listMineInRange). */
+/** One of the signed-in agent's movements (transactions:list / listMineInRange). */
 export type AdminTransaction = {
   _id: string;
+  type: "deposit" | "withdrawal";
   /** UUID the app generated when it recorded the collection (idempotency key) */
   clientId: string | null;
   customerId: string;
@@ -164,11 +166,17 @@ export const listMyTransactionsInRange = makeFunctionReference<
   AdminTransaction[]
 >("transactions:listMineInRange");
 
-/** A branch's raw transaction rows; needs transactions:audit (supervisor, accountant) */
+/**
+ * A branch's raw transaction rows; needs transactions:audit (supervisor,
+ * accountant). Rows written before withdrawals existed have no `type`.
+ */
 export const listBranchTransactions = makeFunctionReference<
   "query",
   { branchId: string },
-  (Omit<AdminTransaction, "customerName"> & { agentId: string })[]
+  (Omit<AdminTransaction, "customerName" | "type"> & {
+    agentId: string;
+    type?: AdminTransaction["type"];
+  })[]
 >("transactions:listByBranch");
 
 /**
@@ -181,3 +189,14 @@ export const createDeposit = makeFunctionReference<
   { customerId: string; amount: number; clientId: string },
   string
 >("transactions:createDeposit");
+
+/**
+ * Pay cash out of a customer's savings: a direct debit, no approval step.
+ * Same rules as createDeposit, plus a ConvexError `INSUFFICIENT_BALANCE` when
+ * the amount exceeds the customer's server-side balance.
+ */
+export const createWithdrawal = makeFunctionReference<
+  "mutation",
+  { customerId: string; amount: number; clientId: string },
+  string
+>("transactions:createWithdrawal");

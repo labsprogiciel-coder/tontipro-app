@@ -8,6 +8,7 @@ import { convex } from "@/lib/convex";
 import { withAuthRetry } from "@/lib/withAuthRetry";
 import * as adminApi from "@/lib/admin-api";
 import { Transaction } from "@/types/transaction";
+import type { Client } from "@/types/client";
 import { useClientStore } from "./client-store";
 import { useAuthStore } from "./auth-store";
 import { DEV_MOCKS_ENABLED } from "@/__dev__/config";
@@ -53,14 +54,20 @@ export function mergeTransactionsSorted(
 
 // ─── Convex row → Transaction ─────────────────────────────────────────────────
 
-/** Withdrawals wait on the direct-debit vs supervisor-approval decision. */
-export const WITHDRAWALS_UNAVAILABLE =
-  "Les retraits ne sont pas encore disponibles dans l'application.";
+/**
+ * Withdrawals are never queued: cash leaves the agent's hands, so the server
+ * must confirm the customer's balance first.
+ */
+export const WITHDRAWAL_NEEDS_NETWORK =
+  "Les retraits se font en ligne uniquement : reconnectez-vous puis réessayez.";
+/** The withdrawal may or may not be stored: never pay out on this. */
+export const WITHDRAWAL_UNCONFIRMED =
+  "Retrait non confirmé : ne remettez pas l'argent. Vérifiez l'historique du client avant de réessayer.";
 
 /**
  * Map an admin backend transaction row to the app-level Transaction type.
  * The server's `clientId` is the app's idempotency key (`clientRef` here);
- * the app's `clientId` is the customer. Every server row is a deposit for now.
+ * the app's `clientId` is the customer. Rows without a type are deposits.
  */
 export function convexRowToTransaction(
   row: Partial<adminApi.AdminTransaction> & {
@@ -80,7 +87,7 @@ export function convexRowToTransaction(
     clientId: row.customerId,
     clientName,
     amount: row.amount,
-    type: "deposit",
+    type: row.type ?? "deposit",
     date: new Date(row.timestamp).toISOString(),
     status: row.status,
     agentId: row.agentId,
@@ -213,15 +220,30 @@ export const useTransactionStore = create<TransactionStoreState>()(
       addTransaction: async (transactionData) => {
         set({ isLoading: true, error: null });
         try {
-          if (transactionData.type === "withdrawal") {
-            throw new Error(WITHDRAWALS_UNAVAILABLE);
-          }
           const clientStore = useClientStore.getState();
           const client = clientStore.getClientById(transactionData.clientId);
           if (!client) throw new Error("Client not found");
 
           const online = await isConnected();
           const now = Date.now();
+
+          if (transactionData.type === "withdrawal") {
+            const withdrawal = await recordWithdrawal(
+              client,
+              transactionData.amount,
+              online,
+              now,
+            );
+            await clientStore.updateClientBalance(
+              transactionData.clientId,
+              balanceDelta(withdrawal),
+            );
+            set((state) => ({
+              transactions: [withdrawal, ...state.transactions],
+              isLoading: false,
+            }));
+            return withdrawal;
+          }
 
           // Build a local Transaction for immediate UI feedback and offline queue.
           const localId = generateId("TR");
@@ -374,6 +396,51 @@ export const useTransactionStore = create<TransactionStoreState>()(
   ),
 );
 
+// ─── Withdrawals ──────────────────────────────────────────────────────────────
+
+/**
+ * Record a withdrawal on the server and return it as completed, or throw a
+ * French message for the agent. Never queued (see WITHDRAWAL_NEEDS_NETWORK).
+ * A failed call is retried once with the same clientRef: if the first one was
+ * stored and only its response was lost, the server returns that row instead
+ * of debiting twice.
+ */
+async function recordWithdrawal(
+  client: Client,
+  amount: number,
+  online: boolean,
+  now: number,
+): Promise<Transaction> {
+  if (!online || isLocalClient(client)) throw new Error(WITHDRAWAL_NEEDS_NETWORK);
+  const clientRef = Crypto.randomUUID();
+  const args = { customerId: client.id, amount, clientId: clientRef };
+
+  let transactionId: string | null = null;
+  for (let attempt = 0; transactionId === null; attempt++) {
+    try {
+      transactionId = await convex.mutation(adminApi.createWithdrawal, args);
+    } catch (err) {
+      if (isPermanentSyncError(err) || isRetryLaterSyncError(err)) {
+        throw new Error(syncErrorMessage(err));
+      }
+      console.warn("Withdrawal attempt failed:", err);
+      if (attempt >= 1) throw new Error(WITHDRAWAL_UNCONFIRMED);
+    }
+  }
+
+  return {
+    id: transactionId,
+    clientRef,
+    clientId: client.id,
+    clientName: client.name,
+    amount,
+    type: "withdrawal",
+    date: new Date(now).toISOString(),
+    status: "completed",
+    agentId: useAuthStore.getState().user?.id,
+  };
+}
+
 // ─── Offline queue replay ─────────────────────────────────────────────────────
 
 let syncInFlight = false;
@@ -407,9 +474,9 @@ async function syncPendingOnce(): Promise<void> {
     if (client && isLocalClient(client)) continue;
 
     try {
-      // Queued before withdrawals were turned off: the server has no
-      // withdrawal yet, so it can't be replayed.
-      if (tx.type === "withdrawal") throw new Error(WITHDRAWALS_UNAVAILABLE);
+      // Withdrawals are online-only; one queued by an older version is not
+      // replayed, since the cash may never have been handed over.
+      if (tx.type === "withdrawal") throw new Error(WITHDRAWAL_NEEDS_NETWORK);
       const transactionId = await convex.mutation(adminApi.createDeposit, {
         customerId: tx.clientId,
         amount: tx.amount,
@@ -443,7 +510,7 @@ async function syncPendingOnce(): Promise<void> {
       }
       if (
         isPermanentSyncError(err) ||
-        (err instanceof Error && err.message === WITHDRAWALS_UNAVAILABLE)
+        (err instanceof Error && err.message === WITHDRAWAL_NEEDS_NETWORK)
       ) {
         // Le serveur a refusé l'opération (solde insuffisant, client
         // inconnu…) : la rejouer ne changera rien. On la sort de la file,

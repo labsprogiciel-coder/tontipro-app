@@ -32,7 +32,7 @@ export function balanceDelta(tx: Pick<Transaction, "type" | "amount">): number {
   return tx.type === "deposit" ? tx.amount : -tx.amount;
 }
 
-// Refusal codes of the admin backend's transactions.createDeposit. The first
+// Refusal codes of the admin backend's createDeposit / createWithdrawal. The first
 // two lift on their own (the next day, or once IT binds a TPE), so a queued
 // deposit refused with them stays queued; the others never will.
 const RETRY_LATER_CODES = new Set(["DAY_CLOSED", "NO_DEVICE"]);
@@ -40,6 +40,7 @@ const SYNC_MESSAGES: Record<string, string> = {
   DAY_CLOSED: "Caisse du jour clôturée : l'opération sera envoyée demain.",
   NO_DEVICE: "Aucun TPE actif n'est lié à votre compte. Contactez votre administrateur.",
   INVALID_AMOUNT: "Montant invalide.",
+  INSUFFICIENT_BALANCE: "Solde du client insuffisant pour ce retrait.",
   CUSTOMER_NOT_FOUND: "Client introuvable dans votre agence.",
   DUPLICATE_CLIENT_ID: "Opération en double refusée par le serveur.",
   INVALID_CLIENT_ID: "Opération invalide.",
