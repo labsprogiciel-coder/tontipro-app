@@ -55,6 +55,7 @@ const FREQUENCIES: {
 ];
 
 const DAY_LABELS = ["L", "M", "M", "J", "V", "S", "D"];
+const LOCKED_HINT = "Modification réservée au superviseur";
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
@@ -196,6 +197,12 @@ export default function AddClientScreen() {
   const isEdit = !!clientId;
 
   const actionAllowed = isEdit ? perms.editClient : perms.addClient;
+
+  // The server refuses phone changes, and renaming a verified client, without
+  // customers:edit_sensitive (supervisor), so lock those fields instead.
+  const editedClient = isEdit && clientId ? getClientById(clientId) : undefined;
+  const lockPhone = isEdit && !perms.editSensitiveClient;
+  const lockName = lockPhone && !!editedClient?.kycVerified;
 
   // ── Step state ────────────────────────────────────────────────────────────────
 
@@ -413,7 +420,9 @@ export default function AddClientScreen() {
               value={name}
               onChangeText={setName}
               autoCapitalize="words"
+              editable={!lockName}
             />
+            {lockName && <Text style={styles.fieldLocked}>{LOCKED_HINT}</Text>}
           </Field>
 
           {/* phoneNumber in Convex → collected as `phone` locally */}
@@ -433,8 +442,10 @@ export default function AddClientScreen() {
                 value={phone}
                 onChangeText={setPhone}
                 keyboardType="phone-pad"
+                editable={!lockPhone}
               />
             </View>
+            {lockPhone && <Text style={styles.fieldLocked}>{LOCKED_HINT}</Text>}
             {phone.length >= 8 && (
               <View style={styles.fieldHintOk}>
                 <Check size={11} color={T.textSuccess} strokeWidth={2} />
@@ -1080,6 +1091,7 @@ const styles = StyleSheet.create({
     marginTop: SPACE.xs,
   },
   fieldHintOkText: { fontSize: 11, color: T.textSuccess },
+  fieldLocked: { fontSize: 11, color: T.text3, marginTop: SPACE.xs },
   fieldHintInfo: { fontSize: 11, color: T.text3, marginTop: SPACE.xs },
 
   phoneRow: { flexDirection: "row", gap: SPACE.sm },

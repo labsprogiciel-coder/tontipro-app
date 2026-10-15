@@ -17,6 +17,8 @@ export type AgentRole =
 export interface AgentPermissions {
   addClient: boolean;
   editClient: boolean;
+  /** Phone, ID number, a verified client's name (server: customers:edit_sensitive) */
+  editSensitiveClient: boolean;
   deposit: boolean;
   withdrawal: boolean;
   exportReports: boolean;
@@ -32,6 +34,7 @@ export function permissionsForRole(role: AgentRole): AgentPermissions {
       return {
         addClient: true,
         editClient: true,
+        editSensitiveClient: true,
         deposit: true,
         withdrawal: true,
         exportReports: true,
@@ -42,6 +45,7 @@ export function permissionsForRole(role: AgentRole): AgentPermissions {
       return {
         addClient: true,
         editClient: true,
+        editSensitiveClient: true,
         deposit: true,
         withdrawal: true,
         exportReports: true,
@@ -52,6 +56,7 @@ export function permissionsForRole(role: AgentRole): AgentPermissions {
       return {
         addClient: false,
         editClient: false,
+        editSensitiveClient: false,
         deposit: false,
         withdrawal: false,
         exportReports: true,
@@ -63,6 +68,7 @@ export function permissionsForRole(role: AgentRole): AgentPermissions {
       return {
         addClient: true,
         editClient: true,
+        editSensitiveClient: false,
         deposit: true,
         withdrawal: false,
         exportReports: false,

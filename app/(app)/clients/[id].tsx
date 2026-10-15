@@ -53,7 +53,6 @@ import {
   Pressable,
   ActivityIndicator,
   Alert,
-  TextInput,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import {
@@ -89,8 +88,6 @@ const ClientDetails = () => {
   );
 
   const [isLoading, setIsLoading] = useState(true);
-  const [editingBalance, setEditingBalance] = useState(false);
-  const [balanceInput, setBalanceInput] = useState("");
   const perms = usePermissions();
 
   const transactions = useMemo(() => {
@@ -104,18 +101,14 @@ const ClientDetails = () => {
     if (id) setIsLoading(false);
   }, [id]);
 
-  // KYC scan result: update idNumber + flip status to 'verified' via kycVerified flag.
-  // The store's updateClient maps kycVerified → status:'verified' when syncing to Convex.
+  // KYC scan result: record the ID number. The customer stays a prospect
+  // until the back office verifies the document on the dashboard.
   useEffect(() => {
     if (scannedId && id && client) {
-      updateClient(id, {
-        idNumber: scannedId,
-        kycVerified: true,
-        kycDate: new Date().toISOString(),
-      });
+      updateClient(id, { idNumber: scannedId });
       Alert.alert(
-        "KYC mis à jour",
-        `Numéro d'identité enregistré : ${scannedId}`,
+        "Pièce d'identité enregistrée",
+        `Numéro : ${scannedId}\nLa vérification KYC se fait depuis le tableau de bord.`,
       );
     }
   }, [scannedId, id, client, updateClient]);
@@ -132,15 +125,6 @@ const ClientDetails = () => {
       pathname: "/(app)/transactions/new",
       params: { clientId: id, type: "withdrawal" },
     });
-  };
-
-  const handleSaveBalance = async () => {
-    const newBalance = parseInt(balanceInput.replace(/\s/g, ""), 10);
-    if (!isNaN(newBalance) && newBalance >= 0 && client) {
-      // balance is a top-level field on customers — passes through directly in updateClient
-      await updateClient(id, { balance: newBalance });
-    }
-    setEditingBalance(false);
   };
 
   const handleScanKyc = () => {
@@ -246,45 +230,13 @@ const ClientDetails = () => {
           </View>
 
           <View style={styles.statsStrip}>
-            {/* balance — top-level on customers */}
-            <Pressable
-              style={styles.statCell}
-              onPress={
-                perms.editClient
-                  ? () => {
-                      setBalanceInput(String(client.balance));
-                      setEditingBalance(true);
-                    }
-                  : undefined
-              }
-            >
-              {editingBalance && perms.editClient ? (
-                <TextInput
-                  style={[
-                    styles.statVal,
-                    { color: "white", minWidth: 80, textAlign: "center" },
-                  ]}
-                  value={balanceInput}
-                  onChangeText={setBalanceInput}
-                  keyboardType="numeric"
-                  autoFocus
-                  returnKeyType="done"
-                  onSubmitEditing={handleSaveBalance}
-                  onBlur={handleSaveBalance}
-                />
-              ) : (
-                <Text style={styles.statVal}>
-                  {client.balance.toLocaleString("fr-FR")}
-                </Text>
-              )}
-              <Text style={styles.statLbl}>
-                {editingBalance && perms.editClient
-                  ? "Entrée pour valider"
-                  : perms.editClient
-                    ? "Solde ✎"
-                    : "Solde"}
+            {/* balance — derived from collections on the server */}
+            <View style={styles.statCell}>
+              <Text style={styles.statVal}>
+                {client.balance.toLocaleString("fr-FR")}
               </Text>
-            </Pressable>
+              <Text style={styles.statLbl}>Solde</Text>
+            </View>
 
             <View style={[styles.statCell, styles.statCellBorder]}>
               <Text style={styles.statVal}>{transactions.length}</Text>
@@ -419,7 +371,7 @@ const ClientDetails = () => {
                 </Text>
               </View>
               {/* KYC scan button (only when not yet verified) */}
-              {!client.kycVerified && perms.editClient && (
+              {!client.kycVerified && perms.editSensitiveClient && (
                 <Pressable style={styles.kycScanRow} onPress={handleScanKyc}>
                   <Text style={styles.kycScanText}>
                     📷 Scanner la pièce d&apos;identité

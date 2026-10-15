@@ -58,7 +58,7 @@ last column is the closest thing the admin backend has today.
 | Login eligibility | `users.checkLoginEligibility`, `users.verifyLoginPassword`, `users.linkAgentAccount`, `users.clearStaleActivationAccount` | None needed: Convex Auth `signIn("password", …)` with `flow: "signIn"` / `"signUp"` + `code` |
 | Activation | `otp.checkActivationCode`, `otp.resendActivationCode` | Activation code issued by IT from the dashboard (`staff.issueActivationCode`) or CLI (`users:issueActivationCode`) |
 | Agents | None left: the app's agent screens were removed (phase 4) | `staff.create`, `staff.setStatus`, `staff.setRole`, `staff.get` (all `staff:manage`); `admin.listAgents` (not branch-scoped) |
-| Customers | `customers.list`, `customers.createProspect`, `customers.update` | `admin.listCustomers` (read-only, all branches) |
+| Customers | None left (phase 2) | `customers.list`, `createProspect`, `update` (branch-scoped) |
 | Transactions | `transactions.list`, `transactions.listMineInRange`, `transactions.createDeposit`, `transactions.createWithdrawal` | `transactions.collectCash` (deposit; see phase 3), `listByAgent`, `listByBranch`, `reverseTransaction` |
 
 The admin backend also has read queries for the dashboard (`admin.*`) and
@@ -106,11 +106,18 @@ Each phase ends with the app working for the screens it covers.
 
 ### Phase 2 - Customers
 
-- Port `customers.list`, `createProspect`, `update` onto the admin `customers`
-  table. Gate with `customers:create_prospect` and `customers:edit_sensitive`
-  from `authz.ts`; scope reads to the caller's branch.
-- Check field names against the admin schema (mobile and admin differ on
-  status and KYC fields) and update `client-store`.
+Done: backend in TontiPro-Admin#19, app in #14.
+
+- `stores/client-store.ts` and the dashboard read `customers:list` and write
+  `customers:createProspect` / `customers:update` through `lib/admin-api.ts`.
+- The list covers the whole branch (not only the agent's own customers).
+  Balance and last deposit are derived on the server; the app never writes a
+  balance (the balance editor on the client screen is gone).
+- New clients are always prospects. A scanned ID number is stored, but KYC
+  verification happens on the dashboard.
+- Phone, ID number and a verified client's name need a supervisor
+  (`customers:edit_sensitive`). The edit form locks them for field agents,
+  and a refusal from the server is shown and not retried.
 
 ### Phase 3 - Transactions
 

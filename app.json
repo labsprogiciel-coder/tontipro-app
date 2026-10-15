@@ -1,7 +1,7 @@
 {
   "expo": {
     "name": "kauridoor",
-    "slug": "kauridoor",
+    "slug": "tonti-app",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
@@ -76,9 +76,9 @@
     },
     "extra": {
       "eas": {
-        "projectId": "b5d56152-5049-4f06-8582-743fa70398f3"
+        "projectId": "7501fec2-3ee8-4253-8aa4-2cdfe04f58c0"
       }
     },
-    "owner": "progiciel"
+    "owner": "labo-progiciel"
   }
 }
