@@ -1,6 +1,7 @@
 # Migration plan: mobile app onto the admin (Kauri) backend
 
-Status: **phase 0 done** (device binding). Everything else is open.
+Status: **phase 0 done** (device binding; admin side in TontiPro-Admin#8).
+Everything else is open. Last checked against admin `main` on 2026-10-15.
 
 ## Goal
 
@@ -14,13 +15,16 @@ permissions.
 | | Mobile today | Admin backend |
 |---|---|---|
 | Deployment | `posh-nightingale-973` | `giddy-leopard-614` |
-| Staff login | Phone + code / OTP, plus Clerk for admins | Email + password, one-time activation code (Convex Auth, invite-only) |
-| Roles | `role: string` on the user, `permissionsForRole()` in the client | `@djpanda/convex-authz` roles, permission checked per mutation |
+| Staff login | Phone + code / OTP, plus Clerk for admins | Email + password, one-time activation code (Convex Auth, invite-only); admin-issued reset code for forgotten passwords |
+| Roles | `role: string` on the user, `permissionsForRole()` in the client | `@djpanda/convex-authz` roles, permission checked per mutation; `users.me().can` flags for the UI |
 | Device binding | PIN/QR claim by the agent | `devices:bindDevice` by an `it_admin`, by serial number |
 
 ### Done (phase 0)
 
-- Admin: `users.me` returns `device`; new `devices.myDevice` query.
+- Admin (TontiPro-Admin#8): `users.me` returns `device`; new `devices.myDevice`
+  query. Both return `{ serialNumber, model, status }` or `null`. Until that
+  PR is merged and deployed, the two mobile screens below fail with "Could not
+  find public function for 'devices:myDevice'".
 - Mobile: `bind-device.tsx` is a waiting screen that shows the phone's serial;
   `verify-device.tsx` compares that serial with the bound terminal;
   `register-device.tsx` removed; register button and `getBySerial` removed from
@@ -30,20 +34,21 @@ permissions.
 
 ## Gap: calls the mobile app makes that the admin backend lacks
 
-Counts are call sites in `app/ lib/ hooks/ stores/ utils/ components/`.
+Counts are call sites in `app/ lib/ hooks/ stores/ utils/ components/`. The
+last column is the closest thing the admin backend has today.
 
-| Area | Missing functions |
-|---|---|
-| Session / profile | `users.currentUser` (6), `users.update`, `users.changePassword` |
-| Login eligibility | `users.checkLoginEligibility`, `users.verifyLoginPassword`, `users.linkAgentAccount`, `users.clearStaleActivationAccount` |
-| Activation | `otp.checkActivationCode`, `otp.resendActivationCode` |
-| Agents | `users.create`, `users.suspend`, `users.listByBranch` |
-| Customers | `customers.list`, `customers.createProspect`, `customers.update` |
-| Transactions | `transactions.list`, `transactions.listMineInRange`, `transactions.createDeposit`, `transactions.createWithdrawal` (only `transactions.listByBranch` exists on both) |
+| Area | Missing functions | Admin equivalent |
+|---|---|---|
+| Session / profile | `users.currentUser` (6), `users.update`, `users.changePassword` | `users.me` (profile, roles, `device`, `can`). No self-service profile edit or password change; forgotten passwords use an admin-issued reset code (`staff.issueResetCode` → `passwordReset.resetPassword`) |
+| Login eligibility | `users.checkLoginEligibility`, `users.verifyLoginPassword`, `users.linkAgentAccount`, `users.clearStaleActivationAccount` | None needed: Convex Auth `signIn("password", …)` with `flow: "signIn"` / `"signUp"` + `code` |
+| Activation | `otp.checkActivationCode`, `otp.resendActivationCode` | Activation code issued by IT from the dashboard (`staff.issueActivationCode`) or CLI (`users:issueActivationCode`) |
+| Agents | `users.create`, `users.suspend`, `users.listByBranch` | `staff.create`, `staff.setStatus`, `staff.setRole`, `staff.get` (all `staff:manage`); `admin.listAgents` (not branch-scoped) |
+| Customers | `customers.list`, `customers.createProspect`, `customers.update` | `admin.listCustomers` (read-only, all branches) |
+| Transactions | `transactions.list`, `transactions.listMineInRange`, `transactions.createDeposit`, `transactions.createWithdrawal` | `transactions.collectCash` (deposit; see phase 3), `listByAgent`, `listByBranch`, `reverseTransaction` |
 
-The admin backend already has read queries for the dashboard (`admin.*`),
-`transactions.*` for reversal, and `disbursements.*` / `reconciliation.*`.
-Reuse their tables and permissions; do not copy the mobile schema over.
+The admin backend also has read queries for the dashboard (`admin.*`) and
+`disbursements.*` / `reconciliation.*`. Reuse their tables and permissions; do
+not copy the mobile schema over.
 
 ## Decisions needed before phase 1
 
@@ -51,9 +56,10 @@ Reuse their tables and permissions; do not copy the mobile schema over.
    number. Choose: agents get an email too, or add phone as a second lookup.
    This drives `auth.ts` and the whole activation screen set (`reg.tsx`,
    `register.tsx`, `login.tsx`).
-2. **Activation.** Admin issues a one-time code per user
-   (`users:issueActivationCode`). Mobile uses SMS OTP (`otp.ts`, Twilio). Keep
-   one. Recommended: keep the admin code, drop OTP for activation.
+2. **Activation.** Admin issues a one-time code per user, from the staff
+   drawer on the dashboard or `users:issueActivationCode`. The same mechanism
+   now covers forgotten passwords. Mobile uses SMS OTP (`otp.ts`, Twilio).
+   Keep one. Recommended: keep the admin code, drop OTP for activation.
 3. **Offline PIN unlock.** `verifyPin` and `utils/secure-storage.ts` unlock the
    app offline. Keep as a local convenience layered on top of the Convex
    session, not as a login method.
@@ -74,8 +80,13 @@ Each phase ends with the app working for the screens it covers.
   `giddy-leopard-614` in a **separate env file** first, so both backends stay
   usable during the migration.
 - Replace the login flow with email + password and the activation-code
-  "Premiere connexion". Remove the Clerk provider and `checkLoginEligibility`
-  / `linkAgentAccount` / `clearStaleActivationAccount`.
+  "Premiere connexion" (`signIn("password", { email, password, flow:
+  "signUp", code })`), plus "Mot de passe oublié" via
+  `passwordReset.resetPassword({ email, code, newPassword })`. Remove the
+  Clerk provider and `checkLoginEligibility` / `linkAgentAccount` /
+  `clearStaleActivationAccount`.
+- `users.changePassword` has no admin equivalent. Either add one (it must
+  re-check the current password) or drop the screen and use the reset code.
 - Exit criteria: an agent activates, logs in, and `user.device` is populated.
 
 ### Phase 2 - Customers
@@ -92,6 +103,13 @@ Each phase ends with the app working for the screens it covers.
   Require `transactions:collect`, set `agentId` from the session (never from
   arguments), and set the terminal from the agent's bound device so every
   collection traces to one TPE.
+- Admin `transactions.collectCash` is the starting point for deposits. It
+  already requires `transactions:collect` and takes `agentId` from the
+  session, but it takes `tpeId` from the client (only checking it is bound to
+  the caller) and has neither the settled-day rule nor an idempotency key.
+- Admin `transactions.listByAgent` returns any agent's transactions to any
+  signed-in user. Restrict it to the caller (or `transactions:audit`) before
+  the app relies on it.
 - Keep the "cannot post to a day already settled" rule from
   `reconciliation.ts`.
 - Offline queue (`transaction-store`) must send an idempotency key; add one
@@ -99,9 +117,14 @@ Each phase ends with the app working for the screens it covers.
 
 ### Phase 4 - Agent management
 
-- `users.create`, `update`, `suspend`, `listByBranch` map to existing admin
-  staff management (`staff:manage`, `users.ts`). Prefer deleting these screens
-  from the mobile app if only the dashboard should manage staff.
+- Mostly done on the admin side: `staff.create`, `staff.setRole`,
+  `staff.setStatus` (suspend/reactivate, signs the person out), `staff.get`
+  and the activation/reset codes, all gated by `staff:manage` (IT admin), with
+  a UI on the dashboard's Agents page.
+- `users.update` (profile edit) has no equivalent yet; `listByBranch` maps to
+  `admin.listAgents`, which is not branch-scoped.
+- Prefer deleting these screens from the mobile app: staff management lives
+  on the dashboard.
 
 ### Phase 5 - Cutover
 
@@ -109,8 +132,9 @@ Each phase ends with the app working for the screens it covers.
   EAS, then remove the old `convex/` directory from the mobile repo and use the
   admin repo's generated API.
 - Delete leftovers: Clerk dependencies, `otp.ts` flows, unused
-  `claimDevice*` references, `docs/device-auth-vs-binding.md` (rewrite for the
-  new flow).
+  `claimDevice*` references. Rewrite `docs/device-auth-vs-binding.md` and
+  `docs/mobile-integration.md` for the new flow: both still describe Clerk
+  login, PIN/QR claiming, `linkAgentAccount` and `users.currentUser`.
 
 ## Risks
 
@@ -121,10 +145,15 @@ Each phase ends with the app working for the screens it covers.
   copy pushed earlier. Agree on one checkout as the source of truth.
 - Serial matching is exact. A reinstall changes the install id and breaks the
   binding; document the "unbind then rebind" procedure for IT.
+- convex-authz stores a copy of each role's permissions at assignment time.
+  After any change to `defineRoles()` in the admin `authz.ts`, run
+  `npx convex run users:syncRolePermissions` or existing users keep the old
+  permissions.
 
 ## Verification checklist per phase
 
 - `npx tsc --noEmit` clean in the mobile repo.
-- `npx convex dev --once` clean in the admin repo.
+- `npx convex dev --once` clean in the admin repo, then
+  `npx convex run users:syncRolePermissions` if roles changed.
 - Manual run on a device: activate, log in, bind, record a deposit, see it in
   the dashboard.
