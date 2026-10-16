@@ -5,15 +5,19 @@
 // (devices:registerMine) so it appears in Agents & TPE as a "Demande de
 // liaison" with a one-click "Lier à <agent>". It shows the serial so the
 // admin can check it, and waits until the server reports the binding.
+// The PIN unlocks the app offline, so the server session may still be
+// restoring (or gone): the request is only sent once Convex is signed in.
 import { useEffect, useState } from "react";
 import { ActivityIndicator, Pressable, StyleSheet, Text, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useRouter } from "expo-router";
 import * as Device from "expo-device";
 import { Check, Smartphone } from "lucide-react-native";
-import { useMutation, useQuery } from "convex/react";
+import { useConvexAuth, useMutation, useQuery } from "convex/react";
+import { useAuthActions } from "@convex-dev/auth/react";
 import { myDevice, refusalMessage, registerMyDevice } from "@/lib/admin-api";
 import { getOrCreateDeviceInstallId } from "@/utils/device-id";
+import { useAuthStore } from "@/stores/auth-store";
 import { KAURIDORR_THEME as T } from "@/constants/colors";
 
 /** Same serial the admin sees on the device list: BRAND-MODEL-INSTALLID */
@@ -27,7 +31,10 @@ async function getPhoneSerial(): Promise<string> {
 export default function BindDeviceScreen() {
   const router = useRouter();
   const [serial, setSerial] = useState<string | null>(null);
-  const bound = useQuery(myDevice);
+  const { isAuthenticated, isLoading: authLoading } = useConvexAuth();
+  const { signOut } = useAuthActions();
+  const logout = useAuthStore((s) => s.logout);
+  const bound = useQuery(myDevice, isAuthenticated ? {} : "skip");
   const register = useMutation(registerMyDevice);
   // "sending" → "sent" once the dashboard has the request; error text otherwise
   const [request, setRequest] = useState<"sending" | "sent" | string>("sending");
@@ -39,24 +46,40 @@ export default function BindDeviceScreen() {
       .then(() => setRequest("sent"))
       .catch((e) =>
         setRequest(
-          e?.data === "FORBIDDEN"
-            ? "Votre rôle n'utilise pas de TPE."
-            : refusalMessage(e) ?? "Pas de connexion : demande non envoyée.",
+          String(e?.message ?? "").includes("Unauthenticated")
+            ? "expired"
+            : e?.data === "FORBIDDEN"
+              ? "Votre rôle n'utilise pas de TPE."
+              : refusalMessage(e) ?? "Pas de connexion : demande non envoyée.",
         ),
       );
   };
 
   useEffect(() => {
     getPhoneSerial()
-      .then((s) => {
-        setSerial(s);
-        sendRequest(s);
-      })
+      .then(setSerial)
       .catch(() => setSerial("—"));
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  // Send once both the serial and the server session are there
+  useEffect(() => {
+    if (serial && serial !== "—" && isAuthenticated) sendRequest(serial);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [serial, isAuthenticated]);
+
+  /** Server session lost: sign in again with phone + password. */
+  const signInAgain = async () => {
+    logout();
+    try {
+      await signOut();
+    } catch (e) {
+      console.warn("signOut failed:", e);
+    }
+    router.replace("/login");
+  };
+
   const isBound = bound !== undefined && bound !== null;
+  const expired = !isBound && ((!authLoading && !isAuthenticated) || request === "expired");
 
   return (
     <SafeAreaView style={s.root}>
@@ -73,7 +96,9 @@ export default function BindDeviceScreen() {
         <Text style={s.p}>
           {isBound
             ? "Votre TPE est associé à votre compte."
-            : request === "sent"
+            : expired
+              ? "Votre session a expiré. Reconnectez-vous avec votre numéro et votre mot de passe pour envoyer la demande de liaison."
+              : request === "sent"
               ? "Demande envoyée à l'Admin IT. Il voit ce téléphone dans Agents & TPE et n'a plus qu'à cliquer sur « Lier ». Cet écran se mettra à jour tout seul."
               : request === "sending"
                 ? "Envoi de la demande de liaison…"
@@ -87,7 +112,7 @@ export default function BindDeviceScreen() {
           </Text>
         </View>
 
-        {!isBound && request !== "sending" && request !== "sent" && (
+        {!isBound && !expired && request !== "sending" && request !== "sent" && (
           <>
             <Text style={s.err}>{request}</Text>
             {serial && serial !== "—" && (
@@ -101,6 +126,10 @@ export default function BindDeviceScreen() {
         {isBound ? (
           <Pressable style={s.btn} onPress={() => router.replace("/dashboard")}>
             <Text style={s.btnTxt}>Aller au tableau de bord</Text>
+          </Pressable>
+        ) : expired ? (
+          <Pressable style={s.btn} onPress={signInAgain}>
+            <Text style={s.btnTxt}>Se reconnecter</Text>
           </Pressable>
         ) : (
           <ActivityIndicator color={T.orange} style={{ marginTop: 24 }} />
