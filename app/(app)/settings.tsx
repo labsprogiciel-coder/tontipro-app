@@ -269,7 +269,7 @@ const SettingsScreen = () => {
         </View>
 
         <Text style={styles.versionText}>
-          Kauridorr v1.0.4 • Made with ❤️ for Burkina Faso
+          Mizo v1.0.4 • Made with ❤️ for Burkina Faso
         </Text>
       </ScrollView>
     </SafeAreaView>

@@ -1,5 +1,5 @@
 /**
- * Kauridorr — BottomNavBar
+ * Mizo — BottomNavBar
  * React Native bottom navigation component.
  *
  * Usage:

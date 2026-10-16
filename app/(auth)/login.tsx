@@ -25,7 +25,7 @@ import {
   View,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { Eye, EyeOff, KeyRound, Lock, Phone, ShieldCheck } from "lucide-react-native";
+import { Eye, EyeOff, KeyRound, Lock, Phone } from "lucide-react-native";
 import { useAuthActions } from "@convex-dev/auth/react";
 import { useAction, useConvexAuth } from "convex/react";
 import * as adminApi from "@/lib/admin-api";
@@ -33,6 +33,7 @@ import { useAuthStore } from "@/stores/auth-store";
 import { useAppLockStore } from "@/stores/app-lock-store";
 import { hasOfflineCredential, verifyOfflineCredential } from "@/utils/secure-storage";
 import { PinEntry } from "@/app/components/ui/pin-entry";
+import { MizoMark, MizoWordmark } from "@/app/components/ui/MizoLogo";
 
 import { SPACE } from "@/constants/spacing";
 const T = {
@@ -242,10 +243,10 @@ export default function LoginScreen() {
       <SafeAreaView style={styles.container} edges={["top", "bottom"]}>
         <View style={[styles.screen, styles.pinScreen]}>
           <View style={[styles.header, styles.pinHeader]}>
-            <View style={styles.logoCircle}>
-              <ShieldCheck size={32} color="white" />
+            <View style={styles.logo}>
+              <MizoMark size={64} />
             </View>
-            <Text style={styles.appName}>Kauridorr</Text>
+            <MizoWordmark height={22} />
             <Text style={styles.title}>{user?.name ?? "Bienvenue"}</Text>
             <Text style={styles.subtitle}>
               Entrez votre code PIN à 4 chiffres pour continuer.
@@ -301,10 +302,10 @@ export default function LoginScreen() {
       >
         <ScrollView contentContainerStyle={styles.screen} keyboardShouldPersistTaps="handled">
           <View style={styles.header}>
-            <View style={styles.logoCircle}>
-              <ShieldCheck size={32} color="white" />
+            <View style={styles.logo}>
+              <MizoMark size={64} />
             </View>
-            <Text style={styles.appName}>Kauridorr</Text>
+            <MizoWordmark height={22} />
             <Text style={styles.title}>{copy.title}</Text>
             <Text style={styles.subtitle}>{copy.subtitle}</Text>
           </View>
@@ -454,22 +455,7 @@ const styles = StyleSheet.create({
   pinHeader: { marginBottom: SPACE.xl },
   pinStatus: { minHeight: 36, justifyContent: "center", marginTop: SPACE.md },
   pinFooterLink: { marginTop: SPACE.sm, alignItems: "center" },
-  logoCircle: {
-    width: 64,
-    height: 64,
-    borderRadius: 20,
-    backgroundColor: T.orange,
-    justifyContent: "center",
-    alignItems: "center",
-    marginBottom: SPACE.md,
-  },
-  appName: {
-    fontSize: 18,
-    fontWeight: "600",
-    color: T.textTertiary,
-    letterSpacing: 1,
-    textTransform: "uppercase",
-  },
+  logo: { marginBottom: SPACE.md },
   title: {
     fontSize: 24,
     fontWeight: "700",

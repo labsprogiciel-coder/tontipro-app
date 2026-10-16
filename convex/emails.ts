@@ -149,12 +149,12 @@ export const sendWelcomeEmail = action({
     
     <p>Si vous rencontrez des problèmes, contactez votre responsable d'agence.</p>
     
-    <p>Cordialement,<br>L'équipe Kauri</p>
+    <p>Cordialement,<br>L'équipe Mizo</p>
   </div>
   
   <div class="footer">
     <p>Cet email a été envoyé automatiquement. Merci de ne pas y répondre.</p>
-    <p>© ${new Date().getFullYear()} Kauri - Gestion d'épargne</p>
+    <p>© ${new Date().getFullYear()} Mizo - Gestion d'épargne</p>
   </div>
 </body>
 </html>

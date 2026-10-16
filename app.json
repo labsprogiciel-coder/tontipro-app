@@ -1,6 +1,6 @@
 {
   "expo": {
-    "name": "kauridoor",
+    "name": "Mizo",
     "slug": "tonti-app",
     "version": "1.0.0",
     "orientation": "portrait",
@@ -17,9 +17,9 @@
       "supportsTablet": true,
       "bundleIdentifier": "app.tontipro.app",
       "infoPlist": {
-        "NSCameraUsageDescription": "Autoriser Kauri à accéder à la caméra pour scanner les QR codes d'enregistrement des TPE.",
-        "NSLocationWhenInUseUsageDescription": "Autoriser Kauri à accéder à votre localisation pour enregistrer la position du TPE et faciliter son suivi.",
-        "NSLocationAlwaysAndWhenInUseUsageDescription": "Autoriser Kauri à accéder à votre localisation pour enregistrer la position du TPE."
+        "NSCameraUsageDescription": "Autoriser Mizo à accéder à la caméra pour scanner les QR codes d'enregistrement des TPE.",
+        "NSLocationWhenInUseUsageDescription": "Autoriser Mizo à accéder à votre localisation pour enregistrer la position du TPE et faciliter son suivi.",
+        "NSLocationAlwaysAndWhenInUseUsageDescription": "Autoriser Mizo à accéder à votre localisation pour enregistrer la position du TPE."
       },
       "entitlements": {
         "com": {
@@ -36,7 +36,7 @@
     "android": {
       "adaptiveIcon": {
         "foregroundImage": "./assets/images/adaptive-icon.png",
-        "backgroundColor": "#ffffff"
+        "backgroundColor": "#D85A30"
       },
       "package": "com.tontipro.app",
       "permissions": [
@@ -61,13 +61,13 @@
       [
         "expo-camera",
         {
-          "cameraPermission": "Autoriser Kauri à accéder à la caméra pour scanner les QR codes d'enregistrement des TPE."
+          "cameraPermission": "Autoriser Mizo à accéder à la caméra pour scanner les QR codes d'enregistrement des TPE."
         }
       ],
       [
         "expo-location",
         {
-          "locationWhenInUsePermission": "Autoriser Kauri à accéder à votre localisation pour enregistrer la position du TPE et faciliter son suivi."
+          "locationWhenInUsePermission": "Autoriser Mizo à accéder à votre localisation pour enregistrer la position du TPE et faciliter son suivi."
         }
       ]
     ],

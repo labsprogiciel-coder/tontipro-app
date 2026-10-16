@@ -12,9 +12,10 @@ import {
   Animated,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { ChevronLeft, ShieldCheck, Star, User } from "lucide-react-native";
+import { ChevronLeft, Star, User } from "lucide-react-native";
 import { useAuthStore } from "@/stores/auth-store";
 import { Numpad } from "@/app/components/ui/numpad";
+import { MizoGlyph } from "@/app/components/ui/MizoLogo";
 
 import { SPACE } from "@/constants/spacing";
 // ── Design tokens (from HTML :root) ────────────────────────────
@@ -110,9 +111,9 @@ function WelcomeScreen({
 
       <View style={styles.welcomeLogo}>
         <View style={styles.logoCircle}>
-          <ShieldCheck size={36} color="white" />
+          <MizoGlyph size={52} />
         </View>
-        <Text style={styles.welcomeTitle}>Kauridorr</Text>
+        <Text style={styles.welcomeTitle}>Mizo</Text>
         <Text style={styles.welcomeSubtitle}>
           Gestion d&apos;épargne moderne,{"\n"}sécurisée et accessible.
         </Text>
@@ -422,7 +423,7 @@ function SuccessScreen({
         <View>
           <Text style={styles.successTitle}>Compte configuré !</Text>
           <Text style={styles.successSub}>
-            Bienvenue sur Kauridorr,{"\n"}
+            Bienvenue sur Mizo,{"\n"}
             {name}. Votre compte{"\n"}est prêt à être utilisé.
           </Text>
         </View>

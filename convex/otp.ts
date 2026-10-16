@@ -32,7 +32,7 @@ const ACTIVATION_LOCKOUT_MS = 15 * 60 * 1000; // 15 minutes
 
 function activationMessage(code: string): string {
   return (
-    `Voici votre code d'activation Kauridorr : ${code}\n\n` +
+    `Voici votre code d'activation Mizo : ${code}\n\n` +
     `Saisissez-le dans l'application pour activer votre compte.`
   );
 }
