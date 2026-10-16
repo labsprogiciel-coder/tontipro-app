@@ -121,58 +121,69 @@ export const HistoryScreen: React.FC = () => {
     const t = item.data;
     const multiplier = getMultiplier(t.clientId, t.amount);
 
+    const isDeposit = t.type === "deposit";
+
     return (
       <TouchableOpacity
         style={styles.row}
         activeOpacity={0.7}
         onPress={() => router.push(`/(app)/transactions/${t.id}`)}
       >
+        <View
+          style={[
+            styles.typeIcon,
+            { backgroundColor: isDeposit ? T.greenLt : T.orangeLt },
+          ]}
+        >
+          {isDeposit ? (
+            <ArrowDown size={16} color={T.greenMid} strokeWidth={2.2} />
+          ) : (
+            <ArrowUp size={16} color={T.orangeDk} strokeWidth={2.2} />
+          )}
+        </View>
         <View style={styles.left}>
-          <Text style={styles.name}>{t.clientName ?? "—"}</Text>
-          <Text style={styles.sub}>
-            {new Date(t.date).toLocaleDateString("fr-FR", {
-              day: "2-digit",
-              month: "short",
+          <Text style={styles.name} numberOfLines={1}>
+            {t.clientName ?? "—"}
+          </Text>
+          <Text style={styles.sub} numberOfLines={1}>
+            {isDeposit ? "Dépôt" : "Retrait"} ·{" "}
+            {new Date(t.date).toLocaleTimeString("fr-FR", {
               hour: "2-digit",
               minute: "2-digit",
             })}
           </Text>
         </View>
         <View style={styles.right}>
-          <View style={styles.amountRow}>
+          <Text
+            style={[
+              styles.amount,
+              { color: isDeposit ? T.greenMid : T.orangeDk },
+            ]}
+            numberOfLines={1}
+          >
+            {isDeposit ? "+" : "−"}
+            {t.amount.toLocaleString("fr-FR")} F
+          </Text>
+          <View style={styles.badgeRow}>
             {multiplier != null && (
               <View
                 style={[
                   styles.multiplierBadge,
-                  {
-                    backgroundColor:
-                      t.type === "deposit" ? T.bgSuccess : T.orangeLt,
-                  },
+                  { backgroundColor: isDeposit ? T.bgSuccess : T.orangeLt },
                 ]}
               >
                 <Text
                   style={[
                     styles.multiplierText,
-                    {
-                      color: t.type === "deposit" ? T.textSuccess : T.orangeDk,
-                    },
+                    { color: isDeposit ? T.textSuccess : T.orangeDk },
                   ]}
                 >
                   ×{multiplier}
                 </Text>
               </View>
             )}
-            <Text
-              style={[
-                styles.amount,
-                { color: t.type === "deposit" ? T.greenMid : T.orangeDk },
-              ]}
-            >
-              {t.type === "deposit" ? "+" : "−"}
-              {t.amount.toLocaleString("fr-FR")} F
-            </Text>
+            <StatusBadge status={t.syncError ? "failed" : t.status} />
           </View>
-          <StatusBadge status={t.syncError ? "failed" : t.status} />
         </View>
       </TouchableOpacity>
     );
@@ -396,8 +407,8 @@ const styles = StyleSheet.create({
   },
   row: {
     flexDirection: "row",
-    justifyContent: "space-between",
     alignItems: "center",
+    gap: SPACE.md,
     // No card behind the row: content aligns with the gutter and the date
     // headers; only vertical padding separates rows.
     paddingVertical: SPACE.md,
@@ -405,9 +416,16 @@ const styles = StyleSheet.create({
     borderBottomWidth: 0.5,
     borderColor: T.border,
   },
-  left: { gap: SPACE.xs, flex: 1 },
+  typeIcon: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  left: { flex: 1, minWidth: 0, gap: SPACE.xxs },
   right: { alignItems: "flex-end", gap: SPACE.xs },
-  amountRow: { flexDirection: "row", alignItems: "center", gap: SPACE.xs },
+  badgeRow: { flexDirection: "row", alignItems: "center", gap: SPACE.xs },
   multiplierBadge: {
     paddingHorizontal: SPACE.sm,
     paddingVertical: SPACE.xxs,
@@ -416,7 +434,7 @@ const styles = StyleSheet.create({
   multiplierText: { fontSize: 10, fontWeight: "700" },
   name: { fontSize: 14, fontWeight: "600", color: T.text1 },
   sub: { fontSize: 12, color: T.text3 },
-  amount: { fontSize: 15, fontWeight: "700" },
+  amount: { fontSize: 15, fontWeight: "700", fontVariant: ["tabular-nums"] },
 
   emptyContainer: {
     alignItems: "center",

@@ -11,7 +11,6 @@ import {
   Animated,
   FlatList,
   Modal,
-  Platform,
   Pressable,
   ScrollView,
   StyleSheet,
@@ -252,7 +251,10 @@ const TransactionEntryScreen = () => {
     }
     // The server checks again; this saves a round trip for the obvious case
     if (!isDeposit && numericAmount > displayBalance) {
-      Alert.alert("Solde insuffisant", `Le solde du client est de ${formattedBalance} FCFA.`);
+      Alert.alert(
+        "Solde insuffisant",
+        `Le solde du client est de ${formattedBalance} FCFA.`,
+      );
       return;
     }
 
@@ -280,7 +282,8 @@ const TransactionEntryScreen = () => {
   };
 
   return (
-    <SafeAreaView style={styles.screen}>
+    // Bottom inset is the tab bar's job, not this screen's
+    <SafeAreaView style={styles.screen} edges={["top"]}>
       <ScrollView
         style={styles.contentScroll}
         contentContainerStyle={styles.contentScrollContainer}
@@ -400,8 +403,10 @@ const TransactionEntryScreen = () => {
             </Text>
           </View>
         )}
+      </ScrollView>
 
-        {/* Hold-to-confirm */}
+      {/* Pinned under the scroll area so it never sits below the fold */}
+      <View style={styles.footer}>
         <HoldToConfirm
           label={
             isDeposit ? "↓  Confirmer le dépôt" : "↑  Confirmer le retrait"
@@ -416,7 +421,7 @@ const TransactionEntryScreen = () => {
             !actionAllowed
           }
         />
-      </ScrollView>
+      </View>
 
       {/* ── Client picker modal ─────────────────────────────────────────── */}
       <Modal visible={isClientPickerVisible} animationType="slide" transparent>
@@ -593,7 +598,15 @@ export default TransactionEntryScreen;
 const styles = StyleSheet.create({
   screen: { flex: 1, backgroundColor: T.bg },
   contentScroll: { flex: 1 },
-  contentScrollContainer: { paddingBottom: SPACE.lg },
+  contentScrollContainer: { paddingBottom: SPACE.md },
+  footer: {
+    paddingHorizontal: SPACE.lg,
+    paddingTop: SPACE.sm,
+    paddingBottom: SPACE.md,
+    backgroundColor: T.bg,
+    borderTopWidth: 0.5,
+    borderColor: T.border,
+  },
 
   backRow: {
     flexDirection: "row",
@@ -801,9 +814,7 @@ const styles = StyleSheet.create({
 
 const s = StyleSheet.create({
   holdBtn: {
-    marginHorizontal: SPACE.lg,
-    marginBottom: Platform.OS === "ios" ? 0 : 24,
-    height: 52,
+    height: 56,
     borderRadius: 13,
     overflow: "hidden",
     justifyContent: "center",
@@ -818,15 +829,13 @@ const s = StyleSheet.create({
   },
   holdLabel: {
     color: "#fff",
-    fontSize: 14,
+    fontSize: 15,
     fontWeight: "600",
     letterSpacing: 0.2,
-    position: "absolute",
   },
   holdHint: {
-    color: "rgba(255,255,255,0.55)",
+    color: "rgba(255,255,255,0.75)",
     fontSize: 11,
-    position: "absolute",
-    bottom: 8,
+    marginTop: 2,
   },
 });
