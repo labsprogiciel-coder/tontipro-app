@@ -2,6 +2,8 @@
 import React, { useMemo, useState } from "react";
 import {
   FlatList,
+  Pressable,
+  ScrollView,
   StyleSheet,
   Text,
   TouchableOpacity,
@@ -24,15 +26,24 @@ import { SPACE } from "@/constants/spacing";
 const T = KAURIDORR_THEME;
 
 type SortOrder = "desc" | "asc";
-type SearchType = "client" | "code";
-type FilterType = "all" | "deposits" | "withdrawals";
+type FilterType = "all" | "deposits" | "withdrawals" | "unsynced";
+
+const FILTERS: { key: FilterType; label: string }[] = [
+  { key: "all", label: "Tous" },
+  { key: "deposits", label: "Dépôts" },
+  { key: "withdrawals", label: "Retraits" },
+  { key: "unsynced", label: "Non synchronisés" },
+];
+
+/** Not yet confirmed by the server: queued offline, or refused by it. */
+const isUnsynced = (t: { status: string; syncError?: unknown }) =>
+  t.status === "pending" || Boolean(t.syncError);
 
 export const HistoryScreen: React.FC = () => {
   const router = useRouter();
   const [search, setSearch] = useState("");
   const [filter, setFilter] = useState<FilterType>("all");
   const [sortOrder, setSortOrder] = useState<SortOrder>("desc");
-  const [searchType, setSearchType] = useState<SearchType>("client");
 
   const transactions = useTransactionStore((s) => s.transactions);
   const pendingTransactions = useTransactionStore((s) => s.pendingTransactions);
@@ -52,24 +63,38 @@ export const HistoryScreen: React.FC = () => {
     [transactions, pendingTransactions, rejectedTransactions],
   );
 
+  const accountNumbers = useMemo(
+    () => new Map(clients.map((c) => [c.id, c.accountNumber?.toLowerCase()])),
+    [clients],
+  );
+
+  // One search box: matches the client's name or account code
+  const searched = useMemo(() => {
+    const q = search.trim().toLowerCase();
+    if (!q) return mergedTransactions;
+    return mergedTransactions.filter(
+      (t) =>
+        (t.clientName?.toLowerCase().includes(q) ?? false) ||
+        (accountNumbers.get(t.clientId)?.includes(q) ?? false),
+    );
+  }, [mergedTransactions, search, accountNumbers]);
+
+  const counts = useMemo(
+    () => ({
+      all: searched.length,
+      deposits: searched.filter((t) => t.type === "deposit").length,
+      withdrawals: searched.filter((t) => t.type === "withdrawal").length,
+      unsynced: searched.filter(isUnsynced).length,
+    }),
+    [searched],
+  );
+
   const filteredTransactions = useMemo(() => {
-    const q = search.toLowerCase();
-
-    const result = mergedTransactions.filter((t) => {
-      // Type filter
-      if (filter === "deposits" && t.type !== "deposit") return false;
-      if (filter === "withdrawals" && t.type !== "withdrawal") return false;
-
-      // Search filter — only applied when the user has typed something.
-      if (!q) return true;
-
-      if (searchType === "client") {
-        return t.clientName?.toLowerCase().includes(q) ?? false;
-      }
-
-      // searchType === "code" — resolve account number from the client store.
-      const client = clients.find((c) => c.id === t.clientId);
-      return client?.accountNumber?.toLowerCase().includes(q) ?? false;
+    const result = searched.filter((t) => {
+      if (filter === "deposits") return t.type === "deposit";
+      if (filter === "withdrawals") return t.type === "withdrawal";
+      if (filter === "unsynced") return isUnsynced(t);
+      return true;
     });
 
     // Secondary sort so the user can flip between newest / oldest.
@@ -79,7 +104,24 @@ export const HistoryScreen: React.FC = () => {
     });
 
     return result;
-  }, [mergedTransactions, filter, sortOrder, search, searchType, clients]);
+  }, [searched, filter, sortOrder]);
+
+  const totals = useMemo(() => {
+    let inflow = 0;
+    let outflow = 0;
+    for (const t of filteredTransactions) {
+      if (t.status === "reversed" || t.syncError) continue;
+      if (t.type === "deposit") inflow += t.amount;
+      else outflow += t.amount;
+    }
+    return { inflow, outflow };
+  }, [filteredTransactions]);
+
+  const hasFilters = filter !== "all" || search.trim() !== "";
+  const clearFilters = () => {
+    setFilter("all");
+    setSearch("");
+  };
 
   // Group by calendar day so we can render date separators.
   const groupedList = useMemo(() => {
@@ -121,58 +163,69 @@ export const HistoryScreen: React.FC = () => {
     const t = item.data;
     const multiplier = getMultiplier(t.clientId, t.amount);
 
+    const isDeposit = t.type === "deposit";
+
     return (
       <TouchableOpacity
         style={styles.row}
         activeOpacity={0.7}
         onPress={() => router.push(`/(app)/transactions/${t.id}`)}
       >
+        <View
+          style={[
+            styles.typeIcon,
+            { backgroundColor: isDeposit ? T.greenLt : T.orangeLt },
+          ]}
+        >
+          {isDeposit ? (
+            <ArrowDown size={16} color={T.greenMid} strokeWidth={2.2} />
+          ) : (
+            <ArrowUp size={16} color={T.orangeDk} strokeWidth={2.2} />
+          )}
+        </View>
         <View style={styles.left}>
-          <Text style={styles.name}>{t.clientName ?? "—"}</Text>
-          <Text style={styles.sub}>
-            {new Date(t.date).toLocaleDateString("fr-FR", {
-              day: "2-digit",
-              month: "short",
+          <Text style={styles.name} numberOfLines={1}>
+            {t.clientName ?? "—"}
+          </Text>
+          <Text style={styles.sub} numberOfLines={1}>
+            {isDeposit ? "Dépôt" : "Retrait"} ·{" "}
+            {new Date(t.date).toLocaleTimeString("fr-FR", {
               hour: "2-digit",
               minute: "2-digit",
             })}
           </Text>
         </View>
         <View style={styles.right}>
-          <View style={styles.amountRow}>
+          <Text
+            style={[
+              styles.amount,
+              { color: isDeposit ? T.greenMid : T.orangeDk },
+            ]}
+            numberOfLines={1}
+          >
+            {isDeposit ? "+" : "−"}
+            {t.amount.toLocaleString("fr-FR")} F
+          </Text>
+          <View style={styles.badgeRow}>
             {multiplier != null && (
               <View
                 style={[
                   styles.multiplierBadge,
-                  {
-                    backgroundColor:
-                      t.type === "deposit" ? T.bgSuccess : T.orangeLt,
-                  },
+                  { backgroundColor: isDeposit ? T.bgSuccess : T.orangeLt },
                 ]}
               >
                 <Text
                   style={[
                     styles.multiplierText,
-                    {
-                      color: t.type === "deposit" ? T.textSuccess : T.orangeDk,
-                    },
+                    { color: isDeposit ? T.textSuccess : T.orangeDk },
                   ]}
                 >
                   ×{multiplier}
                 </Text>
               </View>
             )}
-            <Text
-              style={[
-                styles.amount,
-                { color: t.type === "deposit" ? T.greenMid : T.orangeDk },
-              ]}
-            >
-              {t.type === "deposit" ? "+" : "−"}
-              {t.amount.toLocaleString("fr-FR")} F
-            </Text>
+            <StatusBadge status={t.syncError ? "failed" : t.status} />
           </View>
-          <StatusBadge status={t.syncError ? "failed" : t.status} />
         </View>
       </TouchableOpacity>
     );
@@ -206,79 +259,71 @@ export const HistoryScreen: React.FC = () => {
         </TouchableOpacity>
       </View>
 
-      {/* Filter tabs */}
-      <View style={styles.filterRow}>
-        {(["all", "deposits", "withdrawals"] as FilterType[]).map((f) => {
-          const label =
-            f === "all" ? "Tous" : f === "deposits" ? "Dépôts" : "Retraits";
-          return (
-            <TouchableOpacity
-              key={f}
-              style={[styles.filterBtn, filter === f && styles.filterBtnActive]}
-              onPress={() => setFilter(f)}
-            >
-              <Text
-                style={[
-                  styles.filterText,
-                  filter === f && styles.filterTextActive,
-                ]}
-              >
-                {label}
-              </Text>
-            </TouchableOpacity>
-          );
-        })}
-      </View>
-
-      {/* Search type toggle */}
-      <View style={styles.searchTypeRow}>
-        <TouchableOpacity
-          style={[
-            styles.searchTypeBtn,
-            searchType === "client" && styles.searchTypeBtnActive,
-          ]}
-          onPress={() => {
-            setSearchType("client");
-            setSearch("");
-          }}
-        >
-          <Text
-            style={[
-              styles.searchTypeText,
-              searchType === "client" && styles.searchTypeTextActive,
-            ]}
-          >
-            Par client
-          </Text>
-        </TouchableOpacity>
-        <TouchableOpacity
-          style={[
-            styles.searchTypeBtn,
-            searchType === "code" && styles.searchTypeBtnActive,
-          ]}
-          onPress={() => {
-            setSearchType("code");
-            setSearch("");
-          }}
-        >
-          <Text
-            style={[
-              styles.searchTypeText,
-              searchType === "code" && styles.searchTypeTextActive,
-            ]}
-          >
-            Par code
-          </Text>
-        </TouchableOpacity>
-      </View>
-
       <View style={styles.searchInputWrapper}>
         <SearchInput
           value={search}
           onChangeText={setSearch}
-          onFilterPress={() => {}}
+          placeholder="Nom ou code client"
         />
       </View>
+
+      {/* Type / sync filters, with how many each would show */}
+      <ScrollView
+        horizontal
+        showsHorizontalScrollIndicator={false}
+        style={styles.chipScroll}
+        contentContainerStyle={styles.chipRow}
+      >
+        {FILTERS.map(({ key, label }) => {
+          const on = filter === key;
+          const count = counts[key];
+          if (key === "unsynced" && count === 0 && !on) return null;
+          return (
+            <Pressable
+              key={key}
+              onPress={() => setFilter(key)}
+              style={[
+                styles.chip,
+                on && styles.chipOn,
+                key === "unsynced" && !on && styles.chipWarn,
+              ]}
+              accessibilityRole="button"
+              accessibilityState={{ selected: on }}
+            >
+              <Text style={[styles.chipText, on && styles.chipTextOn]}>
+                {label}
+              </Text>
+              <View style={[styles.chipCount, on && styles.chipCountOn]}>
+                <Text style={[styles.chipCountText, on && styles.chipTextOn]}>
+                  {count}
+                </Text>
+              </View>
+            </Pressable>
+          );
+        })}
+      </ScrollView>
+
+      {/* What the current view adds up to */}
+      {filteredTransactions.length > 0 && (
+        <View style={styles.summary}>
+          <Text style={styles.summaryCount}>
+            {filteredTransactions.length} opération
+            {filteredTransactions.length > 1 ? "s" : ""}
+          </Text>
+          <View style={styles.summaryTotals}>
+            {totals.inflow > 0 && (
+              <Text style={[styles.summaryAmount, { color: T.greenMid }]}>
+                +{totals.inflow.toLocaleString("fr-FR")} F
+              </Text>
+            )}
+            {totals.outflow > 0 && (
+              <Text style={[styles.summaryAmount, { color: T.orangeDk }]}>
+                −{totals.outflow.toLocaleString("fr-FR")} F
+              </Text>
+            )}
+          </View>
+        </View>
+      )}
 
       {/* Transaction list with date headers */}
       <FlatList
@@ -295,10 +340,15 @@ export const HistoryScreen: React.FC = () => {
             </View>
             <Text style={styles.emptyTitle}>Aucune transaction</Text>
             <Text style={styles.emptySubtitle}>
-              {search.length > 0
-                ? "Aucune transaction ne correspond à votre recherche."
+              {hasFilters
+                ? "Aucune transaction ne correspond à ces filtres."
                 : "Les transactions apparaîtront ici une fois enregistrées."}
             </Text>
+            {hasFilters && (
+              <Pressable style={styles.clearBtn} onPress={clearFilters}>
+                <Text style={styles.clearBtnText}>Effacer les filtres</Text>
+              </Pressable>
+            )}
           </View>
         }
       />
@@ -343,46 +393,73 @@ const styles = StyleSheet.create({
   },
   sortLabel: { fontSize: 11, fontWeight: "500", color: T.orange },
 
-  filterRow: {
-    flexDirection: "row",
-    gap: SPACE.xs,
-    paddingHorizontal: SPACE.lg,
-    paddingBottom: SPACE.xs,
-  },
-  filterBtn: {
-    flex: 1,
-    paddingVertical: SPACE.sm,
-    borderRadius: 8,
-    borderWidth: 1,
-    borderColor: T.border,
-    backgroundColor: T.bg2,
-    alignItems: "center",
-  },
-  filterBtnActive: { borderColor: T.orange, backgroundColor: T.orangeLt },
-  filterText: { fontSize: 12, fontWeight: "600", color: T.text3 },
-  filterTextActive: { color: T.orange },
-
-  searchTypeRow: {
-    flexDirection: "row",
+  chipScroll: { flexGrow: 0 },
+  chipRow: {
     gap: SPACE.sm,
     paddingHorizontal: SPACE.lg,
-    paddingVertical: SPACE.sm,
+    paddingBottom: SPACE.sm,
   },
-  searchTypeBtn: {
-    flex: 1,
-    paddingVertical: SPACE.sm,
-    paddingHorizontal: SPACE.md,
-    borderRadius: 8,
+  chip: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: SPACE.xs,
+    height: 34,
+    paddingLeft: SPACE.md,
+    paddingRight: SPACE.xs + 2,
+    borderRadius: 17,
     borderWidth: 1,
     borderColor: T.border,
     backgroundColor: T.bg2,
-    alignItems: "center",
   },
-  searchTypeBtnActive: { borderColor: T.orange, backgroundColor: T.orangeLt },
-  searchTypeText: { fontSize: 12, fontWeight: "600", color: T.text3 },
-  searchTypeTextActive: { color: T.orange },
+  chipOn: { backgroundColor: T.orangeStrong, borderColor: T.orangeStrong },
+  chipWarn: { borderColor: T.textWarning },
+  chipText: { fontSize: 13, fontWeight: "600", color: T.text2 },
+  chipTextOn: { color: "#fff" },
+  chipCount: {
+    minWidth: 22,
+    height: 22,
+    paddingHorizontal: 6,
+    borderRadius: 11,
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: T.bg,
+  },
+  chipCountOn: { backgroundColor: "rgba(255,255,255,0.22)" },
+  chipCountText: {
+    fontSize: 11,
+    fontWeight: "700",
+    color: T.text3,
+    fontVariant: ["tabular-nums"],
+  },
 
-  searchInputWrapper: { paddingHorizontal: SPACE.lg, marginBottom: SPACE.xs },
+  summary: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    marginHorizontal: SPACE.lg,
+    paddingVertical: SPACE.sm,
+    borderBottomWidth: 0.5,
+    borderColor: T.border,
+  },
+  summaryCount: { fontSize: 12, color: T.text3, fontWeight: "500" },
+  summaryTotals: { flexDirection: "row", gap: SPACE.md },
+  summaryAmount: {
+    fontSize: 12,
+    fontWeight: "700",
+    fontVariant: ["tabular-nums"],
+  },
+
+  clearBtn: {
+    marginTop: SPACE.lg,
+    paddingHorizontal: SPACE.lg,
+    paddingVertical: SPACE.sm,
+    borderRadius: 10,
+    borderWidth: 1,
+    borderColor: T.border2,
+  },
+  clearBtnText: { fontSize: 13, fontWeight: "600", color: T.text1 },
+
+  searchInputWrapper: { paddingHorizontal: SPACE.lg },
 
   dateHeader: {
     fontSize: 11,
@@ -396,8 +473,8 @@ const styles = StyleSheet.create({
   },
   row: {
     flexDirection: "row",
-    justifyContent: "space-between",
     alignItems: "center",
+    gap: SPACE.md,
     // No card behind the row: content aligns with the gutter and the date
     // headers; only vertical padding separates rows.
     paddingVertical: SPACE.md,
@@ -405,9 +482,16 @@ const styles = StyleSheet.create({
     borderBottomWidth: 0.5,
     borderColor: T.border,
   },
-  left: { gap: SPACE.xs, flex: 1 },
+  typeIcon: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  left: { flex: 1, minWidth: 0, gap: SPACE.xxs },
   right: { alignItems: "flex-end", gap: SPACE.xs },
-  amountRow: { flexDirection: "row", alignItems: "center", gap: SPACE.xs },
+  badgeRow: { flexDirection: "row", alignItems: "center", gap: SPACE.xs },
   multiplierBadge: {
     paddingHorizontal: SPACE.sm,
     paddingVertical: SPACE.xxs,
@@ -416,7 +500,7 @@ const styles = StyleSheet.create({
   multiplierText: { fontSize: 10, fontWeight: "700" },
   name: { fontSize: 14, fontWeight: "600", color: T.text1 },
   sub: { fontSize: 12, color: T.text3 },
-  amount: { fontSize: 15, fontWeight: "700" },
+  amount: { fontSize: 15, fontWeight: "700", fontVariant: ["tabular-nums"] },
 
   emptyContainer: {
     alignItems: "center",

@@ -33,6 +33,17 @@ import {
 } from "lucide-react-native";
 
 import { LAYOUT, SPACE } from "@/constants/spacing";
+import * as Application from "expo-application";
+import * as Updates from "expo-updates";
+
+// "Mizo 1.0.0 (42) · maj 1a2b3c4": version, EAS build number, and the OTA
+// update running on top of it, so a screenshot says exactly which code it is.
+const APP_VERSION = [
+  `Mizo ${Application.nativeApplicationVersion ?? "?"} (${Application.nativeBuildVersion ?? "?"})`,
+  Updates.updateId ? `maj ${Updates.updateId.slice(0, 7)}` : null,
+]
+  .filter(Boolean)
+  .join(" · ");
 interface SettingItemProps {
   icon: LucideIcon;
   label: string;
@@ -241,8 +252,8 @@ const SettingsScreen = () => {
           <View style={styles.warningContainer}>
             <AlertTriangle size={14} color="#993C1D" />
             <Text style={styles.warningText}>
-              Utilisez l&apos;importation uniquement sous la supervision d&apos;un
-              administrateur.
+              Utilisez l&apos;importation uniquement sous la supervision
+              d&apos;un administrateur.
             </Text>
           </View>
         </View>
@@ -260,7 +271,12 @@ const SettingsScreen = () => {
         </View>
 
         {/* Sign Out */}
-        <View style={[styles.section, { marginTop: SPACE.sm, marginBottom: SPACE.xxl }]}>
+        <View
+          style={[
+            styles.section,
+            { marginTop: SPACE.sm, marginBottom: SPACE.xxl },
+          ]}
+        >
           <SettingItem
             icon={LogOut}
             label="Déconnexion"
@@ -270,7 +286,7 @@ const SettingsScreen = () => {
         </View>
 
         <Text style={styles.versionText}>
-          Mizo v1.0.4 • Made with ❤️ for Burkina Faso
+          {APP_VERSION} • Made with ❤️ for Burkina Faso
         </Text>
       </ScrollView>
     </SafeAreaView>
@@ -305,7 +321,11 @@ const styles = StyleSheet.create({
     overflow: "hidden",
     marginBottom: LAYOUT.sectionGap,
   },
-  profileCard: { flexDirection: "row", alignItems: "center", padding: SPACE.lg },
+  profileCard: {
+    flexDirection: "row",
+    alignItems: "center",
+    padding: SPACE.lg,
+  },
   avatar: {
     width: 50,
     height: 50,
@@ -336,7 +356,11 @@ const styles = StyleSheet.create({
   itemLabel: { fontSize: 14, color: "#1a1a18", fontWeight: "500" },
   itemRight: { flexDirection: "row", alignItems: "center", gap: SPACE.sm },
   itemValue: { fontSize: 13, color: "#888780" },
-  divider: { height: 0.5, backgroundColor: "rgba(0,0,0,0.05)", marginLeft: SPACE.xxxl },
+  divider: {
+    height: 0.5,
+    backgroundColor: "rgba(0,0,0,0.05)",
+    marginLeft: SPACE.xxxl,
+  },
   pressed: { backgroundColor: "#f5f4f0" },
   destructiveText: { color: "#a32d2d" },
   versionText: {

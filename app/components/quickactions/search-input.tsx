@@ -1,6 +1,6 @@
 import React from "react";
 import { View, TextInput, StyleSheet, Pressable } from "react-native";
-import { Search, SlidersHorizontal } from "lucide-react-native";
+import { Search, SlidersHorizontal, X } from "lucide-react-native";
 
 import { SPACE } from "@/constants/spacing";
 interface SearchInputProps {
@@ -33,15 +33,26 @@ const SearchInput: React.FC<SearchInputProps> = ({
           autoCapitalize="none"
           autoCorrect={false}
         />
+        {value.length > 0 && (
+          <Pressable
+            onPress={() => onChangeText("")}
+            hitSlop={10}
+            accessibilityLabel="Effacer la recherche"
+          >
+            <X size={16} color="#888780" />
+          </Pressable>
+        )}
       </View>
 
-      {/* Filter Button - Common in agent tools for sorting by locality or status */}
-      <Pressable
-        onPress={onFilterPress}
-        style={({ pressed }) => [styles.filterBtn, pressed && styles.pressed]}
-      >
-        <SlidersHorizontal size={18} color="#5f5e5a" />
-      </Pressable>
+      {/* Only when the screen actually has a filter panel to open */}
+      {onFilterPress && (
+        <Pressable
+          onPress={onFilterPress}
+          style={({ pressed }) => [styles.filterBtn, pressed && styles.pressed]}
+        >
+          <SlidersHorizontal size={18} color="#5f5e5a" />
+        </Pressable>
+      )}
     </View>
   );
 };
