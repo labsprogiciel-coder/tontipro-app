@@ -61,7 +61,7 @@ const styles = StyleSheet.create({
     borderRadius: 10,
     alignItems: "center",
   },
-  optActiveDeposit: { backgroundColor: T.orange },
+  optActiveDeposit: { backgroundColor: T.orangeStrong },
   optActiveWithdraw: { backgroundColor: T.greenDk },
   optText: { fontWeight: "500", color: T.text3, fontSize: 13 },
   optTextActive: { color: "#fff" },

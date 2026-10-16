@@ -61,7 +61,7 @@ const StartTransaction = () => {
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: "#eeede8" },
-  header: { padding: SPACE.xl, paddingTop: SPACE.xxxl, backgroundColor: "#D85A30" },
+  header: { padding: SPACE.xl, paddingTop: SPACE.xxxl, backgroundColor: "#BB4721" },
   title: { fontSize: 22, fontWeight: "700", color: "#fff" },
   subtitle: { fontSize: 13, color: "rgba(255,255,255,0.8)", marginTop: SPACE.xs },
   body: { padding: SPACE.lg },

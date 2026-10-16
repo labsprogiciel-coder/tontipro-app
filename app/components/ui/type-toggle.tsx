@@ -19,7 +19,7 @@ export const TypeToggle: React.FC<TypeToggleProps> = ({
   <View style={styles.container}>
     <TouchableOpacity
       onPress={() => onTypeChange("deposit")}
-      style={[styles.opt, type === "deposit" && { backgroundColor: T.orange }]}
+      style={[styles.opt, type === "deposit" && { backgroundColor: T.orangeStrong }]}
     >
       <Text style={[styles.text, type === "deposit" && styles.activeText]}>
         ↓ Dépôt

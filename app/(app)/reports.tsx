@@ -48,6 +48,7 @@ const T = {
   border: "rgba(0,0,0,0.09)",
   border2: "rgba(0,0,0,0.18)",
   orange: "#D85A30",
+  orangeStrong: "#BB4721", // fills behind white text (5.2:1)
   orangeDk: "#993C1D",
   orangeLt: "#FAE8E0",
   greenMid: "#3b6d11",
@@ -1162,7 +1163,7 @@ function AgentView() {
         {activeTab === "depots" && (
           <>
             <FocusedHero
-              bgColor={T.orange}
+              bgColor={T.orangeStrong}
               label={`Total dépôts — ${periodLabel}`}
               total={totalDep}
               subtitle={`${deposits.length} opérations · moy. ${deposits.length > 0 ? Math.round(totalDep / deposits.length).toLocaleString("fr-FR") : 0} F / opér.`}
@@ -2101,13 +2102,13 @@ const s = StyleSheet.create({
     backgroundColor: T.bg2,
   },
   ptabText: { fontSize: 11, fontWeight: "500", color: T.text2 },
-  ptabActiveOr: { backgroundColor: T.orange, borderColor: T.orange },
+  ptabActiveOr: { backgroundColor: T.orangeStrong, borderColor: T.orangeStrong },
   ptabTextActiveOr: { color: "#fff" },
   ptabActiveDk: { backgroundColor: T.dark, borderColor: T.dark },
   ptabTextActiveDk: { color: T.bg },
 
   hero: {
-    backgroundColor: T.orange,
+    backgroundColor: T.orangeStrong,
     paddingHorizontal: SPACE.lg,
     paddingTop: SPACE.lg,
     paddingBottom: SPACE.xl,
