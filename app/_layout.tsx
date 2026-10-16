@@ -8,7 +8,7 @@ import {
   View,
 } from "react-native";
 import { useFonts } from "expo-font";
-import { Stack, useRouter, useSegments } from "expo-router";
+import { Stack, useNavigationContainerRef, useRouter, useSegments } from "expo-router";
 import * as SplashScreen from "expo-splash-screen";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
 import { SafeAreaProvider } from "react-native-safe-area-context";
@@ -16,6 +16,7 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
 import { ConvexAuthProvider, useConvexAuth } from "@convex-dev/auth/react";
 import { useQuery } from "convex/react";
 
+import { navigationIntegration, Sentry } from "@/lib/sentry";
 import { convex } from "@/lib/convex";
 import { colors } from "@/constants/colors";
 import ErrorBoundary from "@/app/error-boundary";
@@ -25,41 +26,17 @@ import { useAppLockStore } from "@/stores/app-lock-store";
 import * as adminApi from "@/lib/admin-api";
 
 /**
- * Adapter to make AsyncStorage compatible with ConvexAuthProvider's `storage` prop.
- * Convex expects a Web Storage-like interface (synchronous getItem/setItem).
- * Since AsyncStorage is async, we use a synchronous cache that hydrates on init.
+ * Where ConvexAuthProvider keeps the session tokens (`__convexAuthJWT_*`,
+ * `__convexAuthRefreshToken_*`). Its `storage` prop accepts async reads, so
+ * this goes straight to AsyncStorage: the earlier synchronous cache only
+ * reloaded keys starting with "convex", missed these, and every cold start
+ * came back signed out of the server while the PIN still unlocked the app.
  */
 const storageAdapter = {
-  getItem: (key: string) => {
-    // Sync read from cache (Convex calls this synchronously)
-    return _storageCache.get(key) ?? null;
-  },
-  setItem: (key: string, value: string) => {
-    _storageCache.set(key, value);
-    AsyncStorage.setItem(key, value);
-  },
-  removeItem: (key: string) => {
-    _storageCache.delete(key);
-    AsyncStorage.removeItem(key);
-  },
+  getItem: (key: string) => AsyncStorage.getItem(key),
+  setItem: (key: string, value: string) => AsyncStorage.setItem(key, value),
+  removeItem: (key: string) => AsyncStorage.removeItem(key),
 };
-
-const _storageCache = new Map<string, string>();
-
-// Hydrate cache on module load. `ConvexAuthProvider` reads `storageAdapter`
-// synchronously on mount and settles "authenticated: false" for good if that
-// first read misses — so nothing may render it before this promise resolves,
-// or a real session on a cold start gets treated as logged out.
-const storageHydration = AsyncStorage.getAllKeys().then((keys) => {
-  const convexKeys = keys.filter((k) => k.startsWith("convex"));
-  return Promise.all(
-    convexKeys.map((k) =>
-      AsyncStorage.getItem(k).then((v) => {
-        if (v) _storageCache.set(k, v);
-      }),
-    ),
-  );
-});
 
 export const unstable_settings = {
   initialRouteName: "(auth)",
@@ -67,12 +44,15 @@ export const unstable_settings = {
 
 SplashScreen.preventAutoHideAsync();
 
-export default function RootLayout() {
+function RootLayout() {
   const [loaded, error] = useFonts({});
+  const navigationRef = useNavigationContainerRef();
+  useEffect(() => {
+    if (navigationRef) navigationIntegration.registerNavigationContainer(navigationRef);
+  }, [navigationRef]);
   const [isNavigationReady, setIsNavigationReady] = useState(
     Platform.OS === "web",
   );
-  const [isAuthStorageReady, setIsAuthStorageReady] = useState(false);
 
   const clearNavigationState = useCallback(() => {
     useNavigationStore.getState().clearNavigationState();
@@ -94,16 +74,12 @@ export default function RootLayout() {
   }, []);
 
   useEffect(() => {
-    storageHydration.then(() => setIsAuthStorageReady(true));
-  }, []);
-
-  useEffect(() => {
-    if (loaded && isNavigationReady && isAuthStorageReady) {
+    if (loaded && isNavigationReady) {
       SplashScreen.hideAsync();
     }
-  }, [loaded, isNavigationReady, isAuthStorageReady]);
+  }, [loaded, isNavigationReady]);
 
-  if (!loaded || !isNavigationReady || !isAuthStorageReady) {
+  if (!loaded || !isNavigationReady) {
     return (
       <View style={styles.loadingContainer}>
         <ActivityIndicator size="large" color={colors.primary} />
@@ -128,6 +104,8 @@ export default function RootLayout() {
     </ConvexAuthProvider>
   );
 }
+
+export default Sentry.wrap(RootLayout);
 
 /** Synchronizes the staff profile and routes around sign-in, PIN unlock, and required password changes. */
 function RootLayoutNav() {

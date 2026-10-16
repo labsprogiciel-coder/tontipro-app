@@ -11,6 +11,7 @@ import { useTransactionStore } from "@/stores/transaction-store";
 import { generateId } from "@/utils/id-generator";
 import { AgentPermissions, AgentRole, permissionsForRole } from "@/types/agent";
 import { clearOfflineCredential } from "@/utils/secure-storage";
+import { setSentryUser } from "@/lib/sentry";
 
 const PHONES_KEY = "kauridorr_registered_phones";
 
@@ -133,6 +134,7 @@ export const useAuthStore = create<AuthState>()(
           return;
         }
         const user = userFromMe(convexUser);
+        setSentryUser(user.id);
 
         set({
           isAuthenticated: true,
@@ -261,6 +263,7 @@ export const useAuthStore = create<AuthState>()(
         const phone = get().user?.phone;
         lastLoadedUserId = null;
         set({ isAuthenticated: false, isLoadingClients: false, user: null });
+        setSentryUser(null);
         // Un logout peut signifier que le téléphone change de main (agent
         // suivant sur un TPE partagé) — on efface le secret de
         // déverrouillage hors-ligne de l'agent précédent (voir
