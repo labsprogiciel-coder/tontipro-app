@@ -291,6 +291,7 @@ const AgentDashboard: React.FC = () => {
               bgVariant="#EEEDFE"
               iconColor="#534AB7"
               style={styles.actionBtn}
+              disabled={!perms.exportReports}
               onClick={() => router.push("/(app)/data")}
             />
           </View>
