@@ -3,6 +3,7 @@ import { View, Text, StyleSheet, Platform, Pressable } from "react-native";
 import { useNavigationStore } from "@/stores/navigation-store";
 import { colors } from "@/constants/colors";
 import { useRouter } from "expo-router";
+import { Sentry } from "@/lib/sentry";
 
 import { SPACE } from "@/constants/spacing";
 interface Props {
@@ -96,6 +97,10 @@ export class ErrorBoundary extends React.Component<Props, State> {
   }
 
   componentDidCatch(error: Error, errorInfo: React.ErrorInfo) {
+    // Caught here, so Sentry's global handler never sees it
+    Sentry.captureException(error, {
+      contexts: { react: { componentStack: errorInfo.componentStack ?? "" } },
+    });
     sendErrorToIframeParent(error, errorInfo);
     if (this.props.onError) {
       this.props.onError(error, errorInfo);

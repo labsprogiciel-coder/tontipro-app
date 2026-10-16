@@ -8,7 +8,7 @@ import {
   View,
 } from "react-native";
 import { useFonts } from "expo-font";
-import { Stack, useRouter, useSegments } from "expo-router";
+import { Stack, useNavigationContainerRef, useRouter, useSegments } from "expo-router";
 import * as SplashScreen from "expo-splash-screen";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
 import { SafeAreaProvider } from "react-native-safe-area-context";
@@ -16,6 +16,7 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
 import { ConvexAuthProvider, useConvexAuth } from "@convex-dev/auth/react";
 import { useQuery } from "convex/react";
 
+import { navigationIntegration, Sentry } from "@/lib/sentry";
 import { convex } from "@/lib/convex";
 import { colors } from "@/constants/colors";
 import ErrorBoundary from "@/app/error-boundary";
@@ -43,8 +44,12 @@ export const unstable_settings = {
 
 SplashScreen.preventAutoHideAsync();
 
-export default function RootLayout() {
+function RootLayout() {
   const [loaded, error] = useFonts({});
+  const navigationRef = useNavigationContainerRef();
+  useEffect(() => {
+    if (navigationRef) navigationIntegration.registerNavigationContainer(navigationRef);
+  }, [navigationRef]);
   const [isNavigationReady, setIsNavigationReady] = useState(
     Platform.OS === "web",
   );
@@ -99,6 +104,8 @@ export default function RootLayout() {
     </ConvexAuthProvider>
   );
 }
+
+export default Sentry.wrap(RootLayout);
 
 /** Synchronizes the staff profile and routes around sign-in, PIN unlock, and required password changes. */
 function RootLayoutNav() {

@@ -69,6 +69,14 @@
         {
           "locationWhenInUsePermission": "Autoriser Mizo à accéder à votre localisation pour enregistrer la position du TPE et faciliter son suivi."
         }
+      ],
+      [
+        "@sentry/react-native/expo",
+        {
+          "url": "https://de.sentry.io/",
+          "organization": "progiciel-labs",
+          "project": "mizo-app"
+        }
       ]
     ],
     "experiments": {
