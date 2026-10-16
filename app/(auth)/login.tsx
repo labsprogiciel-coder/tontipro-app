@@ -115,7 +115,7 @@ export default function LoginScreen() {
     } else {
       router.replace({
         pathname: "/(auth)/welcome",
-        params: { orgName: user?.organization?.name ?? "Kauri" },
+        params: { orgName: user?.organization?.name ?? "Mizo" },
       } as any);
     }
   };

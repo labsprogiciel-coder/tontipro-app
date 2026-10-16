@@ -31,7 +31,7 @@ const FAILURE_STATUSES = new Set(["failed", "undelivered"]);
 function credentialsMessage(fullName: string, temporaryPassword: string) {
   return (
     `Bienvenue ${fullName} ! Voici votre mot de passe temporaire pour ` +
-    `TontiPro : ${temporaryPassword}\n\n` +
+    `Mizo : ${temporaryPassword}\n\n` +
     `Connectez-vous avec ce mot de passe puis changez-le lors de votre ` +
     `première connexion.`
   );

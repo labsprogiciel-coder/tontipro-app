@@ -141,7 +141,7 @@ export const sendWelcomeEmail = action({
     
     <p><strong>Prochaines étapes :</strong></p>
     <ol>
-      <li>Ouvrez l'application mobile <strong>TontiPro</strong> sur votre TPE</li>
+      <li>Ouvrez l'application mobile <strong>Mizo</strong> sur votre TPE</li>
       <li>Connectez-vous avec l'email et le mot de passe ci-dessus</li>
       <li>Changez votre mot de passe lorsque vous y serez invité</li>
       <li>Commencez à utiliser l'application !</li>
