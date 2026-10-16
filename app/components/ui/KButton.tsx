@@ -22,7 +22,7 @@ export const KButton: React.FC<KButtonProps> = ({
   disabled = false,
   style,
 }) => {
-  const bgColor = type === "deposit" ? T.orange : T.green;
+  const bgColor = type === "deposit" ? T.orangeStrong : T.green;
 
   return (
     <TouchableOpacity

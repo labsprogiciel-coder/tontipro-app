@@ -207,7 +207,7 @@ const AgentDashboard: React.FC = () => {
 
   return (
     <SafeAreaView style={styles.container} edges={["top"]}>
-      <StatusBar barStyle="light-content" backgroundColor={T.orange} />
+      <StatusBar barStyle="light-content" backgroundColor={T.orangeStrong} />
 
       <ScrollView
         stickyHeaderIndices={[0]}
@@ -381,7 +381,7 @@ const styles = StyleSheet.create({
     backgroundColor: "#d0cfc8",
   },
   header: {
-    backgroundColor: T.orange,
+    backgroundColor: T.orangeStrong,
     paddingHorizontal: SPACE.lg,
     paddingBottom: SPACE.xl,
     paddingTop: SPACE.md,

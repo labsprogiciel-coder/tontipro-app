@@ -21,6 +21,7 @@ import { SPACE } from "@/constants/spacing";
 // ── Design tokens (from HTML :root) ────────────────────────────
 const T = {
   orange: "#D85A30",
+  orangeStrong: "#BB4721", // fills behind white text (5.2:1)
   orangeDark: "#993C1D",
   orangeLight: "#FAE8E0",
   bgPrimary: "#ffffff",
@@ -605,7 +606,7 @@ const styles = StyleSheet.create({
   // ── Welcome ──
   screenWelcome: {
     flex: 1,
-    backgroundColor: T.orange,
+    backgroundColor: T.orangeStrong,
     padding: SPACE.xxl,
     paddingBottom: SPACE.xxl,
     justifyContent: "space-between",
@@ -775,7 +776,7 @@ const styles = StyleSheet.create({
 
   // ── Primary button ──
   btnPrimary: {
-    backgroundColor: T.orange,
+    backgroundColor: T.orangeStrong,
     borderRadius: 13,
     padding: SPACE.lg,
     alignItems: "center",
@@ -851,7 +852,7 @@ const styles = StyleSheet.create({
     width: 22,
     height: 22,
     borderRadius: 11,
-    backgroundColor: T.orange,
+    backgroundColor: T.orangeStrong,
     borderWidth: 2,
     borderColor: T.bgPrimary,
     justifyContent: "center",

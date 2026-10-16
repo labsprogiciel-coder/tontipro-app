@@ -1117,7 +1117,7 @@ const styles = StyleSheet.create({
     borderTopColor: T.border,
   },
   btnMain: {
-    backgroundColor: T.orange,
+    backgroundColor: T.orangeStrong,
     borderRadius: 13,
     paddingVertical: SPACE.lg,
     flexDirection: "row",
@@ -1201,7 +1201,7 @@ const styles = StyleSheet.create({
     borderWidth: 0.5,
     borderColor: T.border,
   },
-  dayBtnActive: { backgroundColor: T.orange, borderColor: T.orange },
+  dayBtnActive: { backgroundColor: T.orangeStrong, borderColor: T.orangeStrong },
   dayBtnText: { fontSize: 12, fontWeight: "500", color: T.text3 },
   dayBtnTextActive: { color: "white" },
 
@@ -1238,7 +1238,7 @@ const styles = StyleSheet.create({
   },
 
   reviewHeader: {
-    backgroundColor: T.orange,
+    backgroundColor: T.orangeStrong,
     paddingHorizontal: SPACE.lg,
     paddingTop: SPACE.xl,
     paddingBottom: SPACE.xl,
@@ -1379,7 +1379,7 @@ const styles = StyleSheet.create({
     marginBottom: SPACE.lg,
   },
   memberCardTop: {
-    backgroundColor: T.orange,
+    backgroundColor: T.orangeStrong,
     paddingHorizontal: SPACE.lg,
     paddingVertical: SPACE.lg,
     flexDirection: "row",
@@ -1418,12 +1418,12 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     paddingVertical: SPACE.md,
     borderRadius: 13,
-    backgroundColor: T.orange,
+    backgroundColor: T.orangeStrong,
   },
   btnOrangeText: { fontSize: 13, fontWeight: "500", color: "white" },
 
   applyBtn: {
-    backgroundColor: T.orange,
+    backgroundColor: T.orangeStrong,
     borderRadius: 11,
     paddingHorizontal: SPACE.lg,
     paddingVertical: SPACE.md,

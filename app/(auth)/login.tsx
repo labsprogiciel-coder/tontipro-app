@@ -38,6 +38,7 @@ import { MizoMark, MizoWordmark } from "@/app/components/ui/MizoLogo";
 import { SPACE } from "@/constants/spacing";
 const T = {
   orange: "#D85A30",
+  orangeStrong: "#BB4721", // fills behind white text (5.2:1)
   orangeDark: "#993C1D",
   orangeLight: "#FAE8E0",
   bgPrimary: "#ffffff",
@@ -498,7 +499,7 @@ const styles = StyleSheet.create({
   errorText: { color: T.orangeDark, fontSize: 13, textAlign: "center" },
   submitBtn: {
     flexDirection: "row",
-    backgroundColor: T.orange,
+    backgroundColor: T.orangeStrong,
     height: 54,
     borderRadius: 12,
     justifyContent: "center",

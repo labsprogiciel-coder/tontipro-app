@@ -98,7 +98,7 @@ const s = StyleSheet.create({
   value: { fontSize: 14, fontWeight: "600", color: T.text1, fontFamily: "Courier" },
   btn: {
     alignSelf: "stretch",
-    backgroundColor: T.orange,
+    backgroundColor: T.orangeStrong,
     borderRadius: 12,
     paddingVertical: 14,
     alignItems: "center",

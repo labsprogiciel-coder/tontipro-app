@@ -13,6 +13,7 @@ const AUTO_ADVANCE_DELAY_MS = 2200;
 
 const T = {
   orange: "#D85A30",
+  orangeStrong: "#BB4721", // fills behind white text (5.2:1)
   orangeDark: "#993C1D",
   bgPrimary: "#ffffff",
   bgSecondary: "#f5f4f0",
@@ -81,7 +82,7 @@ const styles = StyleSheet.create({
     width: 84,
     height: 84,
     borderRadius: 26,
-    backgroundColor: T.orange,
+    backgroundColor: T.orangeStrong,
     justifyContent: "center",
     alignItems: "center",
     marginBottom: SPACE.xl,

@@ -13,6 +13,7 @@ import { api } from "@/convex/_generated/api";
 import { SPACE } from "@/constants/spacing";
 const T = {
   orange: "#D85A30",
+  orangeStrong: "#BB4721", // fills behind white text (5.2:1)
   orangeDark: "#993C1D",
   bgPrimary: "#ffffff",
   bgSecondary: "#f5f4f0",
@@ -207,7 +208,7 @@ const styles = StyleSheet.create({
     width: 64,
     height: 64,
     borderRadius: 20,
-    backgroundColor: T.orange,
+    backgroundColor: T.orangeStrong,
     justifyContent: "center",
     alignItems: "center",
     marginBottom: SPACE.md,

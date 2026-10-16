@@ -774,7 +774,7 @@ const styles = StyleSheet.create({
     lineHeight: 18,
   },
   syncBtn: {
-    backgroundColor: K.orange,
+    backgroundColor: K.orangeStrong,
     paddingVertical: SPACE.sm,
     paddingHorizontal: SPACE.lg,
     borderRadius: 8,

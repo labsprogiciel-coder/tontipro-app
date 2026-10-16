@@ -57,6 +57,7 @@ const T = {
   border: "rgba(0,0,0,0.09)",
   border2: "rgba(0,0,0,0.18)",
   orange: "#D85A30",
+  orangeStrong: "#BB4721", // fills behind white text (5.2:1)
   orangeDk: "#993C1D",
   orangeLt: "#FAE8E0",
   green: "#2a5c0f",
@@ -1060,7 +1061,7 @@ const styles = StyleSheet.create({
     width: 20,
     height: 20,
     borderRadius: 10,
-    backgroundColor: T.orange,
+    backgroundColor: T.orangeStrong,
     alignItems: "center",
     justifyContent: "center",
   },

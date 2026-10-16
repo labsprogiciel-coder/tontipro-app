@@ -617,7 +617,7 @@ const styles = StyleSheet.create({
   },
   progressBarFill: {
     height: "100%",
-    backgroundColor: "#D85A30",
+    backgroundColor: "#BB4721",
     borderRadius: 3,
   },
   progressSub: { fontSize: 10, color: "#888780", marginTop: SPACE.xs },
@@ -642,7 +642,7 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
     gap: SPACE.xs,
-    backgroundColor: "#D85A30",
+    backgroundColor: "#BB4721",
     borderRadius: 12,
     paddingVertical: SPACE.md,
   },

@@ -242,7 +242,7 @@ const styles = StyleSheet.create({
     textAlign: "center",
   },
   addBtn: {
-    backgroundColor: T.orange,
+    backgroundColor: T.orangeStrong,
     paddingHorizontal: SPACE.xl,
     paddingVertical: SPACE.md,
     borderRadius: 8,

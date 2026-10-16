@@ -132,7 +132,7 @@ const s = StyleSheet.create({
     width: 64,
     height: 64,
     borderRadius: 20,
-    backgroundColor: T.orange,
+    backgroundColor: T.orangeStrong,
     justifyContent: "center",
     alignItems: "center",
     marginBottom: SPACE.md,

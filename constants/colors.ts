@@ -28,6 +28,7 @@ export const KAURIDORR_THEME = {
 
   // Orange (deposit)
   orange: "#D85A30",
+  orangeStrong: "#BB4721", // fills behind white text (5.2:1); see TontiPro-Admin brand/README.md
   orangeDk: "#993C1D",
   orangeLt: "#FAE8E0",
   orangeMd: "#F0997B",
