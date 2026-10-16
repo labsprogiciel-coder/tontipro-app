@@ -27,7 +27,6 @@ import {
   ChevronRight,
   Database,
   LucideIcon,
-  Upload,
   DatabaseBackup,
   AlertTriangle,
   Download,
@@ -97,10 +96,6 @@ const SettingsScreen = () => {
   };
 
   const handleExport = () => {
-    router.push("/(app)/data" as never);
-  };
-
-  const handleImport = () => {
     router.push("/(app)/data" as never);
   };
 
@@ -228,15 +223,6 @@ const SettingsScreen = () => {
               label="Exporter les données"
               value="Format .JSON"
               onPress={handleExport}
-            />
-
-            <View style={styles.divider} />
-
-            {/* Import Feature */}
-            <SettingItem
-              icon={Upload}
-              label="Importer une sauvegarde"
-              onPress={handleImport}
             />
 
             <View style={styles.divider} />

@@ -122,7 +122,6 @@ interface TransactionStoreState {
     type: "deposit" | "withdrawal";
     notes?: string;
   }) => Promise<Transaction>;
-  importTransactions: (txList: Transaction[]) => void;
   getTransactionById: (id: string) => Transaction | undefined;
   getTransactionsByClientId: (clientId: string) => Transaction[];
   syncPendingTransactions: (branchId: string) => Promise<void>;
@@ -150,25 +149,6 @@ export const useTransactionStore = create<TransactionStoreState>()(
         const { mockTransactions } =
           await import("@/__dev__/mocks/transactions");
         set({ transactions: mockTransactions, pendingTransactions: [] });
-      },
-
-      // ── Import (CSV / bulk) ───────────────────────────────────────────────
-
-      importTransactions: (txList) => {
-        set((state) => {
-          const existingIds = new Set(
-            [...state.transactions, ...state.pendingTransactions].map(
-              (t) => t.id,
-            ),
-          );
-          const newTxs = txList.filter((t) => !existingIds.has(t.id));
-          if (newTxs.length === 0) return state;
-          return {
-            transactions: [...newTxs, ...state.transactions].sort(
-              sortByTimestampDesc,
-            ),
-          };
-        });
       },
 
       // ── Load from Convex ──────────────────────────────────────────────────

@@ -286,11 +286,12 @@ const AgentDashboard: React.FC = () => {
               }
             />
             <ActionButton
-              label="Importer"
+              label="Exporter"
               icon={DownloadCloudIcon}
               bgVariant="#EEEDFE"
               iconColor="#534AB7"
               style={styles.actionBtn}
+              disabled={!perms.exportReports}
               onClick={() => router.push("/(app)/data")}
             />
           </View>

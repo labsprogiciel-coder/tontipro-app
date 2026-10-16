@@ -162,6 +162,13 @@ Done: deposits and history (backend TontiPro-Admin#21), withdrawals
   If an online call failed and the limits don't allow queuing, the agent is
   told not to pay out and to check the history.
 
+- **Spreadsheet imports live on the dashboard** (Admin › Importer,
+  TontiPro-Admin#25; supervisors, accountants and IT admins). The app's
+  import screens are removed: the transaction import only filled the
+  phone's local list and never reached the server. The "Nettoyer les
+  données" screen went with them, since it could erase unsynced queued
+  operations.
+
 ### Phase 4 - Agent management
 
 Done in the app (#16). Staff management lives on the dashboard only:

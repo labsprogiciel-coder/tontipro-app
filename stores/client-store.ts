@@ -166,9 +166,6 @@ interface ClientStoreState {
   updateClient: (id: string, clientData: Partial<Client>) => Promise<Client>;
   getClientById: (id: string) => Client | undefined;
   updateClientBalance: (id: string, amount: number) => Promise<void>;
-  reconcileBalances: (
-    txList: import("@/types/transaction").Transaction[],
-  ) => void;
 
   // Sync clients marked as 'pending' to Convex when back online
   syncPendingClients: () => Promise<void>;
@@ -545,22 +542,6 @@ export const useClientStore = create<ClientStoreState>()(
             error: error instanceof Error ? error.message : "Sync failed",
           });
         }
-      },
-
-      // ── reconcileBalances ────────────────────────────────────────────────────
-
-      reconcileBalances: (txList) => {
-        set((state) => ({
-          clients: state.clients.map((client) => {
-            const balance = txList
-              .filter((t) => t.clientId === client.id)
-              .reduce(
-                (sum, t) => sum + (t.type === "deposit" ? t.amount : -t.amount),
-                0,
-              );
-            return { ...client, balance: Math.max(0, balance) };
-          }),
-        }));
       },
 
       // ── clearAll ─────────────────────────────────────────────────────────────
