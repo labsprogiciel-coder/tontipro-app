@@ -17,7 +17,8 @@
       },
       "env": {
         "SENTRY_ALLOW_FAILURE": "true"
-      }
+      },
+      "autoIncrement": true
     },
     "preview": {
       "distribution": "internal",
@@ -31,7 +32,8 @@
       },
       "env": {
         "SENTRY_ALLOW_FAILURE": "true"
-      }
+      },
+      "autoIncrement": true
     },
     "production": {
       "autoIncrement": true,
