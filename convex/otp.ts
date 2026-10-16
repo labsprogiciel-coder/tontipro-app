@@ -30,6 +30,7 @@ const ACTIVATION_CODE_TTL_MS = 15 * 60 * 1000; // 15 minutes
 const MAX_ACTIVATION_ATTEMPTS = 5;
 const ACTIVATION_LOCKOUT_MS = 15 * 60 * 1000; // 15 minutes
 
+/** Formats the French Mizo activation message, inserting the supplied code unchanged. */
 function activationMessage(code: string): string {
   return (
     `Voici votre code d'activation Mizo : ${code}\n\n` +

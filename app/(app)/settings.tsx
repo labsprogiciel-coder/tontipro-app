@@ -64,6 +64,7 @@ const SettingItem = ({
     </View>
   </Pressable>
 );
+/** Shows account settings, manual synchronization, data export, and sign-out controls. */
 const SettingsScreen = () => {
   const [isBiometricActive, setIsBiometricActive] = useState(true);
   const [isOfflineMode, setIsOfflineMode] = useState(false);

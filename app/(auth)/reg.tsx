@@ -96,6 +96,7 @@ function PrimaryButton({
 }
 
 // ── SCREEN 1: Welcome ───────────────────────────────────────────
+/** Offers offline account registration or navigation to the sign-in screen. */
 function WelcomeScreen({
   onRegister,
   onLogin,
@@ -392,6 +393,7 @@ function PinScreen({
 }
 
 // ── SCREEN 6: Success ───────────────────────────────────────────
+/** Shows the offline account summary; phone is the local number without the +226 prefix. */
 function SuccessScreen({
   name,
   phone,

@@ -79,6 +79,7 @@ const REFUSED: Record<Mode, string> = {
   reset: "Réinitialisation impossible : vérifiez le numéro et le code.",
 };
 
+/** Shows staff sign-in, activation, or password reset, or local PIN unlock for a saved session. */
 export default function LoginScreen() {
   const router = useRouter();
   const { signIn, signOut } = useAuthActions();

@@ -28,6 +28,7 @@ const DELIVERY_STATUSES = new Set([
 ]);
 const FAILURE_STATUSES = new Set(["failed", "undelivered"]);
 
+/** Formats the French Mizo message containing the temporary password and first-login instructions. */
 function credentialsMessage(fullName: string, temporaryPassword: string) {
   return (
     `Bienvenue ${fullName} ! Voici votre mot de passe temporaire pour ` +

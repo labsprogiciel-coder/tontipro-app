@@ -15,6 +15,7 @@ export const MIZO = {
 
 const M_PATH = "M22 78V52a14 14 0 0 1 28 0v26M50 52a14 14 0 0 1 28 0v26";
 
+/** Renders the square Mizo glyph; color sets the letter stroke and coin sets the circle fill. */
 export function MizoGlyph({
   size = 32,
   color = "#fff",

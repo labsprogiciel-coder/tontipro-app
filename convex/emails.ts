@@ -3,12 +3,14 @@ import { action } from './_generated/server'
 import { v } from 'convex/values'
 
 /**
- * Envoie un email de bienvenue à un nouvel agent avec ses identifiants.
- * Utilise Resend comme service d'envoi d'email.
+ * Sends a French welcome email through Resend with the agent's credentials
+ * and, when provided and nonempty, the branch name. Returns
+ * { success: true, emailId } from the Resend response.
  *
- * Variables d'environnement requises :
- * - RESEND_API_KEY : Clé API Resend
- * - RESEND_FROM_EMAIL : Email expéditeur (ex: noreply@kauri.com)
+ * Requires RESEND_API_KEY. RESEND_FROM_EMAIL overrides the default sender,
+ * noreply@resend.dev (for example, noreply@kauri.com).
+ * Throws if the API key is missing or Resend rejects the request; network
+ * and response-reading errors also propagate to the caller.
  */
 export const sendWelcomeEmail = action({
   args: {

@@ -129,6 +129,7 @@ export default function RootLayout() {
   );
 }
 
+/** Synchronizes the staff profile and routes around sign-in, PIN unlock, and required password changes. */
 function RootLayoutNav() {
   const router = useRouter();
   const segments = useSegments();
