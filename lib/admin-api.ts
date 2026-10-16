@@ -50,6 +50,17 @@ export const myDevice = makeFunctionReference<
   BoundDevice | null
 >("devices:myDevice");
 
+/**
+ * Register this phone's serial as a device waiting to be bound to the signed-in
+ * agent (admin convex/devices.ts). Returns "bound" or "pending"; refusals are
+ * ConvexError codes SERIAL_TAKEN, INVALID_SERIAL, FORBIDDEN, SUSPENDED.
+ */
+export const registerMyDevice = makeFunctionReference<
+  "mutation",
+  { serialNumber: string; model: string },
+  "bound" | "pending"
+>("devices:registerMine");
+
 // ── Customers (admin convex/customers.ts) ────────────────────────────────────
 
 /** Extra KYC and collection details kept on a customer */
@@ -111,6 +122,9 @@ const REFUSALS: Record<string, string> = {
   PHONE_TAKEN: "Un client de votre agence a déjà ce numéro.",
   NAME_REQUIRED: "Le nom du client est obligatoire.",
   INVALID_ID_NUMBER: "Numéro de pièce d'identité trop long.",
+  SERIAL_TAKEN: "Ce téléphone est déjà lié à un autre agent. Demandez à l'Admin IT de le délier.",
+  INVALID_SERIAL: "Numéro de série illisible sur ce téléphone.",
+  SUSPENDED: "Votre compte est suspendu.",
 };
 
 /**
