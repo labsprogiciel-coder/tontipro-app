@@ -129,6 +129,7 @@ export default function RootLayout() {
   );
 }
 
+/** Synchronizes the staff profile and routes around sign-in, PIN unlock, and required password changes. */
 function RootLayoutNav() {
   const router = useRouter();
   const segments = useSegments();
@@ -204,7 +205,7 @@ function RootLayoutNav() {
       router.replace({
         pathname: "/(auth)/welcome",
         params: {
-          orgName: user.organization?.name ?? "Kauri",
+          orgName: user.organization?.name ?? "Mizo",
           next: "change-password",
         },
       });
@@ -236,7 +237,7 @@ function RootLayoutNav() {
         router.replace({
           pathname: "/(auth)/welcome",
           params: {
-            orgName: user.organization?.name ?? "Kauri",
+            orgName: user.organization?.name ?? "Mizo",
             next: "change-password",
           },
         });
@@ -252,7 +253,7 @@ function RootLayoutNav() {
         // @ts-ignore
         router.replace({
           pathname: "/(auth)/welcome",
-          params: { orgName: user?.organization?.name ?? "Kauri" },
+          params: { orgName: user?.organization?.name ?? "Mizo" },
         });
       } else if (currentAuthScreen === "splash") {
         // !isUnlocked et aucune des conditions ci-dessus : il faut l'UI de

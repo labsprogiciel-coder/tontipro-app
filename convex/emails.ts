@@ -3,12 +3,14 @@ import { action } from './_generated/server'
 import { v } from 'convex/values'
 
 /**
- * Envoie un email de bienvenue à un nouvel agent avec ses identifiants.
- * Utilise Resend comme service d'envoi d'email.
+ * Sends a French welcome email through Resend with the agent's credentials
+ * and, when provided and nonempty, the branch name. Returns
+ * { success: true, emailId } from the Resend response.
  *
- * Variables d'environnement requises :
- * - RESEND_API_KEY : Clé API Resend
- * - RESEND_FROM_EMAIL : Email expéditeur (ex: noreply@kauri.com)
+ * Requires RESEND_API_KEY. RESEND_FROM_EMAIL overrides the default sender,
+ * noreply@resend.dev (for example, noreply@kauri.com).
+ * Throws if the API key is missing or Resend rejects the request; network
+ * and response-reading errors also propagate to the caller.
  */
 export const sendWelcomeEmail = action({
   args: {
@@ -141,7 +143,7 @@ export const sendWelcomeEmail = action({
     
     <p><strong>Prochaines étapes :</strong></p>
     <ol>
-      <li>Ouvrez l'application mobile <strong>TontiPro</strong> sur votre TPE</li>
+      <li>Ouvrez l'application mobile <strong>Mizo</strong> sur votre TPE</li>
       <li>Connectez-vous avec l'email et le mot de passe ci-dessus</li>
       <li>Changez votre mot de passe lorsque vous y serez invité</li>
       <li>Commencez à utiliser l'application !</li>
@@ -149,12 +151,12 @@ export const sendWelcomeEmail = action({
     
     <p>Si vous rencontrez des problèmes, contactez votre responsable d'agence.</p>
     
-    <p>Cordialement,<br>L'équipe Kauri</p>
+    <p>Cordialement,<br>L'équipe Mizo</p>
   </div>
   
   <div class="footer">
     <p>Cet email a été envoyé automatiquement. Merci de ne pas y répondre.</p>
-    <p>© ${new Date().getFullYear()} Kauri - Gestion d'épargne</p>
+    <p>© ${new Date().getFullYear()} Mizo - Gestion d'épargne</p>
   </div>
 </body>
 </html>

@@ -16,6 +16,7 @@ import { PinEntry } from "@/app/components/ui/pin-entry";
 import { KAURIDORR_THEME as T } from "@/constants/colors";
 import { SPACE } from "@/constants/spacing";
 
+/** Confirms and saves a four-digit local unlock PIN, then resumes navigation. */
 export default function SetPinScreen() {
   const router = useRouter();
   const user = useAuthStore((s) => s.user);
@@ -25,6 +26,7 @@ export default function SetPinScreen() {
   const [error, setError] = useState("");
   const [saving, setSaving] = useState(false);
 
+  /** Returns to Settings if already unlocked; otherwise unlocks and opens device binding or welcome. */
   const done = () => {
     // Opened from Settings: just go back. After sign-in: enter the app.
     if (isUnlocked) {
@@ -37,7 +39,7 @@ export default function SetPinScreen() {
     } else {
       router.replace({
         pathname: "/(auth)/welcome",
-        params: { orgName: user?.organization?.name ?? "Kauri" },
+        params: { orgName: user?.organization?.name ?? "Mizo" },
       } as any);
     }
   };

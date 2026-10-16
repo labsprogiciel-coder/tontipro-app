@@ -1,6 +1,6 @@
 //app/(app)/data.tsx
 /**
- * Kauridorr — Données (export hub)
+ * Mizo — Données (export hub)
  *
  * Screens handled by this single file (state-machine approach):
  *   hub            → landing with the export tile + recent history

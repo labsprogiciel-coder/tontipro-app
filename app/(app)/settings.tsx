@@ -64,6 +64,7 @@ const SettingItem = ({
     </View>
   </Pressable>
 );
+/** Shows account settings, manual synchronization, data export, and sign-out controls. */
 const SettingsScreen = () => {
   const [isBiometricActive, setIsBiometricActive] = useState(true);
   const [isOfflineMode, setIsOfflineMode] = useState(false);
@@ -269,7 +270,7 @@ const SettingsScreen = () => {
         </View>
 
         <Text style={styles.versionText}>
-          Kauridorr v1.0.4 • Made with ❤️ for Burkina Faso
+          Mizo v1.0.4 • Made with ❤️ for Burkina Faso
         </Text>
       </ScrollView>
     </SafeAreaView>
