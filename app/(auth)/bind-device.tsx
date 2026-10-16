@@ -1,17 +1,18 @@
 // app/(auth)/bind-device.tsx
 //
 // Binding is done by an it_admin from the dashboard (devices:bindDevice, by
-// serial number). The agent no longer scans a QR code or types a PIN: this
-// screen shows the serial of this phone and waits until the server reports a
-// terminal bound to the signed-in agent.
+// serial number). On opening, this screen registers the phone's serial
+// (devices:registerMine) so it appears in Agents & TPE as a "Demande de
+// liaison" with a one-click "Lier à <agent>". It shows the serial so the
+// admin can check it, and waits until the server reports the binding.
 import { useEffect, useState } from "react";
 import { ActivityIndicator, Pressable, StyleSheet, Text, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useRouter } from "expo-router";
 import * as Device from "expo-device";
 import { Check, Smartphone } from "lucide-react-native";
-import { useQuery } from "convex/react";
-import { myDevice } from "@/lib/admin-api";
+import { useMutation, useQuery } from "convex/react";
+import { myDevice, refusalMessage, registerMyDevice } from "@/lib/admin-api";
 import { getOrCreateDeviceInstallId } from "@/utils/device-id";
 import { KAURIDORR_THEME as T } from "@/constants/colors";
 
@@ -27,11 +28,32 @@ export default function BindDeviceScreen() {
   const router = useRouter();
   const [serial, setSerial] = useState<string | null>(null);
   const bound = useQuery(myDevice);
+  const register = useMutation(registerMyDevice);
+  // "sending" → "sent" once the dashboard has the request; error text otherwise
+  const [request, setRequest] = useState<"sending" | "sent" | string>("sending");
+
+  const sendRequest = (phoneSerial: string) => {
+    setRequest("sending");
+    const model = [Device.brand, Device.modelName].filter(Boolean).join(" ") || "Inconnu";
+    register({ serialNumber: phoneSerial, model })
+      .then(() => setRequest("sent"))
+      .catch((e) =>
+        setRequest(
+          e?.data === "FORBIDDEN"
+            ? "Votre rôle n'utilise pas de TPE."
+            : refusalMessage(e) ?? "Pas de connexion : demande non envoyée.",
+        ),
+      );
+  };
 
   useEffect(() => {
     getPhoneSerial()
-      .then(setSerial)
+      .then((s) => {
+        setSerial(s);
+        sendRequest(s);
+      })
       .catch(() => setSerial("—"));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const isBound = bound !== undefined && bound !== null;
@@ -51,7 +73,11 @@ export default function BindDeviceScreen() {
         <Text style={s.p}>
           {isBound
             ? "Votre TPE est associé à votre compte."
-            : "Communiquez ce numéro de série à l'Admin IT. Cet écran se mettra à jour dès que la liaison est faite."}
+            : request === "sent"
+              ? "Demande envoyée à l'Admin IT. Il voit ce téléphone dans Agents & TPE et n'a plus qu'à cliquer sur « Lier ». Cet écran se mettra à jour tout seul."
+              : request === "sending"
+                ? "Envoi de la demande de liaison…"
+                : "La demande n'a pas pu être envoyée."}
         </Text>
 
         <View style={s.card}>
@@ -60,6 +86,17 @@ export default function BindDeviceScreen() {
             {isBound ? bound.serialNumber : (serial ?? "…")}
           </Text>
         </View>
+
+        {!isBound && request !== "sending" && request !== "sent" && (
+          <>
+            <Text style={s.err}>{request}</Text>
+            {serial && serial !== "—" && (
+              <Pressable style={s.btnGhost} onPress={() => sendRequest(serial)}>
+                <Text style={s.btnGhostTxt}>Réessayer</Text>
+              </Pressable>
+            )}
+          </>
+        )}
 
         {isBound ? (
           <Pressable style={s.btn} onPress={() => router.replace("/dashboard")}>
@@ -105,4 +142,15 @@ const s = StyleSheet.create({
     marginTop: 24,
   },
   btnTxt: { color: "#fff", fontSize: 15, fontWeight: "600" },
+  err: { fontSize: 13, color: T.danger, textAlign: "center", marginTop: 16 },
+  btnGhost: {
+    alignSelf: "stretch",
+    borderWidth: 1,
+    borderColor: T.border2,
+    borderRadius: 12,
+    paddingVertical: 12,
+    alignItems: "center",
+    marginTop: 12,
+  },
+  btnGhostTxt: { color: T.text1, fontSize: 15, fontWeight: "600" },
 });
