@@ -61,6 +61,22 @@ export const registerMyDevice = makeFunctionReference<
   "bound" | "pending"
 >("devices:registerMine");
 
+/** Check-in from a bound TPE (admin convex/devices.ts heartbeat); "ignored" when it isn't the caller's. */
+export const deviceHeartbeat = makeFunctionReference<
+  "mutation",
+  {
+    serialNumber: string;
+    appVersion?: string;
+    updateId?: string;
+    osVersion?: string;
+    battery?: number;
+    charging?: boolean;
+    network?: "wifi" | "cellular" | "none" | "other";
+    pendingOps?: number;
+  },
+  "ok" | "ignored"
+>("devices:heartbeat");
+
 // ── Customers (admin convex/customers.ts) ────────────────────────────────────
 
 /** Extra KYC and collection details kept on a customer */
