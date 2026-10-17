@@ -6,6 +6,7 @@ import { generateId } from "@/utils/id-generator";
 import { isConnected } from "@/utils/network";
 import { convex } from "@/lib/convex";
 import { withAuthRetry } from "@/lib/withAuthRetry";
+import { currentFix } from "@/lib/location";
 import * as adminApi from "@/lib/admin-api";
 import { Transaction } from "@/types/transaction";
 import type { Client } from "@/types/client";
@@ -251,6 +252,7 @@ export const useTransactionStore = create<TransactionStoreState>()(
             date: new Date(now).toISOString(),
             status: "pending",
             agentId: useAuthStore.getState().user?.id,
+            location: currentFix(),
           };
 
           // A client created on this device has no Convex id yet: queue until
@@ -264,6 +266,7 @@ export const useTransactionStore = create<TransactionStoreState>()(
                 customerId: transactionData.clientId,
                 amount: transactionData.amount,
                 clientId: newTransaction.clientRef!,
+                ...recordedOn(newTransaction),
               });
 
               await clientStore.updateClientBalance(
@@ -439,11 +442,17 @@ async function recordWithdrawal(
     date: new Date(now).toISOString(),
     status: "pending",
     agentId: useAuthStore.getState().user?.id,
+    location: currentFix(),
   };
 
   let attempted = false;
   if (online && !isLocalClient(client)) {
-    const args = { customerId: client.id, amount, clientId: withdrawal.clientRef! };
+    const args = {
+      customerId: client.id,
+      amount,
+      clientId: withdrawal.clientRef!,
+      ...recordedOn(withdrawal),
+    };
     for (let attempt = 0; attempt < 2; attempt++) {
       try {
         attempted = true;
@@ -468,6 +477,19 @@ async function recordWithdrawal(
   // without warning: the agent checks the history before trying again.
   if (refusal) throw new Error(attempted ? WITHDRAWAL_UNCONFIRMED : refusal);
   return withdrawal;
+}
+
+/**
+ * When and where the agent recorded a movement, for the server's audit: a
+ * queued one arrives later than it was recorded, and the dashboard shows by
+ * how much.
+ */
+function recordedOn(tx: Transaction) {
+  const recordedAt = new Date(tx.date).getTime();
+  return {
+    ...(Number.isFinite(recordedAt) ? { recordedAt } : {}),
+    ...(tx.location ? { location: tx.location } : {}),
+  };
 }
 
 // ─── Offline queue replay ─────────────────────────────────────────────────────
@@ -508,6 +530,7 @@ async function syncPendingOnce(): Promise<void> {
         amount: tx.amount,
         // Transactions queued before clientRef existed use their local id.
         clientId: tx.clientRef ?? tx.id,
+        ...recordedOn(tx),
       };
       // A queued withdrawal was paid out offline: the server records it even
       // past the customer's balance (flagged as an overdraft)

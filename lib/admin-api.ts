@@ -5,6 +5,7 @@
 // its own deployment (see docs/migration-to-admin-backend.md). Keep the types
 // below in step with the admin repo's convex/users.ts and convex/devices.ts.
 import { makeFunctionReference } from "convex/server";
+import type { GeoFix } from "@/lib/location";
 
 /** Role names defined in the admin backend's convex/authz.ts */
 export type AdminRole = "field_agent" | "supervisor" | "accountant" | "it_admin";
@@ -73,6 +74,12 @@ export const deviceHeartbeat = makeFunctionReference<
     charging?: boolean;
     network?: "wifi" | "cellular" | "none" | "other";
     pendingOps?: number;
+    /** Phone clock (Date.now()) when sent: the server stores the skew */
+    clientTime?: number;
+    rooted?: boolean;
+    emulator?: boolean;
+    locationDenied?: boolean;
+    location?: GeoFix;
   },
   "ok" | "ignored"
 >("devices:heartbeat");
@@ -216,9 +223,12 @@ export const listBranchTransactions = makeFunctionReference<
  * device) are set by the server; replaying the same `clientId` returns the
  * deposit already stored. Returns the transaction ID.
  */
+/** When (phone clock, ms) and where the agent recorded a movement; both optional. */
+type RecordedOn = { recordedAt?: number; location?: GeoFix };
+
 export const createDeposit = makeFunctionReference<
   "mutation",
-  { customerId: string; amount: number; clientId: string },
+  { customerId: string; amount: number; clientId: string } & RecordedOn,
   string
 >("transactions:createDeposit");
 
@@ -231,6 +241,6 @@ export const createDeposit = makeFunctionReference<
  */
 export const createWithdrawal = makeFunctionReference<
   "mutation",
-  { customerId: string; amount: number; clientId: string; offline?: boolean },
+  { customerId: string; amount: number; clientId: string; offline?: boolean } & RecordedOn,
   string
 >("transactions:createWithdrawal");

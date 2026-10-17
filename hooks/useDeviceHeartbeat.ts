@@ -3,7 +3,8 @@
 // While the app is open on a bound TPE, tell the server it's alive and how
 // it's doing (admin convex/devices.ts heartbeat): at start, every 15 minutes,
 // and whenever the app comes back to the foreground. The dashboard shows
-// "En ligne / Hors ligne", battery, network and unsynced operations from it.
+// "En ligne / Hors ligne", battery, network and unsynced operations from it,
+// and raises fraud alerts from the clock, root/emulator and GPS details.
 // Failures are ignored: the next check-in tries again.
 import { useEffect } from "react";
 import { AppState } from "react-native";
@@ -14,6 +15,7 @@ import * as Battery from "expo-battery";
 import * as Device from "expo-device";
 import * as Updates from "expo-updates";
 import { deviceHeartbeat } from "@/lib/admin-api";
+import { locationAllowed, refreshFix } from "@/lib/location";
 import { useAuthStore } from "@/stores/auth-store";
 import { useTransactionStore } from "@/stores/transaction-store";
 
@@ -23,12 +25,14 @@ const MIN_GAP_MS = 60 * 1000;
 
 type Network = "wifi" | "cellular" | "none" | "other";
 
-/** Battery, network and app details as the heartbeat sends them; unknown values are left out. */
+/** Battery, network, app and integrity details as the heartbeat sends them; unknown values are left out. */
 async function readStatus() {
-  const [level, state, net] = await Promise.all([
+  const [level, state, net, rooted, location] = await Promise.all([
     Battery.getBatteryLevelAsync().catch(() => -1),
     Battery.getBatteryStateAsync().catch(() => Battery.BatteryState.UNKNOWN),
     NetInfo.fetch().catch(() => null),
+    Device.isRootedExperimentalAsync().catch(() => undefined),
+    refreshFix(),
   ]);
   const network: Network | undefined = !net
     ? undefined
@@ -50,6 +54,10 @@ async function readStatus() {
         : state === Battery.BatteryState.CHARGING || state === Battery.BatteryState.FULL,
     network,
     pendingOps: useTransactionStore.getState().pendingTransactions.length,
+    rooted,
+    emulator: !Device.isDevice,
+    locationDenied: !(await locationAllowed()),
+    location,
   };
 }
 
@@ -65,7 +73,15 @@ export function useDeviceHeartbeat() {
       if (Date.now() - last < MIN_GAP_MS) return;
       last = Date.now();
       try {
-        await beat({ serialNumber, ...(await readStatus()) });
+        const status = await readStatus();
+        // Offline, Convex would queue the call and send it late, making the
+        // clock look wrong: skip it, the next check-in reports
+        if (status.network === "none") {
+          last = 0;
+          return;
+        }
+        // Read last, so the server compares it with the moment it arrives
+        await beat({ serialNumber, ...status, clientTime: Date.now() });
       } catch {
         // offline or server unreachable: the next check-in will retry
       }
