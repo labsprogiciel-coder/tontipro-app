@@ -3,6 +3,7 @@ import type { BottomTabBarProps } from "@react-navigation/bottom-tabs";
 import { CommonActions } from "@react-navigation/native";
 import { useNetworkSync } from "@/hooks/useNetworkSync";
 import { useTransactionRealtimeSubscribe } from "@/hooks/useTransactionRealtime";
+import { useDeviceHeartbeat } from "@/hooks/useDeviceHeartbeat";
 import { useAuthStore } from "@/stores/auth-store";
 import BottomNavBar, { TabKey } from "@/app/components/ui/BottomNavBar";
 
@@ -51,6 +52,7 @@ export default function AppLayout() {
   const userId = useAuthStore((s) => s.user?.id);
   useNetworkSync();
   useTransactionRealtimeSubscribe(userId);
+  useDeviceHeartbeat();
 
   return (
     <Tabs

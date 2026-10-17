@@ -30,6 +30,7 @@ import SuccessReceipt from "@/app/components/transactions/receipt";
 import { useClientStore } from "@/stores/client-store";
 import { useTransactionStore } from "@/stores/transaction-store";
 import { useAuthStore } from "@/stores/auth-store";
+import { refreshFix } from "@/lib/location";
 import { Transaction } from "@/types/transaction";
 import { Client } from "@/types/client";
 import { usePermissions } from "@/hooks/usePermissions";
@@ -178,6 +179,8 @@ const TransactionEntryScreen = () => {
   useFocusEffect(
     useCallback(() => {
       loadClients();
+      // So the movement recorded here carries a fresh position
+      refreshFix();
     }, [loadClients]),
   );
 
