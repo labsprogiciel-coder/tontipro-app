@@ -145,6 +145,8 @@ export const useAuthStore = create<AuthState>()(
         // réactif de users:me (voir `lastLoadedUserId` ci-dessus).
         if (lastLoadedUserId === user.id) return;
         lastLoadedUserId = user.id;
+        // Shared TPE: the previous agent's history must not show
+        useTransactionStore.getState().switchAgent(user.id);
 
         // Load data from Convex
         const loadData = async () => {

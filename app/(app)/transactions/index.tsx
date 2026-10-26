@@ -16,6 +16,8 @@ import { ArrowDown, ArrowUp, ChevronLeft } from "lucide-react-native";
 import { KAURIDORR_THEME } from "@/constants/colors";
 import {
   mergeTransactionsSorted,
+  useOwnPendingTransactions,
+  useOwnRejectedTransactions,
   useTransactionStore,
 } from "@/stores/transaction-store";
 import { useClientStore } from "@/stores/client-store";
@@ -46,10 +48,8 @@ export const HistoryScreen: React.FC = () => {
   const [sortOrder, setSortOrder] = useState<SortOrder>("desc");
 
   const transactions = useTransactionStore((s) => s.transactions);
-  const pendingTransactions = useTransactionStore((s) => s.pendingTransactions);
-  const rejectedTransactions = useTransactionStore(
-    (s) => s.rejectedTransactions,
-  );
+  const pendingTransactions = useOwnPendingTransactions();
+  const rejectedTransactions = useOwnRejectedTransactions();
   const clients = useClientStore((s) => s.clients);
 
   // Merge synced + pending into one deduplicated, sorted list. Transactions

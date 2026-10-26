@@ -22,6 +22,7 @@ import { useClientStore } from "@/stores/client-store";
 import {
   convexRowToTransaction,
   mergeTransactionsSorted,
+  useOwnPendingTransactions,
   useTransactionStore,
 } from "@/stores/transaction-store";
 import { Transaction } from "@/types/transaction";
@@ -337,7 +338,7 @@ function useReportData(period: Period, scope: ReportScope) {
   const prevRows = failed ? undefined : (results.prev as any[] | undefined);
 
   const stored = useTransactionStore((s) => s.transactions);
-  const pending = useTransactionStore((s) => s.pendingTransactions);
+  const pending = useOwnPendingTransactions();
   const clients = useClientStore((s) => s.clients);
 
   return useMemo(() => {

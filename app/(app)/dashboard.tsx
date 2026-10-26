@@ -34,7 +34,7 @@ import { isLocalClient } from "@/stores/sync-bridge";
 import {
   convexRowToTransaction,
   mergeTransactionsSorted,
-  useTransactionStore,
+  useOwnPendingTransactions,
 } from "@/stores/transaction-store";
 import { isConnected, subscribeToNetworkChanges } from "@/utils/network";
 import { Client } from "@/types/client";
@@ -134,7 +134,7 @@ const AgentDashboard: React.FC = () => {
     [customersData, pendingLocalClients],
   );
 
-  const pendingTxList = useTransactionStore((s) => s.pendingTransactions);
+  const pendingTxList = useOwnPendingTransactions();
 
   const transactions = useMemo(() => {
     const clientNameResolver = (id: string) =>

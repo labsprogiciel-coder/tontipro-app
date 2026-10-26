@@ -1,4 +1,5 @@
 // stores/transaction-store.ts
+import { useMemo } from "react";
 import { create } from "zustand";
 import { createJSONStorage, persist } from "zustand/middleware";
 import AsyncStorage from "@react-native-async-storage/async-storage";
@@ -28,6 +29,16 @@ import {
 
 function sortByTimestampDesc(a: Transaction, b: Transaction): number {
   return new Date(b.date).getTime() - new Date(a.date).getTime();
+}
+
+/**
+ * Whether a queued transaction was recorded by `agentId`. On a TPE shared by
+ * several agents, each one's queue is replayed only under their own session,
+ * so the server credits the right agent. Entries queued before agentId was
+ * stored count as the current agent's.
+ */
+export function isOwnTransaction(tx: Transaction, agentId: string | undefined): boolean {
+  return !tx.agentId || tx.agentId === agentId;
 }
 
 /**
@@ -115,6 +126,8 @@ interface TransactionStoreState {
   error: string | null;
   /** Number of pending transactions whose last sync attempt failed. */
   transactionSyncFailures: number;
+  /** Agent whose history `transactions` holds (a TPE can be shared). */
+  historyOwnerId: string | null;
 
   loadTransactions: (branchId: string) => Promise<void>;
   addTransaction: (transactionData: {
@@ -127,6 +140,12 @@ interface TransactionStoreState {
   getTransactionsByClientId: (clientId: string) => Transaction[];
   syncPendingTransactions: (branchId: string) => Promise<void>;
   loadDevMocks: () => Promise<void>;
+  /**
+   * Called when an agent signs in: if another agent used this phone last,
+   * drop their history. Every agent's queued operations stay on the phone
+   * and sync at that agent's next sign-in.
+   */
+  switchAgent: (agentId: string) => void;
   clearAll: () => void;
 }
 
@@ -141,6 +160,7 @@ export const useTransactionStore = create<TransactionStoreState>()(
       isLoading: false,
       error: null,
       transactionSyncFailures: 0,
+      historyOwnerId: null,
 
       // ── Dev mocks ────────────────────────────────────────────────────────
 
@@ -360,6 +380,22 @@ export const useTransactionStore = create<TransactionStoreState>()(
         }
       },
 
+      // ── Agent change on a shared TPE ──────────────────────────────────────
+
+      switchAgent: (agentId) => {
+        const { historyOwnerId } = get();
+        if (historyOwnerId === agentId) return;
+        // Unknown owner (installs that predate this): the history may be
+        // anyone's, so it is reloaded from the server too. Rejected and queued
+        // operations are kept; screens show the agent's own (useOwn…)
+        set({
+          transactions: [],
+          historyOwnerId: agentId,
+          transactionSyncFailures: 0,
+          error: null,
+        });
+      },
+
       // ── Reset ─────────────────────────────────────────────────────────────
 
       clearAll: () => {
@@ -370,6 +406,7 @@ export const useTransactionStore = create<TransactionStoreState>()(
           isLoading: false,
           error: null,
           transactionSyncFailures: 0,
+          historyOwnerId: null,
         });
       },
     }),
@@ -380,6 +417,7 @@ export const useTransactionStore = create<TransactionStoreState>()(
         transactions: state.transactions,
         pendingTransactions: state.pendingTransactions,
         rejectedTransactions: state.rejectedTransactions,
+        historyOwnerId: state.historyOwnerId,
       }),
       onRehydrateStorage: () => (state) => {
         if (state) {
@@ -387,6 +425,7 @@ export const useTransactionStore = create<TransactionStoreState>()(
           state.error = null;
           state.transactionSyncFailures = 0;
           state.rejectedTransactions ??= [];
+          state.historyOwnerId ??= null;
         }
       },
     },
@@ -504,7 +543,10 @@ let syncRerunRequested = false;
  */
 async function syncPendingOnce(): Promise<void> {
   const store = useTransactionStore;
-  const queue = [...store.getState().pendingTransactions].sort(
+  // Another agent's operations on a shared TPE wait for their own session
+  const me = useAuthStore.getState().user?.id;
+  if (!me) return;
+  const queue = store.getState().pendingTransactions.filter((t) => isOwnTransaction(t, me)).sort(
     (a, b) => new Date(a.date).getTime() - new Date(b.date).getTime(),
   );
   if (queue.length === 0) {
@@ -628,3 +670,19 @@ onClientIdRemapped((oldId, newId) => {
     void useTransactionStore.getState().syncPendingTransactions(branchId);
   }
 });
+
+// ─── Current agent's view ─────────────────────────────────────────────────────
+
+/** Queued operations of the signed-in agent (a shared TPE holds others'). */
+export function useOwnPendingTransactions(): Transaction[] {
+  const pending = useTransactionStore((s) => s.pendingTransactions);
+  const me = useAuthStore((s) => s.user?.id);
+  return useMemo(() => pending.filter((t) => isOwnTransaction(t, me)), [pending, me]);
+}
+
+/** Operations the server refused, for the signed-in agent. */
+export function useOwnRejectedTransactions(): Transaction[] {
+  const rejected = useTransactionStore((s) => s.rejectedTransactions);
+  const me = useAuthStore((s) => s.user?.id);
+  return useMemo(() => rejected.filter((t) => isOwnTransaction(t, me)), [rejected, me]);
+}

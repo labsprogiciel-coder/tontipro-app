@@ -14,7 +14,11 @@ import { useRouter } from "expo-router";
 import { colors } from "@/constants/colors";
 import { useAuthStore } from "@/stores/auth-store";
 import { useClientStore } from "@/stores/client-store";
-import { useTransactionStore } from "@/stores/transaction-store";
+import { useAuthActions } from "@convex-dev/auth/react";
+import {
+  isOwnTransaction,
+  useTransactionStore,
+} from "@/stores/transaction-store";
 
 import {
   User,
@@ -24,6 +28,7 @@ import {
   Languages,
   Info,
   LogOut,
+  Users,
   ChevronRight,
   Database,
   LucideIcon,
@@ -84,28 +89,81 @@ const SettingsScreen = () => {
   const [notificationsEnabled, setNotificationsEnabled] = useState(true);
   const [darkModeEnabled, setDarkModeEnabled] = useState(false);
 
-  const handleLogout = () => {
+  const { signOut } = useAuthActions();
+  // Shared TPE: other agents' queued operations wait for their next sign-in
+  const othersPending = useTransactionStore(
+    (s) => s.pendingTransactions.filter((t) => !isOwnTransaction(t, user?.id)).length,
+  );
+
+  /**
+   * Sign out of the server too, so the next agent on a shared TPE starts
+   * clean (otherwise users:me would sign the previous agent back in).
+   */
+  const signOutNow = async () => {
+    logout();
+    try {
+      await signOut();
+    } catch (e) {
+      console.warn("signOut failed:", e);
+    }
+    // @ts-ignore
+    router.replace("/(auth)");
+  };
+
+  /**
+   * Sign-out, also used to hand a shared TPE to another agent. The signed-in
+   * agent's queued operations stay on the phone but only sync under their
+   * own session, so they are offered a sync first.
+   */
+  const confirmSignOut = (switching: boolean) => {
+    const title = switching ? "Changer d'agent" : "Déconnexion";
+    const confirmLabel = switching ? "Changer d'agent" : "Déconnexion";
+    const me = useAuthStore.getState().user?.id;
+    const pendingOps = useTransactionStore
+      .getState()
+      .pendingTransactions.filter((t) => isOwnTransaction(t, me)).length;
+    const pendingClients = useClientStore
+      .getState()
+      .clients.filter((c) => c.syncStatus === "pending").length;
+
+    if (pendingOps === 0 && pendingClients === 0) {
+      Alert.alert(
+        title,
+        switching
+          ? "Vous serez déconnecté pour qu'un autre agent se connecte sur ce TPE."
+          : "Êtes-vous sûr de vouloir vous déconnecter ?",
+        [
+          { text: "Annuler", style: "cancel" },
+          { text: confirmLabel, style: "destructive", onPress: signOutNow },
+        ],
+        { cancelable: true },
+      );
+      return;
+    }
+
+    const parts = [
+      pendingOps > 0 && `${pendingOps} opération${pendingOps > 1 ? "s" : ""}`,
+      pendingClients > 0 && `${pendingClients} client${pendingClients > 1 ? "s" : ""}`,
+    ].filter(Boolean).join(" et ");
     Alert.alert(
-      "Déconnexion",
-      "Êtes-vous sûr de vouloir vous déconnecter?",
+      "Données non synchronisées",
+      `${parts} en attente sur ce téléphone. Synchronisez avant de partir : ` +
+        "sinon, vos opérations ne seront envoyées qu'à votre prochaine connexion sur ce TPE.",
       [
+        { text: "Annuler", style: "cancel" },
         {
-          text: "Annuler",
-          style: "cancel",
-        },
-        {
-          text: "Déconnexion",
-          style: "destructive",
+          text: "Synchroniser",
           onPress: async () => {
-            await logout();
-            // @ts-ignore
-            router.replace("/(auth)");
+            await handleForceSync();
           },
         },
+        { text: `${confirmLabel} quand même`, style: "destructive", onPress: signOutNow },
       ],
       { cancelable: true },
     );
   };
+
+  const handleLogout = () => confirmSignOut(false);
 
   const handleExport = () => {
     router.push("/(app)/data" as never);
@@ -218,6 +276,15 @@ const SettingsScreen = () => {
             value={lastSyncLabel}
             onPress={handleForceSync}
           />
+          {othersPending > 0 && (
+            <View style={styles.infoBox}>
+              <Users size={16} color="#888780" />
+              <Text style={styles.infoText}>
+                {othersPending} opération{othersPending > 1 ? "s" : ""} d&apos;un autre agent en attente sur ce
+                TPE : envoyée{othersPending > 1 ? "s" : ""} à sa prochaine connexion.
+              </Text>
+            </View>
+          )}
           <View style={styles.divider} />
           <SettingItem
             icon={Info}
@@ -277,6 +344,13 @@ const SettingsScreen = () => {
             { marginTop: SPACE.sm, marginBottom: SPACE.xxl },
           ]}
         >
+          {/* A TPE can be shared: the next agent signs in with their own account */}
+          <SettingItem
+            icon={Users}
+            label="Changer d'agent"
+            onPress={() => confirmSignOut(true)}
+          />
+          <View style={styles.divider} />
           <SettingItem
             icon={LogOut}
             label="Déconnexion"

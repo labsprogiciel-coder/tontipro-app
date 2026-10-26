@@ -53,8 +53,10 @@ export const myDevice = makeFunctionReference<
 
 /**
  * Register this phone's serial as a device waiting to be bound to the signed-in
- * agent (admin convex/devices.ts). Returns "bound" or "pending"; refusals are
- * ConvexError codes SERIAL_TAKEN, INVALID_SERIAL, FORBIDDEN, SUSPENDED.
+ * agent (admin convex/devices.ts). A TPE other agents already use can be
+ * requested too (shared TPE). Returns "bound" or "pending"; refusals are
+ * ConvexError codes INVALID_SERIAL, FORBIDDEN, SUSPENDED (and SERIAL_TAKEN
+ * from servers that predate shared TPEs).
  */
 export const registerMyDevice = makeFunctionReference<
   "mutation",
