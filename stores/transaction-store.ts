@@ -184,9 +184,15 @@ export const useTransactionStore = create<TransactionStoreState>()(
           }
 
           // The caller's own collections; the server knows who is asking
+          const owner = useAuthStore.getState().user?.id;
           const rows = await withAuthRetry(() =>
             convex.query(adminApi.listMyTransactions, {}),
           );
+          // Another agent signed in meanwhile (shared TPE): not their history
+          if (useAuthStore.getState().user?.id !== owner) {
+            set({ isLoading: false });
+            return;
+          }
 
           const clientStore = useClientStore.getState();
           const clientNameResolver = (id: string) =>
@@ -562,6 +568,8 @@ async function syncPendingOnce(): Promise<void> {
   const waiting = new Set<string>();
 
   for (const tx of queue) {
+    // The agent signed out mid-sync: the rest waits for their next session
+    if (useAuthStore.getState().user?.id !== me) break;
     const client = useClientStore.getState().getClientById(tx.clientId);
     // Client not created on the server yet — it will be remapped, then retried.
     if (client && isLocalClient(client)) continue;
@@ -589,14 +597,17 @@ async function syncPendingOnce(): Promise<void> {
         status: "completed",
       };
       // Committed one by one so an interrupted sync resumes where it stopped.
+      // Recorded for this agent; shown only if they are still signed in.
+      const stillMine = useAuthStore.getState().user?.id === me;
       store.setState((state) => ({
         pendingTransactions: state.pendingTransactions.filter(
           (p) => p.id !== tx.id,
         ),
-        transactions: [
-          synced,
-          ...state.transactions.filter((t) => t.id !== synced.id),
-        ].sort(sortByTimestampDesc),
+        transactions: stillMine
+          ? [synced, ...state.transactions.filter((t) => t.id !== synced.id)].sort(
+              sortByTimestampDesc,
+            )
+          : state.transactions,
       }));
     } catch (err) {
       if (isRetryLaterSyncError(err)) {

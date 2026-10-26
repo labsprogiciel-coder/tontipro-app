@@ -29,7 +29,11 @@ import {
 
 import { KAURIDORR_THEME } from "@/constants/colors";
 import { useAuthStore } from "@/stores/auth-store";
-import { customerToClient, useClientStore } from "@/stores/client-store";
+import {
+  customerToClient,
+  isOwnPendingClient,
+  useClientStore,
+} from "@/stores/client-store";
 import { isLocalClient } from "@/stores/sync-bridge";
 import {
   convexRowToTransaction,
@@ -176,7 +180,7 @@ const AgentDashboard: React.FC = () => {
 
   const pendingCount =
     pendingTxList.length +
-    clients.filter((c) => c.syncStatus === "pending").length;
+    clients.filter((c) => isOwnPendingClient(c, user?.id)).length;
 
   const isOffline = !online;
 

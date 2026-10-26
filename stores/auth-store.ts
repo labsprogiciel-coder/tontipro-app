@@ -206,6 +206,7 @@ export const useAuthStore = create<AuthState>()(
         await AsyncStorage.setItem(`user_${phone}`, JSON.stringify(user));
         await addToPhoneRegistry(phone);
 
+        useTransactionStore.getState().switchAgent(user.id);
         set({
           isAuthenticated: true,
           isLoadingClients: false,
@@ -238,16 +239,18 @@ export const useAuthStore = create<AuthState>()(
         // Load locally-saved user profile as offline fallback
         const localRaw = await AsyncStorage.getItem(`user_${matchedPhone}`);
         const localUser: User | null = localRaw ? JSON.parse(localRaw) : null;
+        const unlocked: User = localUser ?? {
+          id: matchedPhone,
+          name: "Agent",
+          phone: matchedPhone,
+          role: "agent",
+        };
+        useTransactionStore.getState().switchAgent(unlocked.id);
 
         set({
           isAuthenticated: true,
           isLoadingClients: true,
-          user: localUser ?? {
-            id: matchedPhone,
-            name: "Agent",
-            phone: matchedPhone,
-            role: "agent",
-          },
+          user: unlocked,
         });
 
         // Try loading data from Convex (works if online)

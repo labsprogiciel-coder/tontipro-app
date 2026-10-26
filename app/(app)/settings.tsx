@@ -13,7 +13,7 @@ import { useRouter } from "expo-router";
 
 import { colors } from "@/constants/colors";
 import { useAuthStore } from "@/stores/auth-store";
-import { useClientStore } from "@/stores/client-store";
+import { isOwnPendingClient, useClientStore } from "@/stores/client-store";
 import { useAuthActions } from "@convex-dev/auth/react";
 import {
   isOwnTransaction,
@@ -124,7 +124,7 @@ const SettingsScreen = () => {
       .pendingTransactions.filter((t) => isOwnTransaction(t, me)).length;
     const pendingClients = useClientStore
       .getState()
-      .clients.filter((c) => c.syncStatus === "pending").length;
+      .clients.filter((c) => isOwnPendingClient(c, me)).length;
 
     if (pendingOps === 0 && pendingClients === 0) {
       Alert.alert(
