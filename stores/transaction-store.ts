@@ -23,6 +23,7 @@ import {
   onClientIdRemapped,
   registerPendingDeltaProvider,
   syncErrorMessage,
+  ServerTimeoutError,
   withTimeout,
 } from "./sync-bridge";
 
@@ -513,6 +514,8 @@ async function recordWithdrawal(
           throw new Error(syncErrorMessage(err));
         }
         console.warn("Withdrawal attempt failed:", err);
+        // No answer in time: a second wait would keep the agent another 15 s
+        if (err instanceof ServerTimeoutError) break;
       }
     }
   }

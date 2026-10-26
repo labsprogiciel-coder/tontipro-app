@@ -37,9 +37,16 @@ export const SERVER_TIMEOUT_MS = 15_000;
  * connection is back, so a call cut off here may still be recorded later:
  * only use it where a replay with the same clientId is a no-op.
  */
+export class ServerTimeoutError extends Error {
+  constructor() {
+    super("Serveur injoignable (délai dépassé)");
+    this.name = "ServerTimeoutError";
+  }
+}
+
 export function withTimeout<T>(call: Promise<T>, ms = SERVER_TIMEOUT_MS): Promise<T> {
   return new Promise<T>((resolve, reject) => {
-    const timer = setTimeout(() => reject(new Error("Serveur injoignable (délai dépassé)")), ms);
+    const timer = setTimeout(() => reject(new ServerTimeoutError()), ms);
     call.then(
       (v) => { clearTimeout(timer); resolve(v); },
       (e) => { clearTimeout(timer); reject(e); },
