@@ -5,8 +5,16 @@ import NetInfo from "@react-native-community/netinfo";
  * @returns Promise<boolean> True if connected, false otherwise
  */
 export async function isConnected(): Promise<boolean> {
-  const state = await NetInfo.fetch();
-  return state.isConnected ?? false;
+  return hasInternet(await NetInfo.fetch());
+}
+
+/**
+ * Connected to a network that reaches the internet. A Wi-Fi with no internet
+ * (or a SIM without data) reports isConnected but isInternetReachable false;
+ * null means "not checked yet" and counts as online.
+ */
+function hasInternet(state: { isConnected: boolean | null; isInternetReachable?: boolean | null }) {
+  return (state.isConnected ?? false) && state.isInternetReachable !== false;
 }
 
 /**
@@ -18,6 +26,6 @@ export function subscribeToNetworkChanges(
   onChange: (isConnected: boolean) => void,
 ): () => void {
   return NetInfo.addEventListener((state) => {
-    onChange(state.isConnected ?? false);
+    onChange(hasInternet(state));
   });
 }

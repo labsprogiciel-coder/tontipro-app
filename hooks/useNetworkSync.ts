@@ -11,15 +11,35 @@ import { useAuthStore } from "@/stores/auth-store";
  * - Non bloquant : la sync tourne en arrière-plan
  * - Silencieux : les erreurs sont loggées, pas propagées
  */
+/** Resolves once a persisted store has reloaded its saved state. */
+function hydrated(store: {
+  persist: { hasHydrated: () => boolean; onFinishHydration: (fn: () => void) => () => void };
+}): Promise<void> {
+  if (store.persist.hasHydrated()) return Promise.resolve();
+  return new Promise((resolve) => {
+    const unsub = store.persist.onFinishHydration(() => {
+      unsub();
+      resolve();
+    });
+  });
+}
+
 export function useNetworkSync() {
-  const wasOfflineRef = useRef(false);
+  // Starts "offline" so the first online event (app start, sign-in) also
+  // sends what was queued before the app was closed
+  const wasOfflineRef = useRef(true);
   const syncTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
     const unsubscribe = subscribeToNetworkChanges((isConnected) => {
       if (!isConnected) {
-        // Appareil hors ligne — on note l'état
+        // Appareil hors ligne — on note l'état, et une sync encore en
+        // attente (debounce) est annulée : elle repartira à la reconnexion
         wasOfflineRef.current = true;
+        if (syncTimeoutRef.current) {
+          clearTimeout(syncTimeoutRef.current);
+          syncTimeoutRef.current = null;
+        }
         return;
       }
 
@@ -37,6 +57,11 @@ export function useNetworkSync() {
         // ✅ Sync non bloquante en arrière-plan
         const syncAll = async () => {
           try {
+            // Au démarrage, la file sauvegardée doit être relue avant l'envoi
+            await Promise.all([
+              hydrated(useTransactionStore),
+              hydrated(useClientStore),
+            ]);
             const syncTransactions =
               useTransactionStore.getState().syncPendingTransactions;
             const syncClients = useClientStore.getState().syncPendingClients;
