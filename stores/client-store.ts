@@ -10,6 +10,7 @@ import { Alert } from "react-native";
 import * as adminApi from "@/lib/admin-api";
 import type { AdminCustomer } from "@/lib/admin-api";
 import { Client } from "@/types/client";
+import { useAuthStore } from "./auth-store";
 import { DEV_MOCKS_ENABLED } from "@/__dev__/config";
 import {
   getPendingBalanceDeltas,
@@ -88,6 +89,14 @@ function buildMetadata(
     accountNumber: data.accountNumber,
     email: data.email,
   };
+}
+
+/**
+ * Whether `client` has unsynced changes made by `agentId` (entries from
+ * before pendingBy existed count as the current agent's).
+ */
+export function isOwnPendingClient(client: Client, agentId: string | undefined): boolean {
+  return client.syncStatus === "pending" && (!client.pendingBy || client.pendingBy === agentId);
 }
 
 /**
@@ -281,6 +290,7 @@ export const useClientStore = create<ClientStoreState>()(
             // Pending until Convex confirms the create and assigns a real id.
             syncStatus: "pending" as const,
             localOnly: true,
+            pendingBy: useAuthStore.getState().user?.id,
           };
 
           // Optimistic update — add to local store immediately
@@ -344,6 +354,7 @@ export const useClientStore = create<ClientStoreState>()(
           const existing = get().clients.find((c) => c.id === id);
           if (!existing) throw new Error("Client not found");
           const local = isLocalClient(existing);
+          const me = useAuthStore.getState().user?.id;
 
           // The balance is derived from collections on the server; it is
           // never edited directly.
@@ -362,6 +373,8 @@ export const useClientStore = create<ClientStoreState>()(
                     online && !local
                       ? ("synced" as const)
                       : ("pending" as const),
+                  // The first agent with unsynced changes keeps them
+                  pendingBy: online && !local ? client.pendingBy : (client.pendingBy ?? me),
                 };
                 return updatedClient;
               }
@@ -411,7 +424,9 @@ export const useClientStore = create<ClientStoreState>()(
                 }
                 set((state) => ({
                   clients: state.clients.map((c) =>
-                    c.id === id ? { ...c, syncStatus: "pending" as const } : c,
+                    c.id === id
+                      ? { ...c, syncStatus: "pending" as const, pendingBy: c.pendingBy ?? me }
+                      : c,
                   ),
                 }));
               }
@@ -461,15 +476,18 @@ export const useClientStore = create<ClientStoreState>()(
 
       syncPendingClients: async () => {
         const { clients } = get();
-        const pendingClients = clients.filter(
-          (c) => c.syncStatus === "pending",
-        );
+        // Another agent's clients on a shared TPE wait for their own session
+        const me = useAuthStore.getState().user?.id;
+        if (!me) return;
+        const pendingClients = clients.filter((c) => isOwnPendingClient(c, me));
         if (pendingClients.length === 0) return;
 
         set({ isLoading: true, error: null });
         let refused = false;
         try {
           for (const client of pendingClients) {
+            // The agent signed out mid-sync: the rest waits for their next session
+            if (useAuthStore.getState().user?.id !== me) break;
             try {
               // Never send `balance`: the local value already includes queued
               // transactions, which syncPendingTransactions applies on the

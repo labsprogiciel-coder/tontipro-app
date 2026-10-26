@@ -23,4 +23,9 @@ export interface Client {
   syncStatus?: "synced" | "pending";
   /** Created on the device and not yet confirmed by Convex (id is local). */
   localOnly?: boolean;
+  /**
+   * Agent whose unsynced create or edit this is. On a shared TPE it is sent
+   * only under that agent's session, so the server credits the right agent.
+   */
+  pendingBy?: string;
 }

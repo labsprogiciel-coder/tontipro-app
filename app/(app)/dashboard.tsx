@@ -29,12 +29,16 @@ import {
 
 import { KAURIDORR_THEME } from "@/constants/colors";
 import { useAuthStore } from "@/stores/auth-store";
-import { customerToClient, useClientStore } from "@/stores/client-store";
+import {
+  customerToClient,
+  isOwnPendingClient,
+  useClientStore,
+} from "@/stores/client-store";
 import { isLocalClient } from "@/stores/sync-bridge";
 import {
   convexRowToTransaction,
   mergeTransactionsSorted,
-  useTransactionStore,
+  useOwnPendingTransactions,
 } from "@/stores/transaction-store";
 import { isConnected, subscribeToNetworkChanges } from "@/utils/network";
 import { Client } from "@/types/client";
@@ -134,7 +138,7 @@ const AgentDashboard: React.FC = () => {
     [customersData, pendingLocalClients],
   );
 
-  const pendingTxList = useTransactionStore((s) => s.pendingTransactions);
+  const pendingTxList = useOwnPendingTransactions();
 
   const transactions = useMemo(() => {
     const clientNameResolver = (id: string) =>
@@ -176,7 +180,7 @@ const AgentDashboard: React.FC = () => {
 
   const pendingCount =
     pendingTxList.length +
-    clients.filter((c) => c.syncStatus === "pending").length;
+    clients.filter((c) => isOwnPendingClient(c, user?.id)).length;
 
   const isOffline = !online;
 
