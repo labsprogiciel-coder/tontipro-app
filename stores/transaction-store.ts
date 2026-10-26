@@ -23,6 +23,7 @@ import {
   onClientIdRemapped,
   registerPendingDeltaProvider,
   syncErrorMessage,
+  withTimeout,
 } from "./sync-bridge";
 
 // ─── helpers ─────────────────────────────────────────────────────────────────
@@ -288,12 +289,16 @@ export const useTransactionStore = create<TransactionStoreState>()(
               // The server takes the agent, branch, time and TPE (the bound
               // device) from the session. The clientRef makes a replay
               // (lost response → queue) return the same deposit.
-              const transactionId = await convex.mutation(adminApi.createDeposit, {
-                customerId: transactionData.clientId,
-                amount: transactionData.amount,
-                clientId: newTransaction.clientRef!,
-                ...recordedOn(newTransaction),
-              });
+              // No answer in time (network without internet): queued below;
+              // the replay carries the same clientRef, so it can't double up
+              const transactionId = await withTimeout(
+                convex.mutation(adminApi.createDeposit, {
+                  customerId: transactionData.clientId,
+                  amount: transactionData.amount,
+                  clientId: newTransaction.clientRef!,
+                  ...recordedOn(newTransaction),
+                }),
+              );
 
               await clientStore.updateClientBalance(
                 transactionData.clientId,
@@ -501,7 +506,7 @@ async function recordWithdrawal(
     for (let attempt = 0; attempt < 2; attempt++) {
       try {
         attempted = true;
-        const id = await convex.mutation(adminApi.createWithdrawal, args);
+        const id = await withTimeout(convex.mutation(adminApi.createWithdrawal, args));
         return { ...withdrawal, id, status: "completed" };
       } catch (err) {
         if (isPermanentSyncError(err) || isRetryLaterSyncError(err)) {
@@ -584,10 +589,12 @@ async function syncPendingOnce(): Promise<void> {
       };
       // A queued withdrawal was paid out offline: the server records it even
       // past the customer's balance (flagged as an overdraft)
-      const transactionId =
+      // A lost connection mid-sync leaves it queued for the next pass
+      const transactionId = await withTimeout(
         tx.type === "withdrawal"
-          ? await convex.mutation(adminApi.createWithdrawal, { ...args, offline: true })
-          : await convex.mutation(adminApi.createDeposit, args);
+          ? convex.mutation(adminApi.createWithdrawal, { ...args, offline: true })
+          : convex.mutation(adminApi.createDeposit, args),
+      );
 
       // The local balance already counts this deposit (applied when it was
       // queued); it only moves from "pending" to "synced".

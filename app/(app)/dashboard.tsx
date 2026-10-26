@@ -39,6 +39,7 @@ import {
   convexRowToTransaction,
   mergeTransactionsSorted,
   useOwnPendingTransactions,
+  useTransactionStore,
 } from "@/stores/transaction-store";
 import { isConnected, subscribeToNetworkChanges } from "@/utils/network";
 import { Client } from "@/types/client";
@@ -130,23 +131,27 @@ const AgentDashboard: React.FC = () => {
     () => localClients.filter(isLocalClient),
     [localClients],
   );
+  // Until the server answers (offline, or still connecting) show the copy
+  // saved on the phone: the store keeps the last server list plus local work
   const clients = useMemo(
-    () => [
-      ...pendingLocalClients,
-      ...(customersData ?? []).map(customerToClient),
-    ],
-    [customersData, pendingLocalClients],
+    () =>
+      customersData === undefined
+        ? localClients
+        : [...pendingLocalClients, ...customersData.map(customerToClient)],
+    [customersData, localClients, pendingLocalClients],
   );
 
   const pendingTxList = useOwnPendingTransactions();
+  const storedTransactions = useTransactionStore((s) => s.transactions);
 
   const transactions = useMemo(() => {
+    if (transactionsData === undefined) return storedTransactions;
     const clientNameResolver = (id: string) =>
       clients.find((c) => c.id === id)?.name;
-    return (transactionsData ?? []).map((row) =>
+    return transactionsData.map((row) =>
       convexRowToTransaction(row, clientNameResolver),
     );
-  }, [transactionsData, clients]);
+  }, [transactionsData, storedTransactions, clients]);
 
   // Local UI state
   const perms = usePermissions();
@@ -154,7 +159,13 @@ const AgentDashboard: React.FC = () => {
   const [searchQuery, setSearchQuery] = useState("");
   const [online, setOnline] = useState(true);
 
-  const isLoading = customersData === undefined || transactionsData === undefined;
+  // Only a first sign-in with nothing saved yet waits for the server;
+  // offline, the saved data is shown right away
+  const hasSavedData = localClients.length > 0 || storedTransactions.length > 0;
+  const isLoading =
+    online &&
+    !hasSavedData &&
+    (customersData === undefined || transactionsData === undefined);
 
   // ── Network monitoring ──────────────────────────────────────────────────────
   useEffect(() => {

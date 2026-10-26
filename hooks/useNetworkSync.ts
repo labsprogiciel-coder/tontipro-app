@@ -12,7 +12,9 @@ import { useAuthStore } from "@/stores/auth-store";
  * - Silencieux : les erreurs sont loggées, pas propagées
  */
 export function useNetworkSync() {
-  const wasOfflineRef = useRef(false);
+  // Starts "offline" so the first online event (app start, sign-in) also
+  // sends what was queued before the app was closed
+  const wasOfflineRef = useRef(true);
   const syncTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {

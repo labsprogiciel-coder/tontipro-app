@@ -26,6 +26,27 @@ export function isLocalClient(
   return client.syncStatus === "pending" && !CONVEX_ID_RE.test(client.id);
 }
 
+// ── Server calls on a poor connection ────────────────────────────────────────
+
+/** How long the agent waits for the server before the operation is queued. */
+export const SERVER_TIMEOUT_MS = 15_000;
+
+/**
+ * Rejects with a plain Error (a transient failure) when `call` takes longer
+ * than `ms`. Convex keeps an unanswered mutation and sends it once the
+ * connection is back, so a call cut off here may still be recorded later:
+ * only use it where a replay with the same clientId is a no-op.
+ */
+export function withTimeout<T>(call: Promise<T>, ms = SERVER_TIMEOUT_MS): Promise<T> {
+  return new Promise<T>((resolve, reject) => {
+    const timer = setTimeout(() => reject(new Error("Serveur injoignable (délai dépassé)")), ms);
+    call.then(
+      (v) => { clearTimeout(timer); resolve(v); },
+      (e) => { clearTimeout(timer); reject(e); },
+    );
+  });
+}
+
 // ── Transaction helpers ──────────────────────────────────────────────────────
 
 export function balanceDelta(tx: Pick<Transaction, "type" | "amount">): number {
