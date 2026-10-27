@@ -27,6 +27,7 @@ const TransactionItem: React.FC<TransactionProps> = ({
 
   return (
     <TouchableOpacity
+      accessibilityRole="button"
       style={[styles.item, isLast && styles.itemLast]}
       onPress={onPress}
       activeOpacity={0.7}
@@ -90,7 +91,7 @@ const styles = StyleSheet.create({
   },
   textContainer: { marginLeft: SPACE.md, flex: 1 },
   name: { fontSize: 13, fontWeight: "500", color: "#1a1a18" },
-  meta: { fontSize: 11, color: "#888780" },
+  meta: { fontSize: 11, color: "#6c6b65" },
   right: { alignItems: "flex-end" },
   amountRow: { flexDirection: "row", alignItems: "center", gap: SPACE.xs },
   multiplierBadge: {
@@ -100,7 +101,7 @@ const styles = StyleSheet.create({
   },
   multiplierText: { fontSize: 10, fontWeight: "700" },
   val: { fontSize: 13, fontWeight: "500" },
-  bal: { fontSize: 10, color: "#888780", marginTop: SPACE.xxs },
+  bal: { fontSize: 10, color: "#6c6b65", marginTop: SPACE.xxs },
 });
 
 export default TransactionItem;

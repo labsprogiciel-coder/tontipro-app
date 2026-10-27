@@ -133,16 +133,16 @@ function ErrorFallback({ error }: { error: Error | null }) {
   return (
     <View style={styles.container}>
       <View style={styles.content}>
-        <Text style={styles.title}>Something went wrong</Text>
+        <Text accessibilityRole="header" style={styles.title}>Une erreur est survenue</Text>
         <Text style={styles.subtitle}>{error?.message}</Text>
         {Platform.OS !== "web" && (
           <Text style={styles.description}>
-            Please check your device logs for more details.
+            Redémarrez l&apos;application. Si le problème persiste, contactez votre administrateur.
           </Text>
         )}
 
-        <Pressable style={styles.resetButton} onPress={handleReset}>
-          <Text style={styles.resetButtonText}>Return to Home</Text>
+        <Pressable accessibilityRole="button" style={styles.resetButton} onPress={handleReset}>
+          <Text style={styles.resetButtonText}>Retour à l&apos;accueil</Text>
         </Pressable>
       </View>
     </View>

@@ -41,7 +41,7 @@ const ORANGE_DARK = "#993C1D";
 const ORANGE_LIGHT = "#FAE8E0";
 const BG = "#FFFFFF";
 const BORDER = "rgba(0,0,0,0.09)";
-const TEXT_MUTED = "#888780";
+const TEXT_MUTED = "#6c6b65";
 
 // ─── Tab definition ──────────────────────────────────────────────────────────
 export type TabKey = "home" | "clients" | "history" | "reports";
@@ -303,7 +303,8 @@ interface TabButtonProps {
 function TabButton({ tab, active, onPress }: TabButtonProps) {
   // Animated scale + opacity on activation
   const scale = useRef(new Animated.Value(active ? 1 : 0.92)).current;
-  const opacity = useRef(new Animated.Value(active ? 1 : 0.55)).current;
+  // Inactive tabs stay fully opaque: faded, their labels fall below 4.5:1
+  const opacity = useRef(new Animated.Value(1)).current;
   // Dot indicator below active tab
   const dotScale = useRef(new Animated.Value(active ? 1 : 0)).current;
 
@@ -316,7 +317,7 @@ function TabButton({ tab, active, onPress }: TabButtonProps) {
         bounciness: 8,
       }),
       Animated.timing(opacity, {
-        toValue: active ? 1 : 0.55,
+        toValue: 1,
         duration: 180,
         useNativeDriver: true,
       }),

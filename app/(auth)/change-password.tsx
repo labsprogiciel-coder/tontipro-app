@@ -11,6 +11,7 @@ import { PinEntry } from "@/app/components/ui/pin-entry";
 import { api } from "@/convex/_generated/api";
 
 import { SPACE } from "@/constants/spacing";
+import { LiveText } from "@/app/components/ui/live-text";
 const T = {
   orange: "#D85A30",
   orangeStrong: "#BB4721", // fills behind white text (5.2:1)
@@ -19,7 +20,7 @@ const T = {
   bgSecondary: "#f5f4f0",
   textPrimary: "#1a1a18",
   textSecondary: "#5f5e5a",
-  textTertiary: "#888780",
+  textTertiary: "#6c6b65",
   border: "rgba(0,0,0,0.1)",
 };
 
@@ -152,7 +153,7 @@ export default function ChangePasswordScreen() {
           <View style={styles.logoCircle}>
             <KeyRound size={32} color="white" />
           </View>
-          <Text style={styles.title}>Mot de passe</Text>
+          <Text accessibilityRole="header" style={styles.title}>Mot de passe</Text>
           <Text style={styles.subtitle}>{messages[reason ?? "manual"]}</Text>
         </View>
 
@@ -187,9 +188,9 @@ export default function ChangePasswordScreen() {
           {isLoading ? (
             <ActivityIndicator color={T.orange} />
           ) : error ? (
-            <Text style={styles.errorText}>{error}</Text>
+            <LiveText style={styles.errorText}>{error}</LiveText>
           ) : step !== "current" ? (
-            <Pressable onPress={goBack} hitSlop={8} style={styles.backBtn}>
+            <Pressable accessibilityRole="button" onPress={goBack} hitSlop={8} style={styles.backBtn}>
               <ArrowLeft size={16} color={T.textSecondary} />
               <Text style={styles.backText}>Étape précédente</Text>
             </Pressable>

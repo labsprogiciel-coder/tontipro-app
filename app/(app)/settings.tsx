@@ -66,6 +66,7 @@ const SettingItem = ({
   destructive = false,
 }: SettingItemProps) => (
   <Pressable
+    accessibilityRole="button"
     onPress={onPress}
     style={({ pressed }) => [styles.item, pressed && styles.pressed]}
   >
@@ -77,7 +78,7 @@ const SettingItem = ({
     </View>
     <View style={styles.itemRight}>
       {value && <Text style={styles.itemValue}>{value}</Text>}
-      <ChevronRight size={18} color="#888780" />
+      <ChevronRight size={18} color="#6c6b65" />
     </View>
   </Pressable>
 );
@@ -242,6 +243,7 @@ const SettingsScreen = () => {
               </Text>
             </View>
             <Pressable
+              accessibilityRole="button"
               style={styles.editBtn}
               onPress={() => router.push("/(app)/profile")}
             >
@@ -294,7 +296,7 @@ const SettingsScreen = () => {
           />
           {othersPending > 0 && (
             <View style={styles.infoBox}>
-              <Users size={16} color="#888780" />
+              <Users size={16} color="#6c6b65" />
               <Text style={styles.infoText}>
                 {othersPending} opération{othersPending > 1 ? "s" : ""} d&apos;un autre agent en attente sur ce
                 TPE : envoyée{othersPending > 1 ? "s" : ""} à sa prochaine connexion.
@@ -324,7 +326,7 @@ const SettingsScreen = () => {
 
             {/* Backup Status Info */}
             <View style={styles.infoBox}>
-              <DatabaseBackup size={16} color="#888780" />
+              <DatabaseBackup size={16} color="#6c6b65" />
               <Text style={styles.infoText}>
                 Dernière sauvegarde locale : Aujourd&apos;hui à 10:45
               </Text>
@@ -397,7 +399,7 @@ const styles = StyleSheet.create({
   sectionLabel: {
     fontSize: 11,
     fontWeight: "600",
-    color: "#888780",
+    color: "#6c6b65",
     textTransform: "uppercase",
     marginBottom: SPACE.sm,
     // Aligned with the row content inside the cards below.
@@ -445,7 +447,7 @@ const styles = StyleSheet.create({
   itemLeft: { flexDirection: "row", alignItems: "center", gap: SPACE.md },
   itemLabel: { fontSize: 14, color: "#1a1a18", fontWeight: "500" },
   itemRight: { flexDirection: "row", alignItems: "center", gap: SPACE.sm },
-  itemValue: { fontSize: 13, color: "#888780" },
+  itemValue: { fontSize: 13, color: "#6c6b65" },
   divider: {
     height: 0.5,
     backgroundColor: "rgba(0,0,0,0.05)",
@@ -455,7 +457,7 @@ const styles = StyleSheet.create({
   destructiveText: { color: "#a32d2d" },
   versionText: {
     textAlign: "center",
-    color: "#888780",
+    color: "#6c6b65",
     fontSize: 11,
     marginBottom: SPACE.lg,
   },
@@ -469,7 +471,7 @@ const styles = StyleSheet.create({
   },
   infoText: {
     fontSize: 12,
-    color: "#888780",
+    color: "#6c6b65",
     fontStyle: "italic",
   },
   warningContainer: {

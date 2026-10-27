@@ -142,7 +142,7 @@ function StepNavRow({
 }) {
   return (
     <View style={styles.navRow}>
-      <Pressable style={styles.backBtn} onPress={onBack}>
+      <Pressable accessibilityRole="button" style={styles.backBtn} onPress={onBack}>
         <ChevronLeft size={16} color={T.text3} strokeWidth={1.8} />
         <Text style={styles.backLabel}>{backLabel}</Text>
       </Pressable>
@@ -166,7 +166,7 @@ function Field({
     <View style={styles.field}>
       <Text style={styles.fieldLabel}>
         {label}
-        {required && <Text style={{ color: T.orange }}> *</Text>}
+        {required && <Text style={{ color: T.orangeDk }}> *</Text>}
       </Text>
       {children}
     </View>
@@ -399,7 +399,7 @@ export default function AddClientScreen() {
           showsVerticalScrollIndicator={false}
           keyboardShouldPersistTaps="handled"
         >
-          <Text style={styles.screenTitle}>
+          <Text accessibilityRole="header" style={styles.screenTitle}>
             {isEdit ? "Modifier le client" : "Identité du membre"}
           </Text>
           <Text style={styles.screenSub}>
@@ -411,6 +411,7 @@ export default function AddClientScreen() {
           {/* fullName in Convex → collected as `name` locally */}
           <Field label="Nom complet" required>
             <TextInput
+              accessibilityLabel="Nom complet, obligatoire"
               style={[
                 styles.fieldInput,
                 name.length > 0 && styles.fieldInputFilled,
@@ -432,6 +433,7 @@ export default function AddClientScreen() {
                 <Text style={styles.countryPillText}>🇧🇫 +226</Text>
               </View>
               <TextInput
+                accessibilityLabel="Numéro de téléphone, obligatoire"
                 style={[
                   styles.fieldInput,
                   { flex: 1 },
@@ -457,6 +459,7 @@ export default function AddClientScreen() {
           {/* metadata.accountNumber in Convex */}
           <Field label="Code client (optionnel)">
             <TextInput
+              accessibilityLabel="Code client, optionnel"
               style={[
                 styles.fieldInput,
                 accountNumber.length > 0 && styles.fieldInputFilled,
@@ -475,6 +478,7 @@ export default function AddClientScreen() {
           {/* metadata.address in Convex */}
           <Field label="Quartier / Localité">
             <TextInput
+              accessibilityLabel="Quartier ou localité"
               style={[
                 styles.fieldInput,
                 locality.length > 0 && styles.fieldInputFilled,
@@ -489,6 +493,7 @@ export default function AddClientScreen() {
           {/* metadata.groupName in Convex */}
           <Field label="Nom du groupe tontine (optionnel)">
             <TextInput
+              accessibilityLabel="Nom du groupe tontine, optionnel"
               style={[
                 styles.fieldInput,
                 groupName.length > 0 && styles.fieldInputFilled,
@@ -505,6 +510,7 @@ export default function AddClientScreen() {
 
         <View style={styles.ctaWrap}>
           <Pressable
+            accessibilityRole="button"
             style={[styles.btnMain, !step1Valid && styles.btnMainDisabled]}
             onPress={() => step1Valid && setStep(2)}
           >
@@ -569,6 +575,8 @@ export default function AddClientScreen() {
         >
           {chips.map((val) => (
             <Pressable
+              accessibilityRole="radio"
+              accessibilityState={{ checked: amountText === val }}
               key={val}
               style={[styles.chip, amountText === val && styles.chipActive]}
               onPress={() => setAmountText(val)}
@@ -589,6 +597,7 @@ export default function AddClientScreen() {
 
         <View style={styles.ctaWrap}>
           <Pressable
+            accessibilityRole="button"
             style={[styles.btnMain, !isValid && styles.btnMainDisabled]}
             onPress={() => isValid && setStep(3)}
           >
@@ -628,7 +637,7 @@ export default function AddClientScreen() {
           showsVerticalScrollIndicator={false}
           keyboardShouldPersistTaps="handled"
         >
-          <Text style={styles.screenTitle}>Fréquence de collecte</Text>
+          <Text accessibilityRole="header" style={styles.screenTitle}>Fréquence de collecte</Text>
           <Text style={styles.screenSub}>
             À quelle fréquence l&apos;agent passera-t-il collecter l&apos;épargne ?
           </Text>
@@ -637,6 +646,8 @@ export default function AddClientScreen() {
           <View style={styles.freqGrid}>
             {FREQUENCIES.map((f) => (
               <Pressable
+                accessibilityRole="radio"
+                accessibilityState={{ checked: frequency === f.value }}
                 key={f.value}
                 style={[
                   styles.freqCard,
@@ -670,6 +681,8 @@ export default function AddClientScreen() {
             <View style={styles.daysRow}>
               {DAY_LABELS.map((label, idx) => (
                 <Pressable
+                  accessibilityRole="checkbox"
+                  accessibilityState={{ checked: activeDays.includes(idx) }}
                   key={idx}
                   style={[
                     styles.dayBtn,
@@ -718,6 +731,7 @@ export default function AddClientScreen() {
               <Text style={styles.fieldLabel}>Montant cible (FCFA)</Text>
               <View style={{ position: "relative" }}>
                 <TextInput
+                  accessibilityLabel="Montant cible en francs CFA"
                   style={[
                     styles.fieldInput,
                     savingsGoal.length > 0 && styles.fieldInputFilled,
@@ -746,7 +760,7 @@ export default function AddClientScreen() {
         </ScrollView>
 
         <View style={styles.ctaWrap}>
-          <Pressable style={styles.btnMain} onPress={() => setStep(4)}>
+          <Pressable accessibilityRole="button" style={styles.btnMain} onPress={() => setStep(4)}>
             <Text style={styles.btnMainText}>Continuer</Text>
             <ChevronRight size={15} color="white" strokeWidth={1.8} />
           </Pressable>
@@ -882,6 +896,7 @@ export default function AddClientScreen() {
             </View>
 
             <Pressable
+              accessibilityRole="button"
               style={[
                 styles.btnMain,
                 { marginTop: SPACE.lg },
@@ -982,6 +997,7 @@ export default function AddClientScreen() {
 
         <View style={styles.actionPair}>
           <Pressable
+            accessibilityRole="button"
             style={styles.btnOutline}
             onPress={() =>
               router.push({
@@ -993,12 +1009,13 @@ export default function AddClientScreen() {
             <ArrowDown size={14} color={T.text2} strokeWidth={1.8} />
             <Text style={styles.btnOutlineText}>Dépôt maintenant</Text>
           </Pressable>
-          <Pressable style={styles.btnOrange} onPress={resetForm}>
+          <Pressable accessibilityRole="button" style={styles.btnOrange} onPress={resetForm}>
             <Text style={styles.btnOrangeText}>Nouveau membre</Text>
           </Pressable>
         </View>
 
         <Pressable
+          accessibilityRole="button"
           style={[styles.btnOutline, { width: "100%", marginTop: SPACE.sm }]}
           onPress={() => router.push("/(app)/clients")}
         >
@@ -1318,7 +1335,7 @@ const styles = StyleSheet.create({
     textAlign: "right",
     marginLeft: SPACE.sm,
   },
-  rValueOrange: { color: T.orange },
+  rValueOrange: { color: T.orangeDk },
   rValueGreen: { color: T.green },
 
   projChips: {

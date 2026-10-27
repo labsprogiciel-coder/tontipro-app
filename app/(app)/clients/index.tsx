@@ -60,6 +60,7 @@ export const ClientsScreen: React.FC = () => {
 
   const renderClient = ({ item }: any) => (
     <TouchableOpacity
+      accessibilityRole="button"
       style={styles.clientCard}
       onPress={() => router.push(`/(app)/clients/${item.id}`)}
     >
@@ -98,12 +99,15 @@ export const ClientsScreen: React.FC = () => {
           <TouchableOpacity
             style={styles.backBtn}
             onPress={() => router.back()}
+            accessibilityRole="button"
+            accessibilityLabel="Retour"
           >
             <ChevronLeft size={18} color={T.text2} strokeWidth={2} />
           </TouchableOpacity>
-          <Text style={styles.title}>Mes Clients</Text>
+          <Text accessibilityRole="header" style={styles.title}>Mes Clients</Text>
         </View>
         <TouchableOpacity
+          accessibilityRole="button"
           style={styles.sortBtn}
           onPress={() => setSortOrder((o) => (o === "desc" ? "asc" : "desc"))}
         >
@@ -120,6 +124,8 @@ export const ClientsScreen: React.FC = () => {
 
       <View style={styles.searchTypeRow}>
         <TouchableOpacity
+          accessibilityRole="radio"
+          accessibilityState={{ checked: searchType === "name" }}
           style={[
             styles.searchTypeBtn,
             searchType === "name" && styles.searchTypeBtnActive,
@@ -139,6 +145,8 @@ export const ClientsScreen: React.FC = () => {
           </Text>
         </TouchableOpacity>
         <TouchableOpacity
+          accessibilityRole="radio"
+          accessibilityState={{ checked: searchType === "code" }}
           style={[
             styles.searchTypeBtn,
             searchType === "code" && styles.searchTypeBtnActive,
@@ -173,6 +181,7 @@ export const ClientsScreen: React.FC = () => {
             Ce client n&apos;existe pas, voulez-vous l&apos;ajouter&nbsp;?
           </Text>
           <TouchableOpacity
+            accessibilityRole="button"
             style={styles.addBtn}
             onPress={() => {
               if (searchType === "code") {
@@ -209,6 +218,7 @@ export const ClientsScreen: React.FC = () => {
                 épargnes.
               </Text>
               <TouchableOpacity
+                accessibilityRole="button"
                 style={styles.addBtn}
                 onPress={() => router.push("/(app)/clients/add")}
               >
@@ -281,7 +291,7 @@ const styles = StyleSheet.create({
     paddingVertical: SPACE.xs,
     borderRadius: 20,
   },
-  sortLabel: { fontSize: 11, fontWeight: "500", color: T.orange },
+  sortLabel: { fontSize: 11, fontWeight: "500", color: T.orangeDk },
 
   searchTypeRow: {
     flexDirection: "row",
@@ -301,7 +311,7 @@ const styles = StyleSheet.create({
   },
   searchTypeBtnActive: { borderColor: T.orange, backgroundColor: T.orangeLt },
   searchTypeText: { fontSize: 12, fontWeight: "600", color: T.text3 },
-  searchTypeTextActive: { color: T.orange },
+  searchTypeTextActive: { color: T.orangeDk },
 
   clientCard: {
     flexDirection: "row",
@@ -354,12 +364,12 @@ const styles = StyleSheet.create({
     marginRight: SPACE.md,
     marginTop: SPACE.xxs,
   },
-  avatarText: { color: T.orange, fontWeight: "700", fontSize: 14 },
+  avatarText: { color: T.orangeDk, fontWeight: "700", fontSize: 14 },
   name: { fontSize: 15, fontWeight: "600", color: T.text1, flex: 1 },
   code: {
     fontSize: 11,
     fontWeight: "600",
-    color: T.orange,
+    color: T.orangeDk,
     backgroundColor: T.orangeLt,
     paddingHorizontal: SPACE.sm,
     paddingVertical: SPACE.xs,

@@ -10,6 +10,8 @@ interface OfflineIconProps {
 const OfflineIcon: React.FC<OfflineIconProps> = ({ isOffline, onPress }) => (
   <Pressable
     onPress={onPress}
+    accessibilityRole={onPress ? "button" : undefined}
+    accessibilityLabel={isOffline ? "Hors ligne" : "En ligne"}
     style={({ pressed }) => [
       styles.iconButton,
       pressed && styles.pressed,

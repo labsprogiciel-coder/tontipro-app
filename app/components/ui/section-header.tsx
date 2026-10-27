@@ -13,9 +13,9 @@ const SectionHeader: React.FC<SectionHeaderProps> = ({
   onLinkClick,
 }) => (
   <View style={styles.row}>
-    <Text style={styles.title}>{title}</Text>
+    <Text accessibilityRole="header" style={styles.title}>{title}</Text>
     {linkText && (
-      <Pressable onPress={onLinkClick}>
+      <Pressable accessibilityRole="button" onPress={onLinkClick}>
         <Text style={styles.link}>{linkText} →</Text>
       </Pressable>
     )}
@@ -32,10 +32,10 @@ const styles = StyleSheet.create({
   title: {
     fontSize: 11,
     fontWeight: "500",
-    color: "#888780",
+    color: "#6c6b65",
     textTransform: "uppercase",
   },
-  link: { fontSize: 11, color: "#D85A30" },
+  link: { fontSize: 11, color: "#993C1D" },
 });
 
 export default SectionHeader;

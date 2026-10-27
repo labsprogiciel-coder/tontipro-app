@@ -47,6 +47,7 @@ import {
 import { MizoMark, MizoWordmark } from "@/app/components/ui/MizoLogo";
 
 import { SPACE } from "@/constants/spacing";
+import { LiveText } from "@/app/components/ui/live-text";
 const T = {
   orange: "#D85A30",
   orangeStrong: "#BB4721", // fills behind white text (5.2:1)
@@ -56,7 +57,7 @@ const T = {
   bgSecondary: "#f5f4f0",
   textPrimary: "#1a1a18",
   textSecondary: "#5f5e5a",
-  textTertiary: "#888780",
+  textTertiary: "#6c6b65",
   border: "rgba(0,0,0,0.1)",
   borderStrong: "rgba(0,0,0,0.2)",
 };
@@ -326,7 +327,7 @@ export default function LoginScreen() {
               <MizoMark size={64} />
             </View>
             <MizoWordmark height={22} />
-            <Text style={styles.title}>{picked.name}</Text>
+            <Text accessibilityRole="header" style={styles.title}>{picked.name}</Text>
             <Text style={styles.subtitle}>Entrez votre code PIN à 4 chiffres pour continuer.</Text>
           </View>
 
@@ -347,11 +348,12 @@ export default function LoginScreen() {
             {isLoading ? (
               <ActivityIndicator color={T.orange} />
             ) : error ? (
-              <Text style={styles.errorText}>{error}</Text>
+              <LiveText style={styles.errorText}>{error}</LiveText>
             ) : null}
           </View>
 
           <Pressable
+            accessibilityRole="button"
             onPress={() => {
               setPicked(null);
               setUnlockCode("");
@@ -375,7 +377,7 @@ export default function LoginScreen() {
               <MizoMark size={64} />
             </View>
             <MizoWordmark height={22} />
-            <Text style={styles.title}>Qui utilise ce TPE ?</Text>
+            <Text accessibilityRole="header" style={styles.title}>Qui utilise ce TPE ?</Text>
             <Text style={styles.subtitle}>Choisissez votre nom, puis entrez votre code PIN.</Text>
           </View>
 
@@ -410,10 +412,11 @@ export default function LoginScreen() {
             ))}
           </View>
 
-          {error ? <Text style={[styles.errorText, { marginTop: SPACE.md }]}>{error}</Text> : null}
+          {error ? <LiveText style={[styles.errorText, { marginTop: SPACE.md }]}>{error}</LiveText> : null}
 
           <View style={styles.modeLinks}>
             <Pressable
+              accessibilityRole="button"
               onPress={() => {
                 setUsePassword(true);
                 setError("");
@@ -439,7 +442,7 @@ export default function LoginScreen() {
               <MizoMark size={64} />
             </View>
             <MizoWordmark height={22} />
-            <Text style={styles.title}>{user?.name ?? "Bienvenue"}</Text>
+            <Text accessibilityRole="header" style={styles.title}>{user?.name ?? "Bienvenue"}</Text>
             <Text style={styles.subtitle}>
               Entrez votre code PIN à 4 chiffres pour continuer.
             </Text>
@@ -462,16 +465,16 @@ export default function LoginScreen() {
             {isLoading ? (
               <ActivityIndicator color={T.orange} />
             ) : error ? (
-              <Text style={styles.errorText}>{error}</Text>
+              <LiveText style={styles.errorText}>{error}</LiveText>
             ) : null}
           </View>
 
-          <Pressable onPress={handleHandOver} style={styles.pinFooterLink}>
+          <Pressable accessibilityRole="button" onPress={handleHandOver} style={styles.pinFooterLink}>
             <Text style={styles.footerText}>
               Ce n&apos;est pas vous ? <Text style={styles.footerLinkText}>Changer d&apos;agent</Text>
             </Text>
           </Pressable>
-          <Pressable onPress={handleSignOut} style={styles.pinFooterLink}>
+          <Pressable accessibilityRole="button" onPress={handleSignOut} style={styles.pinFooterLink}>
             <Text style={styles.footerText}>
               Code oublié ? <Text style={styles.footerLinkText}>Se reconnecter</Text>
             </Text>
@@ -502,7 +505,7 @@ export default function LoginScreen() {
               <MizoMark size={64} />
             </View>
             <MizoWordmark height={22} />
-            <Text style={styles.title}>{copy.title}</Text>
+            <Text accessibilityRole="header" style={styles.title}>{copy.title}</Text>
             <Text style={styles.subtitle}>{copy.subtitle}</Text>
           </View>
 
@@ -512,6 +515,7 @@ export default function LoginScreen() {
               <View style={styles.inputWrapper}>
                 <Phone size={18} color={T.textTertiary} style={styles.inputIcon} />
                 <TextInput
+                  accessibilityLabel="Numéro de téléphone"
                   style={styles.input}
                   placeholder="70 00 00 00"
                   placeholderTextColor={T.textTertiary}
@@ -531,6 +535,7 @@ export default function LoginScreen() {
                 <View style={styles.inputWrapper}>
                   <KeyRound size={18} color={T.textTertiary} style={styles.inputIcon} />
                   <TextInput
+                    accessibilityLabel={mode === "activate" ? "Code d'activation" : "Code de réinitialisation"}
                     style={styles.input}
                     placeholder="ABCD2345"
                     placeholderTextColor={T.textTertiary}
@@ -552,13 +557,23 @@ export default function LoginScreen() {
               <View style={styles.inputWrapper}>
                 <Lock size={18} color={T.textTertiary} style={styles.inputIcon} />
                 <TextInput
+                  accessibilityLabel={mode === "signIn" ? "Mot de passe" : "Nouveau mot de passe"}
                   {...secureProps}
                   placeholder={mode === "signIn" ? "Votre mot de passe" : `${MIN_PASSWORD_LENGTH} caractères minimum`}
                   value={password}
                   onChangeText={setPassword}
                   autoComplete={mode === "signIn" ? "password" : "new-password"}
                 />
-                <Pressable onPress={() => setShowPassword((v) => !v)} hitSlop={8}>
+                <Pressable
+                  onPress={() => setShowPassword((v) => !v)}
+                  hitSlop={8}
+                  accessibilityRole="button"
+                  accessibilityLabel={
+                    showPassword
+                      ? "Masquer le mot de passe"
+                      : "Afficher le mot de passe"
+                  }
+                >
                   {showPassword ? (
                     <EyeOff size={18} color={T.textSecondary} />
                   ) : (
@@ -574,6 +589,7 @@ export default function LoginScreen() {
                 <View style={styles.inputWrapper}>
                   <Lock size={18} color={T.textTertiary} style={styles.inputIcon} />
                   <TextInput
+                    accessibilityLabel="Confirmer le mot de passe"
                     {...secureProps}
                     placeholder="Retapez le mot de passe"
                     value={confirm}
@@ -584,9 +600,10 @@ export default function LoginScreen() {
               </View>
             )}
 
-            {error ? <Text style={styles.errorText}>{error}</Text> : null}
+            {error ? <LiveText style={styles.errorText}>{error}</LiveText> : null}
 
             <Pressable
+              accessibilityRole="button"
               onPress={handleSubmit}
               disabled={isLoading}
               style={({ pressed }) => [
@@ -606,6 +623,7 @@ export default function LoginScreen() {
           <View style={styles.modeLinks}>
             {savedAgents.length > 0 && user === null && (
               <Pressable
+                accessibilityRole="button"
                 onPress={() => {
                   setUsePassword(false);
                   setError("");
@@ -618,17 +636,17 @@ export default function LoginScreen() {
               </Pressable>
             )}
             {mode !== "signIn" ? (
-              <Pressable onPress={() => switchMode("signIn")} hitSlop={8}>
+              <Pressable accessibilityRole="button" onPress={() => switchMode("signIn")} hitSlop={8}>
                 <Text style={styles.footerLinkText}>J&apos;ai déjà un mot de passe</Text>
               </Pressable>
             ) : (
               <>
-                <Pressable onPress={() => switchMode("activate")} hitSlop={8}>
+                <Pressable accessibilityRole="button" onPress={() => switchMode("activate")} hitSlop={8}>
                   <Text style={styles.footerText}>
                     Nouveau ? <Text style={styles.footerLinkText}>Première connexion</Text>
                   </Text>
                 </Pressable>
-                <Pressable onPress={() => switchMode("reset")} hitSlop={8}>
+                <Pressable accessibilityRole="button" onPress={() => switchMode("reset")} hitSlop={8}>
                   <Text style={styles.footerLinkText}>Mot de passe oublié</Text>
                 </Pressable>
               </>
@@ -725,7 +743,7 @@ const styles = StyleSheet.create({
 
   footerLink: { marginTop: SPACE.xxl, alignItems: "center" },
   footerText: { fontSize: 14, color: T.textSecondary },
-  footerLinkText: { color: T.orange, fontWeight: "600" },
+  footerLinkText: { color: T.orangeDark, fontWeight: "600" },
 
   hint: { fontSize: 12, color: T.textTertiary, marginLeft: SPACE.xs },
   modeLinks: { marginTop: SPACE.xxl, alignItems: "center", gap: SPACE.md },

@@ -18,6 +18,7 @@ import { Numpad } from "@/app/components/ui/numpad";
 import { MizoGlyph } from "@/app/components/ui/MizoLogo";
 
 import { SPACE } from "@/constants/spacing";
+import { LiveText } from "@/app/components/ui/live-text";
 // ── Design tokens (from HTML :root) ────────────────────────────
 const T = {
   orange: "#D85A30",
@@ -30,7 +31,7 @@ const T = {
   bgSuccess: "#eaf3de",
   textPrimary: "#1a1a18",
   textSecondary: "#5f5e5a",
-  textTertiary: "#888780",
+  textTertiary: "#6c6b65",
   textSuccess: "#3b6d11",
   border: "rgba(0,0,0,0.1)",
   borderStrong: "rgba(0,0,0,0.2)",
@@ -64,7 +65,7 @@ function StepDots({ current, total = 5 }: { current: number; total?: number }) {
 // ── Back row ────────────────────────────────────────────────────
 function BackRow({ onPress }: { onPress: () => void }) {
   return (
-    <Pressable onPress={onPress} style={styles.backRow}>
+    <Pressable accessibilityRole="button" onPress={onPress} style={styles.backRow}>
       <ChevronLeft size={16} color={T.textTertiary} />
       <Text style={styles.backText}>Retour</Text>
     </Pressable>
@@ -83,6 +84,7 @@ function PrimaryButton({
 }) {
   return (
     <Pressable
+      accessibilityRole="button"
       onPress={onPress}
       disabled={disabled}
       style={({ pressed }) => [
@@ -123,6 +125,7 @@ function WelcomeScreen({
 
       <View style={styles.welcomeBottom}>
         <Pressable
+          accessibilityRole="button"
           onPress={onRegister}
           style={({ pressed }) => [
             styles.btnWhite,
@@ -132,6 +135,7 @@ function WelcomeScreen({
           <Text style={styles.btnWhiteText}>Créer mon compte (hors ligne)</Text>
         </Pressable>
         <Pressable
+          accessibilityRole="button"
           onPress={onLogin}
           style={({ pressed }) => [
             styles.btnGhost,
@@ -170,7 +174,7 @@ function PhoneScreen({
       <BackRow onPress={onBack} />
       <StepDots current={1} />
 
-      <Text style={styles.screenTitle}>Votre numéro{"\n"}de téléphone</Text>
+      <Text accessibilityRole="header" style={styles.screenTitle}>Votre numéro{"\n"}de téléphone</Text>
       <Text style={styles.screenSub}>
         Entrez votre numéro pour recevoir un code de vérification par SMS.
       </Text>
@@ -183,6 +187,7 @@ function PhoneScreen({
             <Text style={styles.countryCode}>+226</Text>
           </View>
           <TextInput
+            accessibilityLabel="Numéro de téléphone"
             style={[
               styles.textInput,
               phone.length > 0 && styles.textInputFilled,
@@ -198,7 +203,7 @@ function PhoneScreen({
         <Text style={styles.inputNote}>
           Un SMS de vérification vous sera envoyé
         </Text>
-        {error ? <Text style={styles.errorText}>{error}</Text> : null}
+        {error ? <LiveText style={styles.errorText}>{error}</LiveText> : null}
       </View>
 
       <View style={styles.spacer} />
@@ -238,7 +243,7 @@ function ProfileScreen({
       <BackRow onPress={onBack} />
       <StepDots current={3} />
 
-      <Text style={styles.screenTitle}>Votre profil</Text>
+      <Text accessibilityRole="header" style={styles.screenTitle}>Votre profil</Text>
       <Text style={styles.screenSub}>
         Complétez vos informations pour finaliser la configuration.
       </Text>
@@ -258,6 +263,7 @@ function ProfileScreen({
       <View style={styles.fieldGroup}>
         <Text style={styles.fieldLabel}>Nom complet</Text>
         <TextInput
+          accessibilityLabel="Nom complet"
           style={[
             styles.textInput,
             styles.textInputFull,
@@ -276,6 +282,8 @@ function ProfileScreen({
         <Text style={styles.fieldLabel}>Rôle dans l&apos;organisation</Text>
         <View style={styles.roleSelector}>
           <Pressable
+            accessibilityRole="radio"
+            accessibilityState={{ checked: role === "agent" }}
             onPress={() => setRole("agent")}
             style={[
               styles.roleCard,
@@ -300,6 +308,8 @@ function ProfileScreen({
           </Pressable>
 
           <Pressable
+            accessibilityRole="radio"
+            accessibilityState={{ checked: role === "admin" }}
             onPress={() => setRole("admin")}
             style={[
               styles.roleCard,
@@ -359,7 +369,7 @@ function PinScreen({
       </View>
 
       <View style={styles.pinHeader}>
-        <Text style={styles.screenTitle}>
+        <Text accessibilityRole="header" style={styles.screenTitle}>
           {isConfirming ? "Confirmez votre\ncode PIN" : "Créez votre\ncode PIN"}
         </Text>
         <Text style={styles.screenSub}>
@@ -379,7 +389,7 @@ function PinScreen({
       </View>
       <Text style={styles.pinHint}>Entrez 4 chiffres</Text>
       {error ? (
-        <Text style={[styles.errorText, { textAlign: "center" }]}>{error}</Text>
+        <LiveText style={[styles.errorText, { textAlign: "center" }]}>{error}</LiveText>
       ) : null}
 
       <Numpad
@@ -661,7 +671,7 @@ const styles = StyleSheet.create({
     alignItems: "center",
     marginBottom: SPACE.sm,
   },
-  btnWhiteText: { fontSize: 14, fontWeight: "500", color: T.orange },
+  btnWhiteText: { fontSize: 14, fontWeight: "500", color: T.orangeDark },
   btnGhost: {
     borderWidth: 1.5,
     borderColor: "rgba(255,255,255,0.3)",
@@ -831,7 +841,7 @@ const styles = StyleSheet.create({
     alignItems: "center",
   },
   resendText: { fontSize: 12, color: T.textTertiary },
-  resendLink: { fontSize: 12, color: T.orange },
+  resendLink: { fontSize: 12, color: T.orangeDark },
 
   // ── Profile screen ──
   avatarPicker: { alignItems: "center", marginVertical: SPACE.lg },
@@ -844,7 +854,7 @@ const styles = StyleSheet.create({
     alignItems: "center",
     marginBottom: SPACE.sm,
   },
-  avatarText: { fontSize: 24, fontWeight: "600", color: T.orange },
+  avatarText: { fontSize: 24, fontWeight: "600", color: T.orangeDark },
   avatarEdit: {
     position: "absolute",
     bottom: 0,

@@ -19,7 +19,7 @@ const T = {
   bgSecondary: "#f5f4f0",
   textPrimary: "#1a1a18",
   textSecondary: "#5f5e5a",
-  textTertiary: "#888780",
+  textTertiary: "#6c6b65",
 };
 
 export default function WelcomeScreen() {
@@ -52,7 +52,7 @@ export default function WelcomeScreen() {
           <ShieldCheck size={48} color="white" />
         </View>
 
-        <Text style={styles.title}>Bienvenue dans la micro-finance</Text>
+        <Text accessibilityRole="header" style={styles.title}>Bienvenue dans la micro-finance</Text>
         <Text style={styles.orgName}>{orgName}</Text>
 
         <Text style={styles.agentName}>{user?.name}</Text>

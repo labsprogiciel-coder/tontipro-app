@@ -26,6 +26,7 @@ export const KButton: React.FC<KButtonProps> = ({
 
   return (
     <TouchableOpacity
+      accessibilityRole="button"
       onPress={onPress}
       disabled={disabled}
       style={[

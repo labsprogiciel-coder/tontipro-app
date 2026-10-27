@@ -20,6 +20,7 @@ export const SearchBar: React.FC<SearchBarProps> = ({
   <View style={styles.container}>
     <Feather name="search" size={16} color={T.text3} />
     <TextInput
+      accessibilityLabel={placeholder || "Rechercher"}
       style={styles.input}
       placeholder={placeholder || "Rechercher..."}
       placeholderTextColor={T.text3}

@@ -45,10 +45,15 @@ export default function ProfileScreen() {
     <SafeAreaView style={styles.root} edges={["top", "bottom"]}>
       {/* Header */}
       <View style={styles.header}>
-        <Pressable style={styles.backBtn} onPress={() => router.back()}>
+        <Pressable
+          style={styles.backBtn}
+          onPress={() => router.back()}
+          accessibilityRole="button"
+          accessibilityLabel="Retour"
+        >
           <ChevronLeft size={22} color={T.text1} strokeWidth={2} />
         </Pressable>
-        <Text style={styles.headerTitle}>Mon profil</Text>
+        <Text accessibilityRole="header" style={styles.headerTitle}>Mon profil</Text>
         <View style={styles.headerSpacer} />
       </View>
 
