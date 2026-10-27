@@ -77,7 +77,20 @@ interface AuthState {
     pin: string,
   ) => Promise<void>;
 
-  logout: () => void;
+  /**
+   * Clear the signed-in agent from the app. `keepOnDevice` (agent switch on a
+   * shared TPE) keeps their PIN so they can come back with it.
+   */
+  logout: (options?: { keepOnDevice?: boolean }) => void;
+  /** Make a saved agent the signed-in one (PIN switch, lib/agent-sessions.ts). */
+  switchTo: (user: User) => void;
+  /** Phone of an agent whose server session ended; login asks for the password. */
+  expiredPhone: string | null;
+  /**
+   * The server ended the signed-in agent's session (expired, or revoked):
+   * back to the password, keeping their PIN and queued work on the phone.
+   */
+  sessionEnded: () => void;
 }
 
 /**
@@ -118,6 +131,7 @@ export const useAuthStore = create<AuthState>()(
       isLoadingClients: false,
       user: null,
       registeredPhone: null,
+      expiredPhone: null,
 
       /**
        * Called from RootLayoutNav when `useQuery(adminApi.me)` returns data.
@@ -262,19 +276,33 @@ export const useAuthStore = create<AuthState>()(
         set({ isLoadingClients: false });
       },
 
-      logout: () => {
+      switchTo: (user: User) => {
+        // users:me for this agent loads their data once it answers
+        lastLoadedUserId = null;
+        useTransactionStore.getState().switchAgent(user.id);
+        setSentryUser(user.id);
+        set({ isAuthenticated: true, isLoadingClients: false, user });
+      },
+
+      sessionEnded: () => {
+        const phone = get().user?.phone ?? null;
+        get().logout({ keepOnDevice: true });
+        set({ expiredPhone: phone });
+      },
+
+      logout: (options) => {
         // Convex signOut is handled by the component (useAuthActions().signOut())
         // This just clears local state
         const phone = get().user?.phone;
         lastLoadedUserId = null;
         set({ isAuthenticated: false, isLoadingClients: false, user: null });
         setSentryUser(null);
-        // Un logout peut signifier que le téléphone change de main (agent
-        // suivant sur un TPE partagé) — on efface le secret de
-        // déverrouillage hors-ligne de l'agent précédent (voir
-        // utils/secure-storage.ts). Fire-and-forget : logout() reste
+        // Déconnexion complète : on efface le secret de déverrouillage
+        // hors-ligne de l'agent (voir utils/secure-storage.ts). Un changement
+        // d'agent sur un TPE partagé (keepOnDevice) le garde, pour revenir
+        // avec le PIN (lib/agent-switch.ts). Fire-and-forget : logout() reste
         // synchrone, rien n'attend cette purge.
-        if (phone) {
+        if (phone && !options?.keepOnDevice) {
           clearOfflineCredential(phone).catch((e) =>
             console.error("[Auth] clearOfflineCredential failed:", e),
           );

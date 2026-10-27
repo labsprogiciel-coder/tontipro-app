@@ -15,6 +15,7 @@ import { colors } from "@/constants/colors";
 import { useAuthStore } from "@/stores/auth-store";
 import { isOwnPendingClient, useClientStore } from "@/stores/client-store";
 import { useAuthActions } from "@convex-dev/auth/react";
+import { forgetCurrentAgent, handOverDevice } from "@/lib/agent-switch";
 import {
   isOwnTransaction,
   useTransactionStore,
@@ -85,7 +86,7 @@ const SettingsScreen = () => {
   const [isBiometricActive, setIsBiometricActive] = useState(true);
   const [isOfflineMode, setIsOfflineMode] = useState(false);
   const router = useRouter();
-  const { logout, user } = useAuthStore();
+  const user = useAuthStore((s) => s.user);
   const [notificationsEnabled, setNotificationsEnabled] = useState(true);
   const [darkModeEnabled, setDarkModeEnabled] = useState(false);
 
@@ -96,11 +97,12 @@ const SettingsScreen = () => {
   );
 
   /**
-   * Sign out of the server too, so the next agent on a shared TPE starts
-   * clean (otherwise users:me would sign the previous agent back in).
+   * "Déconnexion": sign out of the server too, and forget this agent's PIN
+   * and saved session on the phone (otherwise users:me would sign them back
+   * in).
    */
   const signOutNow = async () => {
-    logout();
+    await forgetCurrentAgent();
     try {
       await signOut();
     } catch (e) {
@@ -108,6 +110,16 @@ const SettingsScreen = () => {
     }
     // @ts-ignore
     router.replace("/(auth)");
+  };
+
+  /**
+   * "Changer d'agent": this agent's session and PIN stay on the phone; the
+   * next agent picks themselves and types their PIN (login.tsx).
+   */
+  const handOverNow = async () => {
+    await handOverDevice();
+    // @ts-ignore
+    router.replace("/login");
   };
 
   /**
@@ -130,11 +142,11 @@ const SettingsScreen = () => {
       Alert.alert(
         title,
         switching
-          ? "Vous serez déconnecté pour qu'un autre agent se connecte sur ce TPE."
-          : "Êtes-vous sûr de vouloir vous déconnecter ?",
+          ? "Un autre agent pourra se connecter avec son code PIN. Vous reviendrez avec le vôtre."
+          : "Votre code PIN sera effacé de ce téléphone : il faudra votre mot de passe pour revenir.",
         [
           { text: "Annuler", style: "cancel" },
-          { text: confirmLabel, style: "destructive", onPress: signOutNow },
+          { text: confirmLabel, style: "destructive", onPress: switching ? handOverNow : signOutNow },
         ],
         { cancelable: true },
       );
@@ -148,7 +160,7 @@ const SettingsScreen = () => {
     Alert.alert(
       "Données non synchronisées",
       `${parts} en attente sur ce téléphone. Synchronisez avant de partir : ` +
-        "sinon, vos opérations ne seront envoyées qu'à votre prochaine connexion sur ce TPE.",
+        "sinon, elles ne seront envoyées qu'à votre prochaine connexion sur ce TPE.",
       [
         { text: "Annuler", style: "cancel" },
         {
@@ -157,7 +169,11 @@ const SettingsScreen = () => {
             await handleForceSync();
           },
         },
-        { text: `${confirmLabel} quand même`, style: "destructive", onPress: signOutNow },
+        {
+          text: `${confirmLabel} quand même`,
+          style: "destructive",
+          onPress: switching ? handOverNow : signOutNow,
+        },
       ],
       { cancelable: true },
     );
