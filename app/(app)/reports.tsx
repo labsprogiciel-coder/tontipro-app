@@ -444,6 +444,39 @@ function PeriodBar({
   );
 }
 
+/**
+ * Header button that shows or hides the period and type filters. Highlighted
+ * while a filter other than the default (today, first tab) is applied, so a
+ * hidden filter is never forgotten.
+ */
+function FilterToggle({
+  open,
+  active,
+  onPress,
+}: {
+  open: boolean;
+  active: boolean;
+  onPress: () => void;
+}) {
+  const on = open || active;
+  return (
+    <Pressable
+      style={[s.iconBtn, on && s.iconBtnOn]}
+      onPress={onPress}
+      hitSlop={6}
+      accessibilityRole="button"
+      accessibilityLabel={open ? "Masquer les filtres" : "Afficher les filtres"}
+      accessibilityState={{ expanded: open }}
+    >
+      <SlidersHorizontal
+        size={14}
+        color={on ? T.orange : T.text2}
+        strokeWidth={1.5}
+      />
+    </Pressable>
+  );
+}
+
 function BarChart({
   bars,
   showRet = true,
@@ -933,8 +966,9 @@ function AgentCompBar({
 
 // ─── Agent report view ────────────────────────────────────────────────────────
 function AgentView() {
-  const [period, setPeriod] = useState<Period>("mois");
+  const [period, setPeriod] = useState<Period>("auj");
   const [activeTab, setTab] = useState<AgentTab>("tout");
+  const [showFilters, setShowFilters] = useState(false);
 
   const clients = useClientStore((s) => s.clients);
   const {
@@ -1022,53 +1056,44 @@ function AgentView() {
       >
         {/* Top bar */}
         <View style={s.topbar}>
-          <View style={s.topbarRow}>
+          <View style={[s.topbarRow, !showFilters && { marginBottom: 0 }]}>
             <Text style={s.pageTitle}>Mes rapports</Text>
             <View style={{ flexDirection: "row", gap: SPACE.xs }}>
-              <Pressable
-                style={[
-                  s.iconBtn,
-                  isFiltered && {
-                    backgroundColor: T.orangeLt,
-                    borderColor: "rgba(216,90,48,0.25)",
-                  },
-                ]}
-                onPress={() => setTab("tout")}
-              >
-                <SlidersHorizontal
-                  size={14}
-                  color={isFiltered ? T.orange : T.text2}
-                  strokeWidth={1.5}
-                />
-              </Pressable>
+              <FilterToggle
+                open={showFilters}
+                active={isFiltered || period !== "auj"}
+                onPress={() => setShowFilters((v) => !v)}
+              />
               <Pressable style={s.iconBtn} onPress={exportReport}>
                 <Download size={14} color={T.text2} strokeWidth={1.5} />
               </Pressable>
             </View>
           </View>
-          <PeriodBar period={period} onChange={setPeriod} />
+          {showFilters && <PeriodBar period={period} onChange={setPeriod} />}
         </View>
 
         {/* Pill tabs */}
-        <ScrollView
-          horizontal
-          showsHorizontalScrollIndicator={false}
-          contentContainerStyle={s.pillTabs}
-        >
-          {AGENT_TABS.map((tab) => (
-            <Pressable
-              key={tab.id}
-              style={[s.ptab, activeTab === tab.id && s.ptabActiveOr]}
-              onPress={() => setTab(tab.id)}
-            >
-              <Text
-                style={[s.ptabText, activeTab === tab.id && s.ptabTextActiveOr]}
+        {showFilters && (
+          <ScrollView
+            horizontal
+            showsHorizontalScrollIndicator={false}
+            contentContainerStyle={s.pillTabs}
+          >
+            {AGENT_TABS.map((tab) => (
+              <Pressable
+                key={tab.id}
+                style={[s.ptab, activeTab === tab.id && s.ptabActiveOr]}
+                onPress={() => setTab(tab.id)}
               >
-                {tab.label}
-              </Text>
-            </Pressable>
-          ))}
-        </ScrollView>
+                <Text
+                  style={[s.ptabText, activeTab === tab.id && s.ptabTextActiveOr]}
+                >
+                  {tab.label}
+                </Text>
+              </Pressable>
+            ))}
+          </ScrollView>
+        )}
 
         <DataNotice partial={partial} truncated={truncated} />
 
@@ -1450,8 +1475,9 @@ function AgentView() {
 
 // ─── Admin report view ────────────────────────────────────────────────────────
 function AdminView() {
-  const [period, setPeriod] = useState<Period>("mois");
+  const [period, setPeriod] = useState<Period>("auj");
   const [activeTab, setTab] = useState<AdminTab>("global");
+  const [showFilters, setShowFilters] = useState(false);
 
   const clients = useClientStore((s) => s.clients);
   const {
@@ -1590,44 +1616,44 @@ function AdminView() {
       >
         {/* Top bar */}
         <View style={s.topbar}>
-          <View style={s.topbarRow}>
+          <View style={[s.topbarRow, !showFilters && { marginBottom: 0 }]}>
             <Text style={s.pageTitle}>Rapports</Text>
             <View style={{ flexDirection: "row", gap: SPACE.xs }}>
-              <Pressable style={s.iconBtn} onPress={() => setTab("global")}>
-                <SlidersHorizontal
-                  size={14}
-                  color={T.text2}
-                  strokeWidth={1.5}
-                />
-              </Pressable>
+              <FilterToggle
+                open={showFilters}
+                active={activeTab !== "global" || period !== "auj"}
+                onPress={() => setShowFilters((v) => !v)}
+              />
               <Pressable style={s.iconBtn} onPress={exportReport}>
                 <Download size={14} color={T.text2} strokeWidth={1.5} />
               </Pressable>
             </View>
           </View>
-          <PeriodBar period={period} onChange={setPeriod} />
+          {showFilters && <PeriodBar period={period} onChange={setPeriod} />}
         </View>
 
         {/* Pill tabs */}
-        <ScrollView
-          horizontal
-          showsHorizontalScrollIndicator={false}
-          contentContainerStyle={s.pillTabs}
-        >
-          {ADMIN_TABS.map((tab) => (
-            <Pressable
-              key={tab.id}
-              style={[s.ptab, activeTab === tab.id && s.ptabActiveDk]}
-              onPress={() => setTab(tab.id)}
-            >
-              <Text
-                style={[s.ptabText, activeTab === tab.id && s.ptabTextActiveDk]}
+        {showFilters && (
+          <ScrollView
+            horizontal
+            showsHorizontalScrollIndicator={false}
+            contentContainerStyle={s.pillTabs}
+          >
+            {ADMIN_TABS.map((tab) => (
+              <Pressable
+                key={tab.id}
+                style={[s.ptab, activeTab === tab.id && s.ptabActiveDk]}
+                onPress={() => setTab(tab.id)}
               >
-                {tab.label}
-              </Text>
-            </Pressable>
-          ))}
-        </ScrollView>
+                <Text
+                  style={[s.ptabText, activeTab === tab.id && s.ptabTextActiveDk]}
+                >
+                  {tab.label}
+                </Text>
+              </Pressable>
+            ))}
+          </ScrollView>
+        )}
 
         <DataNotice partial={partial} truncated={truncated} />
 
@@ -2069,6 +2095,10 @@ const s = StyleSheet.create({
     borderColor: T.border,
     alignItems: "center",
     justifyContent: "center",
+  },
+  iconBtnOn: {
+    backgroundColor: T.orangeLt,
+    borderColor: "rgba(216,90,48,0.25)",
   },
 
   periodBar: {
