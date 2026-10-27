@@ -89,7 +89,13 @@ export function PinCells({
   );
 
   return onPress ? (
-    <Pressable onPress={onPress} hitSlop={8}>
+    <Pressable
+      onPress={onPress}
+      hitSlop={8}
+      accessibilityRole="button"
+      accessibilityLabel={`${accessibilityLabel}, ${value.length} chiffre${value.length > 1 ? "s" : ""} sur ${length}`}
+      accessibilityHint="Affiche le clavier"
+    >
       {cells}
     </Pressable>
   ) : (

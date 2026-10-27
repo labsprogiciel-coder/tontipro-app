@@ -167,6 +167,7 @@ export const HistoryScreen: React.FC = () => {
 
     return (
       <TouchableOpacity
+        accessibilityRole="button"
         style={styles.row}
         activeOpacity={0.7}
         onPress={() => router.push(`/(app)/transactions/${t.id}`)}
@@ -239,12 +240,15 @@ export const HistoryScreen: React.FC = () => {
           <TouchableOpacity
             style={styles.backBtn}
             onPress={() => router.back()}
+            accessibilityRole="button"
+            accessibilityLabel="Retour"
           >
             <ChevronLeft size={18} color={T.text2} strokeWidth={2} />
           </TouchableOpacity>
-          <Text style={styles.title}>Historique</Text>
+          <Text accessibilityRole="header" style={styles.title}>Historique</Text>
         </View>
         <TouchableOpacity
+          accessibilityRole="button"
           style={styles.sortBtn}
           onPress={() => setSortOrder((o) => (o === "desc" ? "asc" : "desc"))}
         >
@@ -345,7 +349,7 @@ export const HistoryScreen: React.FC = () => {
                 : "Les transactions apparaîtront ici une fois enregistrées."}
             </Text>
             {hasFilters && (
-              <Pressable style={styles.clearBtn} onPress={clearFilters}>
+              <Pressable accessibilityRole="button" style={styles.clearBtn} onPress={clearFilters}>
                 <Text style={styles.clearBtnText}>Effacer les filtres</Text>
               </Pressable>
             )}
@@ -391,7 +395,7 @@ const styles = StyleSheet.create({
     paddingVertical: SPACE.xs,
     borderRadius: 20,
   },
-  sortLabel: { fontSize: 11, fontWeight: "500", color: T.orange },
+  sortLabel: { fontSize: 11, fontWeight: "500", color: T.orangeDk },
 
   chipScroll: { flexGrow: 0 },
   chipRow: {

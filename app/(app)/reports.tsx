@@ -41,7 +41,7 @@ const T = {
   bgBlue: "#e6f1fb",
   text1: "#1a1a18",
   text2: "#5f5e5a",
-  text3: "#888780",
+  text3: "#6c6b65",
   textSuccess: "#3b6d11",
   textWarning: "#854f0b",
   textDanger: "#a32d2d",
@@ -428,9 +428,11 @@ function PeriodBar({
   onChange: (p: Period) => void;
 }) {
   return (
-    <View style={s.periodBar}>
+    <View style={s.periodBar} accessibilityRole="tablist">
       {(Object.keys(PERIOD_LABELS) as Period[]).map((p) => (
         <Pressable
+          accessibilityRole="tab"
+          accessibilityState={{ selected: period === p }}
           key={p}
           style={[s.popt, period === p && s.poptActive]}
           onPress={() => onChange(p)}
@@ -441,6 +443,39 @@ function PeriodBar({
         </Pressable>
       ))}
     </View>
+  );
+}
+
+/**
+ * Header button that shows or hides the period and type filters. Highlighted
+ * while a filter other than the default (today, first tab) is applied, so a
+ * hidden filter is never forgotten.
+ */
+function FilterToggle({
+  open,
+  active,
+  onPress,
+}: {
+  open: boolean;
+  active: boolean;
+  onPress: () => void;
+}) {
+  const on = open || active;
+  return (
+    <Pressable
+      style={[s.iconBtn, on && s.iconBtnOn]}
+      onPress={onPress}
+      hitSlop={6}
+      accessibilityRole="button"
+      accessibilityLabel={open ? "Masquer les filtres" : "Afficher les filtres"}
+      accessibilityState={{ expanded: open }}
+    >
+      <SlidersHorizontal
+        size={14}
+        color={on ? T.orange : T.text2}
+        strokeWidth={1.5}
+      />
+    </Pressable>
   );
 }
 
@@ -459,8 +494,22 @@ function BarChart({
     ...bars.flatMap((b) => [b.dep, showRet ? b.ret : 0]),
     1,
   );
+  // The bars as text, for screen readers
+  const fcfa = (n: number) => `${n.toLocaleString("fr-FR")} francs CFA`;
+  const summary = bars
+    .map(
+      (b) =>
+        `${b.label} : dépôts ${fcfa(b.dep)}` +
+        (showRet ? `, retraits ${fcfa(b.ret)}` : ""),
+    )
+    .join(". ");
   return (
-    <View style={s.card}>
+    <View
+      style={s.card}
+      accessible
+      accessibilityRole="image"
+      accessibilityLabel={`Graphique. ${summary}`}
+    >
       <View style={s.chartLegend}>
         <View style={s.legItem}>
           <View style={[s.legDot, { backgroundColor: barColor }]} />
@@ -468,7 +517,7 @@ function BarChart({
         </View>
         {showRet && (
           <View style={s.legItem}>
-            <View style={[s.legDot, { backgroundColor: T.border2 }]} />
+            <View style={[s.legDot, { backgroundColor: T.text3 }]} />
             <Text style={s.legText}>Retraits</Text>
           </View>
         )}
@@ -491,7 +540,7 @@ function BarChart({
                   s.bar,
                   {
                     height: Math.max(4, (b.ret / maxVal) * maxH),
-                    backgroundColor: T.border2,
+                    backgroundColor: T.text3,
                     marginTop: SPACE.xxs,
                   },
                 ]}
@@ -508,7 +557,7 @@ function BarChart({
 function SectionHeader({ title, link }: { title: string; link?: string }) {
   return (
     <View style={s.secRow}>
-      <Text style={s.secTitle}>{title}</Text>
+      <Text accessibilityRole="header" style={s.secTitle}>{title}</Text>
       {link ? <Text style={s.secLink}>{link}</Text> : null}
     </View>
   );
@@ -522,7 +571,7 @@ function ExportButton({
   onPress: () => void;
 }) {
   return (
-    <Pressable style={s.exportBtn} onPress={onPress}>
+    <Pressable accessibilityRole="button" style={s.exportBtn} onPress={onPress}>
       <Download size={14} color={T.text2} strokeWidth={1.5} />
       <Text style={s.exportText}>{label}</Text>
     </Pressable>
@@ -630,7 +679,7 @@ function QuickStats({
       </View>
       <View style={s.qstat}>
         <Text style={s.qstatLbl}>Retraits {periodLabel}</Text>
-        <Text style={[s.qstatVal, { color: T.orange }]}>
+        <Text style={[s.qstatVal, { color: T.orangeDk }]}>
           −{withdrawals.toLocaleString("fr-FR")}
         </Text>
         <Text style={s.qstatSub}>FCFA · {retOps} opér.</Text>
@@ -846,7 +895,7 @@ function AgentLeaderItem({
       <Text
         style={[
           s.rankNum,
-          rank === 1 ? { color: T.orange, fontSize: 12 } : undefined,
+          rank === 1 ? { color: T.orangeDk, fontSize: 12 } : undefined,
         ]}
       >
         {rank}
@@ -933,8 +982,9 @@ function AgentCompBar({
 
 // ─── Agent report view ────────────────────────────────────────────────────────
 function AgentView() {
-  const [period, setPeriod] = useState<Period>("mois");
+  const [period, setPeriod] = useState<Period>("auj");
   const [activeTab, setTab] = useState<AgentTab>("tout");
+  const [showFilters, setShowFilters] = useState(false);
 
   const clients = useClientStore((s) => s.clients);
   const {
@@ -1022,53 +1072,53 @@ function AgentView() {
       >
         {/* Top bar */}
         <View style={s.topbar}>
-          <View style={s.topbarRow}>
-            <Text style={s.pageTitle}>Mes rapports</Text>
+          <View style={[s.topbarRow, !showFilters && { marginBottom: 0 }]}>
+            <Text accessibilityRole="header" style={s.pageTitle}>Mes rapports</Text>
             <View style={{ flexDirection: "row", gap: SPACE.xs }}>
+              <FilterToggle
+                open={showFilters}
+                active={isFiltered || period !== "auj"}
+                onPress={() => setShowFilters((v) => !v)}
+              />
               <Pressable
-                style={[
-                  s.iconBtn,
-                  isFiltered && {
-                    backgroundColor: T.orangeLt,
-                    borderColor: "rgba(216,90,48,0.25)",
-                  },
-                ]}
-                onPress={() => setTab("tout")}
+                style={s.iconBtn}
+                onPress={exportReport}
+                hitSlop={6}
+                accessibilityRole="button"
+                accessibilityLabel="Exporter en CSV"
               >
-                <SlidersHorizontal
-                  size={14}
-                  color={isFiltered ? T.orange : T.text2}
-                  strokeWidth={1.5}
-                />
-              </Pressable>
-              <Pressable style={s.iconBtn} onPress={exportReport}>
                 <Download size={14} color={T.text2} strokeWidth={1.5} />
               </Pressable>
             </View>
           </View>
-          <PeriodBar period={period} onChange={setPeriod} />
+          {showFilters && <PeriodBar period={period} onChange={setPeriod} />}
         </View>
 
         {/* Pill tabs */}
-        <ScrollView
-          horizontal
-          showsHorizontalScrollIndicator={false}
-          contentContainerStyle={s.pillTabs}
-        >
-          {AGENT_TABS.map((tab) => (
-            <Pressable
-              key={tab.id}
-              style={[s.ptab, activeTab === tab.id && s.ptabActiveOr]}
-              onPress={() => setTab(tab.id)}
-            >
-              <Text
-                style={[s.ptabText, activeTab === tab.id && s.ptabTextActiveOr]}
+        {showFilters && (
+          <ScrollView
+            horizontal
+            showsHorizontalScrollIndicator={false}
+            contentContainerStyle={s.pillTabs}
+            accessibilityRole="tablist"
+          >
+            {AGENT_TABS.map((tab) => (
+              <Pressable
+                accessibilityRole="tab"
+                accessibilityState={{ selected: activeTab === tab.id }}
+                key={tab.id}
+                style={[s.ptab, activeTab === tab.id && s.ptabActiveOr]}
+                onPress={() => setTab(tab.id)}
               >
-                {tab.label}
-              </Text>
-            </Pressable>
-          ))}
-        </ScrollView>
+                <Text
+                  style={[s.ptabText, activeTab === tab.id && s.ptabTextActiveOr]}
+                >
+                  {tab.label}
+                </Text>
+              </Pressable>
+            ))}
+          </ScrollView>
+        )}
 
         <DataNotice partial={partial} truncated={truncated} />
 
@@ -1150,7 +1200,7 @@ function AgentView() {
                   >
                     Total
                   </Text>
-                  <Text style={[s.cVal, { color: T.orange, fontSize: 15 }]}>
+                  <Text style={[s.cVal, { color: T.orangeDk, fontSize: 15 }]}>
                     {commission.total.toLocaleString("fr-FR")} F
                   </Text>
                 </View>
@@ -1306,7 +1356,7 @@ function AgentView() {
                 </View>
                 <View style={s.cRow}>
                   <Text style={s.cLabel}>Retraits</Text>
-                  <Text style={[s.cVal, { color: T.orange }]}>
+                  <Text style={[s.cVal, { color: T.orangeDk }]}>
                     −{totalRet.toLocaleString("fr-FR")} F
                   </Text>
                 </View>
@@ -1368,7 +1418,7 @@ function AgentView() {
                   >
                     Total
                   </Text>
-                  <Text style={[s.cVal, { color: T.orange, fontSize: 15 }]}>
+                  <Text style={[s.cVal, { color: T.orangeDk, fontSize: 15 }]}>
                     {commission.total.toLocaleString("fr-FR")} F
                   </Text>
                 </View>
@@ -1402,7 +1452,7 @@ function AgentView() {
               </View>
               <View style={s.qstat}>
                 <Text style={s.qstatLbl}>Clients retrayants</Text>
-                <Text style={[s.qstatVal, { color: T.orange }]}>
+                <Text style={[s.qstatVal, { color: T.orangeDk }]}>
                   {new Set(withdrawals.map((t) => t.clientId)).size}
                 </Text>
                 <Text style={s.qstatSub}>{periodLabel}</Text>
@@ -1450,8 +1500,9 @@ function AgentView() {
 
 // ─── Admin report view ────────────────────────────────────────────────────────
 function AdminView() {
-  const [period, setPeriod] = useState<Period>("mois");
+  const [period, setPeriod] = useState<Period>("auj");
   const [activeTab, setTab] = useState<AdminTab>("global");
+  const [showFilters, setShowFilters] = useState(false);
 
   const clients = useClientStore((s) => s.clients);
   const {
@@ -1590,44 +1641,53 @@ function AdminView() {
       >
         {/* Top bar */}
         <View style={s.topbar}>
-          <View style={s.topbarRow}>
-            <Text style={s.pageTitle}>Rapports</Text>
+          <View style={[s.topbarRow, !showFilters && { marginBottom: 0 }]}>
+            <Text accessibilityRole="header" style={s.pageTitle}>Rapports</Text>
             <View style={{ flexDirection: "row", gap: SPACE.xs }}>
-              <Pressable style={s.iconBtn} onPress={() => setTab("global")}>
-                <SlidersHorizontal
-                  size={14}
-                  color={T.text2}
-                  strokeWidth={1.5}
-                />
-              </Pressable>
-              <Pressable style={s.iconBtn} onPress={exportReport}>
+              <FilterToggle
+                open={showFilters}
+                active={activeTab !== "global" || period !== "auj"}
+                onPress={() => setShowFilters((v) => !v)}
+              />
+              <Pressable
+                style={s.iconBtn}
+                onPress={exportReport}
+                hitSlop={6}
+                accessibilityRole="button"
+                accessibilityLabel="Exporter en CSV"
+              >
                 <Download size={14} color={T.text2} strokeWidth={1.5} />
               </Pressable>
             </View>
           </View>
-          <PeriodBar period={period} onChange={setPeriod} />
+          {showFilters && <PeriodBar period={period} onChange={setPeriod} />}
         </View>
 
         {/* Pill tabs */}
-        <ScrollView
-          horizontal
-          showsHorizontalScrollIndicator={false}
-          contentContainerStyle={s.pillTabs}
-        >
-          {ADMIN_TABS.map((tab) => (
-            <Pressable
-              key={tab.id}
-              style={[s.ptab, activeTab === tab.id && s.ptabActiveDk]}
-              onPress={() => setTab(tab.id)}
-            >
-              <Text
-                style={[s.ptabText, activeTab === tab.id && s.ptabTextActiveDk]}
+        {showFilters && (
+          <ScrollView
+            horizontal
+            showsHorizontalScrollIndicator={false}
+            contentContainerStyle={s.pillTabs}
+            accessibilityRole="tablist"
+          >
+            {ADMIN_TABS.map((tab) => (
+              <Pressable
+                accessibilityRole="tab"
+                accessibilityState={{ selected: activeTab === tab.id }}
+                key={tab.id}
+                style={[s.ptab, activeTab === tab.id && s.ptabActiveDk]}
+                onPress={() => setTab(tab.id)}
               >
-                {tab.label}
-              </Text>
-            </Pressable>
-          ))}
-        </ScrollView>
+                <Text
+                  style={[s.ptabText, activeTab === tab.id && s.ptabTextActiveDk]}
+                >
+                  {tab.label}
+                </Text>
+              </Pressable>
+            ))}
+          </ScrollView>
+        )}
 
         <DataNotice partial={partial} truncated={truncated} />
 
@@ -1657,7 +1717,7 @@ function AdminView() {
               </View>
               <View style={s.qstat}>
                 <Text style={s.qstatLbl}>Retraits totaux</Text>
-                <Text style={[s.qstatVal, { color: T.orange }]}>
+                <Text style={[s.qstatVal, { color: T.orangeDk }]}>
                   −{totalRet.toLocaleString("fr-FR")}
                 </Text>
                 <Text style={s.qstatSub}>
@@ -1720,7 +1780,7 @@ function AdminView() {
                   >
                     Total organisation
                   </Text>
-                  <Text style={[s.cVal, { color: T.orange, fontSize: 15 }]}>
+                  <Text style={[s.cVal, { color: T.orangeDk, fontSize: 15 }]}>
                     {commission.total.toLocaleString("fr-FR")} F
                   </Text>
                 </View>
@@ -1982,7 +2042,7 @@ function AdminView() {
                   >
                     Total organisation
                   </Text>
-                  <Text style={[s.cVal, { color: T.orange, fontSize: 15 }]}>
+                  <Text style={[s.cVal, { color: T.orangeDk, fontSize: 15 }]}>
                     {commission.total.toLocaleString("fr-FR")} F
                   </Text>
                 </View>
@@ -2069,6 +2129,10 @@ const s = StyleSheet.create({
     borderColor: T.border,
     alignItems: "center",
     justifyContent: "center",
+  },
+  iconBtnOn: {
+    backgroundColor: T.orangeLt,
+    borderColor: "rgba(216,90,48,0.25)",
   },
 
   periodBar: {
@@ -2223,7 +2287,7 @@ const s = StyleSheet.create({
     textTransform: "uppercase",
     letterSpacing: 0.5,
   },
-  secLink: { fontSize: 11, color: T.orange },
+  secLink: { fontSize: 11, color: T.orangeDk },
 
   card: {
     backgroundColor: T.bg,

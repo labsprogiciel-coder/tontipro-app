@@ -147,7 +147,7 @@ const ClientDetails = () => {
           { justifyContent: "center", alignItems: "center" },
         ]}
       >
-        <Text style={{ color: "#888", fontSize: 14 }}>Client introuvable.</Text>
+        <Text style={{ color: "#6c6b65", fontSize: 14 }}>Client introuvable.</Text>
       </SafeAreaView>
     );
   }
@@ -172,7 +172,7 @@ const ClientDetails = () => {
         {/* ── Dark Header ── */}
         <View style={styles.header}>
           <View style={styles.backRow}>
-            <Pressable style={styles.backBtn} onPress={() => router.back()}>
+            <Pressable accessibilityRole="button" style={styles.backBtn} onPress={() => router.back()}>
               <ChevronLeft
                 color="rgba(255,255,255,0.55)"
                 size={16}
@@ -180,7 +180,12 @@ const ClientDetails = () => {
               />
               <Text style={styles.backLabel}>Mes clients</Text>
             </Pressable>
-            <Pressable style={styles.moreBtn}>
+            {/* No action yet: kept out of the screen reader */}
+            <Pressable
+              style={styles.moreBtn}
+              accessibilityElementsHidden
+              importantForAccessibility="no-hide-descendants"
+            >
               <MoreHorizontal color="white" size={16} />
             </Pressable>
           </View>
@@ -260,6 +265,8 @@ const ClientDetails = () => {
           {/* Quick Actions */}
           <View style={styles.actionStrip}>
             <Pressable
+              accessibilityRole="button"
+              accessibilityState={{ disabled: !perms.editClient }}
               style={[styles.actBtn, !perms.editClient && { opacity: 0.4 }]}
               onPress={
                 perms.editClient
@@ -276,13 +283,13 @@ const ClientDetails = () => {
               </View>
               <Text style={styles.actLbl}>Modifier</Text>
             </Pressable>
-            <Pressable style={styles.actBtn}>
+            <Pressable accessibilityRole="button" style={styles.actBtn}>
               <View style={[styles.actIcon, { backgroundColor: "#e6f1fb" }]}>
                 <MessageSquare size={15} color="#185fa5" strokeWidth={1.5} />
               </View>
               <Text style={styles.actLbl}>Note</Text>
             </Pressable>
-            <Pressable style={styles.actBtn}>
+            <Pressable accessibilityRole="button" style={styles.actBtn}>
               <View style={[styles.actIcon, { backgroundColor: "#f5f4f0" }]}>
                 <Archive size={15} color="#5f5e5a" strokeWidth={1.5} />
               </View>
@@ -362,7 +369,7 @@ const ClientDetails = () => {
                 <Text
                   style={[
                     styles.infoValue,
-                    client.kycVerified ? styles.infoAccent : { color: "#888" },
+                    client.kycVerified ? styles.infoAccent : { color: "#6c6b65" },
                   ]}
                 >
                   {client.kycVerified
@@ -372,7 +379,7 @@ const ClientDetails = () => {
               </View>
               {/* KYC scan button (only when not yet verified) */}
               {!client.kycVerified && perms.editSensitiveClient && (
-                <Pressable style={styles.kycScanRow} onPress={handleScanKyc}>
+                <Pressable accessibilityRole="button" style={styles.kycScanRow} onPress={handleScanKyc}>
                   <Text style={styles.kycScanText}>
                     📷 Scanner la pièce d&apos;identité
                   </Text>
@@ -412,7 +419,7 @@ const ClientDetails = () => {
                   <Text
                     style={{
                       fontSize: 13,
-                      color: "#888780",
+                      color: "#6c6b65",
                       textAlign: "center",
                     }}
                   >
@@ -439,6 +446,8 @@ const ClientDetails = () => {
           {/* CTA Buttons */}
           <View style={styles.bottomActions}>
             <Pressable
+              accessibilityRole="button"
+              accessibilityState={{ disabled: !perms.deposit }}
               style={[styles.btnDep, !perms.deposit && { opacity: 0.4 }]}
               onPress={perms.deposit ? handleNewDeposit : undefined}
             >
@@ -446,6 +455,8 @@ const ClientDetails = () => {
               <Text style={styles.btnDepText}>Dépôt</Text>
             </Pressable>
             <Pressable
+              accessibilityRole="button"
+              accessibilityState={{ disabled: !perms.withdrawal }}
               style={[styles.btnRet, !perms.withdrawal && { opacity: 0.4 }]}
               onPress={perms.withdrawal ? handleNewWithdrawal : undefined}
             >
@@ -586,7 +597,7 @@ const styles = StyleSheet.create({
   infoRowLast: { borderBottomWidth: 0 },
   infoLabel: { fontSize: 12, color: "#5f5e5a" },
   infoValue: { fontSize: 13, fontWeight: "500", color: "#1a1a18" },
-  infoAccent: { color: "#D85A30" },
+  infoAccent: { color: "#993C1D" },
 
   kycScanRow: {
     paddingHorizontal: SPACE.lg,
@@ -608,7 +619,7 @@ const styles = StyleSheet.create({
     marginBottom: SPACE.sm,
   },
   progressLabel: { fontSize: 12, color: "#5f5e5a" },
-  progressPct: { fontSize: 12, fontWeight: "500", color: "#D85A30" },
+  progressPct: { fontSize: 12, fontWeight: "500", color: "#993C1D" },
   progressBarBg: {
     height: 6,
     backgroundColor: "#f5f4f0",
@@ -620,7 +631,7 @@ const styles = StyleSheet.create({
     backgroundColor: "#BB4721",
     borderRadius: 3,
   },
-  progressSub: { fontSize: 10, color: "#888780", marginTop: SPACE.xs },
+  progressSub: { fontSize: 10, color: "#6c6b65", marginTop: SPACE.xs },
 
   txCard: {
     backgroundColor: "white",

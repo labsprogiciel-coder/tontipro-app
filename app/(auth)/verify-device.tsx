@@ -80,7 +80,7 @@ export default function VerifyDeviceScreen() {
               <Text style={[s.label, { marginTop: 12 }]}>Ce téléphone</Text>
               <Text style={s.value}>{serial}</Text>
             </View>
-            <Pressable style={s.btn} onPress={() => router.replace("/(auth)/login")}>
+            <Pressable accessibilityRole="button" style={s.btn} onPress={() => router.replace("/(auth)/login")}>
               <Text style={s.btnTxt}>Retour à la connexion</Text>
             </Pressable>
           </>

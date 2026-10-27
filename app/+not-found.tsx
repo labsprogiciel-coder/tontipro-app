@@ -5,12 +5,12 @@ import { SPACE } from "@/constants/spacing";
 export default function NotFoundScreen() {
   return (
     <>
-      <Stack.Screen options={{ title: "Oops!" }} />
+      <Stack.Screen options={{ title: "Page introuvable" }} />
       <View style={styles.container}>
-        <Text style={styles.title}>This screen doesn&apos;t exist.</Text>
+        <Text accessibilityRole="header" style={styles.title}>Cette page n&apos;existe pas.</Text>
 
         <Link href="/" style={styles.link}>
-          <Text style={styles.linkText}>Go to home screen!</Text>
+          <Text style={styles.linkText}>Retour à l&apos;accueil</Text>
         </Link>
       </View>
     </>

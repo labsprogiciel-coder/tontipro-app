@@ -14,6 +14,9 @@ interface TransactionToggleProps {
 const TransactionToggle = ({ activeType, setType }: TransactionToggleProps) => (
   <View style={styles.toggleContainer}>
     <TouchableOpacity
+      accessibilityRole="radio"
+      accessibilityState={{ checked: activeType === "deposit" }}
+      accessibilityLabel="Dépôt"
       onPress={() => setType("deposit")}
       style={[styles.opt, activeType === "deposit" && styles.optActiveDeposit]}
     >
@@ -27,6 +30,9 @@ const TransactionToggle = ({ activeType, setType }: TransactionToggleProps) => (
       </Text>
     </TouchableOpacity>
     <TouchableOpacity
+      accessibilityRole="radio"
+      accessibilityState={{ checked: activeType === "withdraw" }}
+      accessibilityLabel="Retrait"
       onPress={() => setType("withdraw")}
       style={[
         styles.opt,

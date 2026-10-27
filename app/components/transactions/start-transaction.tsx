@@ -30,7 +30,7 @@ const StartTransaction = () => {
   return (
     <View style={styles.container}>
       <View style={styles.header}>
-        <Text style={styles.title}>Nouvelle Opération</Text>
+        <Text accessibilityRole="header" style={styles.title}>Nouvelle Opération</Text>
         <Text style={styles.subtitle}>
           Saisissez l&apos;ID du client pour commencer
         </Text>
@@ -50,7 +50,7 @@ const StartTransaction = () => {
           </View>
         ) : (
           <View style={styles.emptyState}>
-            <UserPlus size={48} color="#888780" strokeWidth={1} />
+            <UserPlus size={48} color="#6c6b65" strokeWidth={1} />
             <Text style={styles.emptyText}>Aucun client sélectionné</Text>
           </View>
         )}
@@ -68,14 +68,14 @@ const styles = StyleSheet.create({
   sectionLabel: {
     fontSize: 11,
     fontWeight: "600",
-    color: "#888780",
+    color: "#6c6b65",
     textTransform: "uppercase",
     marginBottom: SPACE.md,
   },
   resultSection: { marginTop: SPACE.sm },
   actionRow: { flexDirection: "row", gap: SPACE.md, marginTop: SPACE.lg },
-  emptyState: { alignItems: "center", marginTop: SPACE.huge, opacity: 0.5 },
-  emptyText: { marginTop: SPACE.md, color: "#888780", fontSize: 14 },
+  emptyState: { alignItems: "center", marginTop: SPACE.huge },
+  emptyText: { marginTop: SPACE.md, color: "#6c6b65", fontSize: 14 },
 });
 
 export default StartTransaction;

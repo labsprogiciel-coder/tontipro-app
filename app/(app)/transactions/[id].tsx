@@ -74,7 +74,7 @@ const fmtDateTime = (iso: string) => {
 // ─── sub-components ───────────────────────────────────────────────────────────
 
 function SectionTitle({ label }: { label: string }) {
-  return <Text style={styles.sectionTitle}>{label}</Text>;
+  return <Text accessibilityRole="header" style={styles.sectionTitle}>{label}</Text>;
 }
 
 function InfoRow({
@@ -214,7 +214,7 @@ export default function TransactionDetailScreen() {
         {/* ── Hero block ── */}
         <View style={[styles.heroBlock, { backgroundColor: heroColor }]}>
           <View style={styles.backRow}>
-            <Pressable style={styles.backBtn} onPress={() => router.back()}>
+            <Pressable accessibilityRole="button" style={styles.backBtn} onPress={() => router.back()}>
               <ChevronLeft
                 size={16}
                 color="rgba(255,255,255,0.75)"
@@ -222,7 +222,12 @@ export default function TransactionDetailScreen() {
               />
               <Text style={styles.backLabel}>Historique</Text>
             </Pressable>
-            <Pressable style={styles.iconBtn} onPress={handleShare}>
+            <Pressable
+              style={styles.iconBtn}
+              onPress={handleShare}
+              accessibilityRole="button"
+              accessibilityLabel="Partager le reçu"
+            >
               <Share2 size={15} color="white" strokeWidth={1.6} />
             </Pressable>
           </View>
@@ -381,6 +386,7 @@ export default function TransactionDetailScreen() {
               offset={[0, 1]}
             >
               <Pressable
+                accessibilityRole="button"
                 style={styles.clientMini}
                 onPress={() => router.push(`/(app)/clients/${client.id}`)}
               >
@@ -514,6 +520,7 @@ export default function TransactionDetailScreen() {
                 automatiquement à la prochaine connexion.
               </Text>
               <Pressable
+                accessibilityRole="button"
                 style={styles.syncBtn}
                 onPress={() => syncPendingTransactions(branchId)}
               >
@@ -525,12 +532,13 @@ export default function TransactionDetailScreen() {
 
         {/* ── Action row ── */}
         <View style={styles.actionRow}>
-          <Pressable style={styles.btnShare} onPress={handleShare}>
+          <Pressable accessibilityRole="button" style={styles.btnShare} onPress={handleShare}>
             <Share2 size={14} color={K.text2} strokeWidth={1.5} />
             <Text style={styles.btnShareText}>Partager reçu</Text>
           </Pressable>
           {client && (
             <Pressable
+              accessibilityRole="button"
               style={[styles.btnClient, { backgroundColor: heroColor }]}
               onPress={() => router.push(`/(app)/clients/${client.id}`)}
             >
@@ -689,10 +697,10 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
   },
-  commIconText: { fontSize: 13, fontWeight: "700", color: K.orange },
+  commIconText: { fontSize: 13, fontWeight: "700", color: K.orangeDk },
   commLabel: { fontSize: 13, fontWeight: "500", color: K.text1 },
   commSub: { fontSize: 10, color: K.text3 },
-  commVal: { fontSize: 14, fontWeight: "600", color: K.orange },
+  commVal: { fontSize: 14, fontWeight: "600", color: K.orangeDk },
 
   clientMini: {
     flexDirection: "row",

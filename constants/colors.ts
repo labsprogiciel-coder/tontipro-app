@@ -42,7 +42,7 @@ export const KAURIDORR_THEME = {
   // Text
   text1: "#1a1a18",
   text2: "#5f5e5a",
-  text3: "#888780",
+  text3: "#6c6b65",
   textSuccess: "#3b6d11",
   textWarning: "#854f0b",
   textDanger: "#a32d2d",
@@ -57,7 +57,7 @@ export const KAURIDORR_THEME = {
   bgTertiary: "#eeede8",
   textPrimary: "#1a1a18",
   textSecondary: "#5f5e5a",
-  textTertiary: "#888780",
+  textTertiary: "#6c6b65",
   danger: "#a32d2d",
 };
 

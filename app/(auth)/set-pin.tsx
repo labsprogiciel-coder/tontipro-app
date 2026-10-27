@@ -15,6 +15,7 @@ import { saveOfflineCredential } from "@/utils/secure-storage";
 import { PinEntry } from "@/app/components/ui/pin-entry";
 import { KAURIDORR_THEME as T } from "@/constants/colors";
 import { SPACE } from "@/constants/spacing";
+import { LiveText } from "@/app/components/ui/live-text";
 
 /** Confirms and saves a four-digit local unlock PIN, then resumes navigation. */
 export default function SetPinScreen() {
@@ -78,7 +79,7 @@ export default function SetPinScreen() {
     <SafeAreaView style={s.container} edges={["top", "bottom"]}>
       <View style={s.screen}>
         {isUnlocked && (
-          <Pressable onPress={() => router.back()} hitSlop={8} style={s.back}>
+          <Pressable accessibilityRole="button" onPress={() => router.back()} hitSlop={8} style={s.back}>
             <ArrowLeft size={18} color={T.text2} />
             <Text style={s.backText}>Retour</Text>
           </Pressable>
@@ -87,7 +88,7 @@ export default function SetPinScreen() {
           <View style={s.logo}>
             <ShieldCheck size={32} color="white" />
           </View>
-          <Text style={s.title}>
+          <Text accessibilityRole="header" style={s.title}>
             {first === null ? "Choisissez votre code PIN" : "Confirmez votre code PIN"}
           </Text>
           <Text style={s.subtitle}>
@@ -114,7 +115,7 @@ export default function SetPinScreen() {
           {saving ? (
             <ActivityIndicator color={T.orange} />
           ) : error ? (
-            <Text style={s.error}>{error}</Text>
+            <LiveText style={s.error}>{error}</LiveText>
           ) : null}
         </View>
       </View>

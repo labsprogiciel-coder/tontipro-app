@@ -5,6 +5,8 @@ const HeaderAvatar: React.FC<{ initials: string; onPress?: () => void }> = ({
   onPress,
 }) => (
   <Pressable
+    accessibilityRole="button"
+    accessibilityLabel="Mon profil"
     onPress={onPress}
     style={({ pressed }) => [styles.avatar, pressed && styles.pressed]}
   >

@@ -99,6 +99,17 @@ function HoldToConfirm({
       onPressIn={startHold}
       onPressOut={cancelHold}
       disabled={disabled}
+      // A screen reader's double tap can't be held: its "activate" confirms
+      accessibilityRole="button"
+      accessibilityLabel={label}
+      accessibilityHint="Touchez deux fois pour confirmer"
+      accessibilityState={{ disabled: !!disabled }}
+      accessibilityActions={[{ name: "activate" }]}
+      onAccessibilityAction={(e) => {
+        if (e.nativeEvent.actionName !== "activate" || disabled) return;
+        Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+        onConfirm();
+      }}
       style={[
         s.holdBtn,
         { backgroundColor: accentColor, opacity: disabled ? 0.5 : 1 },
@@ -193,7 +204,7 @@ const TransactionEntryScreen = () => {
   }, [currentSelectedClient]);
 
   const isDeposit = type === "deposit";
-  const accentColor = isDeposit ? T.orange : T.greenDk;
+  const accentColor = isDeposit ? T.orangeStrong : T.greenDk;
   const accentLt = isDeposit ? T.orangeLt : T.greenLt;
 
   const canDeposit = perms.deposit;
@@ -296,6 +307,7 @@ const TransactionEntryScreen = () => {
         {/* Back row */}
         <View style={styles.backRow}>
           <TouchableOpacity
+            accessibilityRole="button"
             style={styles.backBtn}
             onPress={() => router.back()}
           >
@@ -311,6 +323,7 @@ const TransactionEntryScreen = () => {
 
         {/* Client selector */}
         <TouchableOpacity
+          accessibilityRole="button"
           style={styles.clientBar}
           activeOpacity={0.8}
           onPress={() => setIsClientPickerVisible(true)}
@@ -367,6 +380,7 @@ const TransactionEntryScreen = () => {
             const isActive = amount === val;
             return (
               <TouchableOpacity
+                accessibilityRole="button"
                 key={val}
                 style={[
                   styles.chip,
@@ -432,13 +446,15 @@ const TransactionEntryScreen = () => {
           <SafeAreaView style={styles.pickerSheet}>
             <View style={styles.pickerHeader}>
               <Text style={styles.pickerTitle}>Sélectionner un client</Text>
-              <TouchableOpacity onPress={() => setIsClientPickerVisible(false)}>
+              <TouchableOpacity accessibilityRole="button" onPress={() => setIsClientPickerVisible(false)}>
                 <Text style={styles.pickerClose}>Fermer</Text>
               </TouchableOpacity>
             </View>
 
             <View style={styles.searchTypeRow}>
               <TouchableOpacity
+                accessibilityRole="radio"
+                accessibilityState={{ checked: searchType === "name" }}
                 style={[
                   styles.searchTypeBtn,
                   searchType === "name" && styles.searchTypeBtnActive,
@@ -458,6 +474,8 @@ const TransactionEntryScreen = () => {
                 </Text>
               </TouchableOpacity>
               <TouchableOpacity
+                accessibilityRole="radio"
+                accessibilityState={{ checked: searchType === "code" }}
                 style={[
                   styles.searchTypeBtn,
                   searchType === "code" && styles.searchTypeBtnActive,
@@ -495,6 +513,7 @@ const TransactionEntryScreen = () => {
               keyExtractor={(item: Client) => item.id}
               renderItem={({ item }: { item: Client }) => (
                 <TouchableOpacity
+                  accessibilityRole="button"
                   style={styles.clientCard}
                   onPress={() => {
                     setCurrentSelectedClientId(item.id);
@@ -578,6 +597,7 @@ const TransactionEntryScreen = () => {
                 />
               )}
               <TouchableOpacity
+                accessibilityRole="button"
                 style={[styles.doneBtn, { backgroundColor: accentColor }]}
                 onPress={() => {
                   setSuccessTx(null);
@@ -729,7 +749,7 @@ const styles = StyleSheet.create({
     borderBottomColor: T.border,
   },
   pickerTitle: { fontSize: 15, fontWeight: "600", color: T.text1 },
-  pickerClose: { fontSize: 13, color: T.orange, fontWeight: "500" },
+  pickerClose: { fontSize: 13, color: T.orangeDk, fontWeight: "500" },
 
   searchTypeRow: {
     flexDirection: "row",

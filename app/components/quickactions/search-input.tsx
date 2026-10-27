@@ -21,13 +21,14 @@ const SearchInput: React.FC<SearchInputProps> = ({
       <View style={styles.searchWrapper}>
         <Search
           size={18}
-          color="#888780" // --color-text-tertiary
+          color="#6c6b65" // --color-text-tertiary
           style={styles.searchIcon}
         />
         <TextInput
+          accessibilityLabel={placeholder || "Rechercher"}
           style={styles.input}
           placeholder={placeholder}
-          placeholderTextColor="#888780"
+          placeholderTextColor="#6c6b65"
           value={value}
           onChangeText={onChangeText}
           autoCapitalize="none"
@@ -37,9 +38,10 @@ const SearchInput: React.FC<SearchInputProps> = ({
           <Pressable
             onPress={() => onChangeText("")}
             hitSlop={10}
+            accessibilityRole="button"
             accessibilityLabel="Effacer la recherche"
           >
-            <X size={16} color="#888780" />
+            <X size={16} color="#6c6b65" />
           </Pressable>
         )}
       </View>
@@ -48,6 +50,8 @@ const SearchInput: React.FC<SearchInputProps> = ({
       {onFilterPress && (
         <Pressable
           onPress={onFilterPress}
+          accessibilityRole="button"
+          accessibilityLabel="Filtres"
           style={({ pressed }) => [styles.filterBtn, pressed && styles.pressed]}
         >
           <SlidersHorizontal size={18} color="#5f5e5a" />

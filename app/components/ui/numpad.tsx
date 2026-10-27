@@ -44,11 +44,20 @@ export function Numpad({
       {rows.map((row, ri) => (
         <View key={ri} style={styles.row}>
           {row.map(({ digit }, ci) => {
-            if (!digit) return <View key={ci} style={styles.empty} />;
+            if (!digit)
+              return (
+                <View
+                  key={ci}
+                  style={styles.empty}
+                  importantForAccessibility="no"
+                />
+              );
             return (
               <Pressable
                 key={ci}
                 onPress={() => handleKey(digit)}
+                accessibilityRole="button"
+                accessibilityLabel={digit === "⌫" ? "Effacer" : digit}
                 style={({ pressed }) => [
                   styles.key,
                   pressed && {

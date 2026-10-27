@@ -19,6 +19,7 @@ import { myDevice, refusalMessage, registerMyDevice } from "@/lib/admin-api";
 import { getOrCreateDeviceInstallId } from "@/utils/device-id";
 import { useAuthStore } from "@/stores/auth-store";
 import { KAURIDORR_THEME as T } from "@/constants/colors";
+import { LiveText } from "@/app/components/ui/live-text";
 
 /** Same serial the admin sees on the device list: BRAND-MODEL-INSTALLID */
 async function getPhoneSerial(): Promise<string> {
@@ -114,9 +115,9 @@ export default function BindDeviceScreen() {
 
         {!isBound && !expired && request !== "sending" && request !== "sent" && (
           <>
-            <Text style={s.err}>{request}</Text>
+            <LiveText style={s.err}>{request}</LiveText>
             {serial && serial !== "—" && (
-              <Pressable style={s.btnGhost} onPress={() => sendRequest(serial)}>
+              <Pressable accessibilityRole="button" style={s.btnGhost} onPress={() => sendRequest(serial)}>
                 <Text style={s.btnGhostTxt}>Réessayer</Text>
               </Pressable>
             )}
@@ -124,11 +125,11 @@ export default function BindDeviceScreen() {
         )}
 
         {isBound ? (
-          <Pressable style={s.btn} onPress={() => router.replace("/dashboard")}>
+          <Pressable accessibilityRole="button" style={s.btn} onPress={() => router.replace("/dashboard")}>
             <Text style={s.btnTxt}>Aller au tableau de bord</Text>
           </Pressable>
         ) : expired ? (
-          <Pressable style={s.btn} onPress={signInAgain}>
+          <Pressable accessibilityRole="button" style={s.btn} onPress={signInAgain}>
             <Text style={s.btnTxt}>Se reconnecter</Text>
           </Pressable>
         ) : (

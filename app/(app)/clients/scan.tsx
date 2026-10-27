@@ -112,10 +112,15 @@ export default function ScanIDScreen() {
     return (
       <View style={[styles.container, { paddingTop: insets.top }]}>
         <View style={styles.webHeader}>
-          <Pressable style={styles.backBtn} onPress={() => router.back()}>
+          <Pressable
+            style={styles.backBtn}
+            onPress={() => router.back()}
+            accessibilityRole="button"
+            accessibilityLabel="Retour"
+          >
             <ChevronLeft size={24} color={colors.text} />
           </Pressable>
-          <Text style={styles.webHeaderTitle}>Vérification KYC</Text>
+          <Text accessibilityRole="header" style={styles.webHeaderTitle}>Vérification KYC</Text>
           <View style={{ width: 40 }} />
         </View>
 
@@ -135,9 +140,10 @@ export default function ScanIDScreen() {
           <View style={styles.webInputGroup}>
             <Text style={styles.webLabel}>{"Numéro d\u2019identité"}</Text>
             <TextInput
+              accessibilityLabel="Numéro d\u2019identité"
               style={styles.webInput}
               placeholder="Ex: SN-CNI-2845739"
-              placeholderTextColor={colors.inactive}
+              placeholderTextColor={colors.textSecondary}
               value={manualId}
               onChangeText={setManualId}
               autoCapitalize="characters"
@@ -146,6 +152,7 @@ export default function ScanIDScreen() {
           </View>
 
           <Pressable
+            accessibilityRole="button"
             style={({ pressed }) => [
               styles.webSubmitBtn,
               pressed && { opacity: 0.85 },
@@ -183,6 +190,7 @@ export default function ScanIDScreen() {
             }
           </Text>
           <Pressable
+            accessibilityRole="button"
             style={({ pressed }) => [
               styles.permissionBtn,
               pressed && { opacity: 0.85 },
@@ -192,6 +200,7 @@ export default function ScanIDScreen() {
             <Text style={styles.permissionBtnText}>Autoriser la caméra</Text>
           </Pressable>
           <Pressable
+            accessibilityRole="button"
             style={({ pressed }) => [
               styles.manualEntryLink,
               pressed && { opacity: 0.6 },
@@ -207,9 +216,10 @@ export default function ScanIDScreen() {
             <View style={styles.manualCard}>
               <Text style={styles.manualTitle}>{"Numéro d\u2019identité"}</Text>
               <TextInput
+                accessibilityLabel="Numéro d\u2019identité"
                 style={styles.manualInput}
                 placeholder="Ex: SN-CNI-2845739"
-                placeholderTextColor={colors.inactive}
+                placeholderTextColor={colors.textSecondary}
                 value={manualId}
                 onChangeText={setManualId}
                 autoCapitalize="characters"
@@ -217,12 +227,14 @@ export default function ScanIDScreen() {
               />
               <View style={styles.manualActions}>
                 <Pressable
+                  accessibilityRole="button"
                   style={[styles.manualActionBtn, styles.manualCancelBtn]}
                   onPress={() => setShowManualEntry(false)}
                 >
                   <Text style={styles.manualCancelText}>Annuler</Text>
                 </Pressable>
                 <Pressable
+                  accessibilityRole="button"
                   style={[styles.manualActionBtn, styles.manualConfirmBtn]}
                   onPress={handleManualSubmit}
                 >
@@ -243,19 +255,22 @@ export default function ScanIDScreen() {
           <Pressable
             style={styles.backBtn}
             onPress={() => setShowManualEntry(false)}
+            accessibilityRole="button"
+            accessibilityLabel="Retour"
           >
             <ChevronLeft size={24} color={colors.text} />
           </Pressable>
-          <Text style={styles.webHeaderTitle}>Saisie manuelle</Text>
+          <Text accessibilityRole="header" style={styles.webHeaderTitle}>Saisie manuelle</Text>
           <View style={{ width: 40 }} />
         </View>
         <View style={styles.webContent}>
           <View style={styles.webInputGroup}>
             <Text style={styles.webLabel}>{"Numéro d\u2019identité"}</Text>
             <TextInput
+              accessibilityLabel="Numéro d\u2019identité"
               style={styles.webInput}
               placeholder="Ex: SN-CNI-2845739"
-              placeholderTextColor={colors.inactive}
+              placeholderTextColor={colors.textSecondary}
               value={manualId}
               onChangeText={setManualId}
               autoCapitalize="characters"
@@ -263,6 +278,7 @@ export default function ScanIDScreen() {
             />
           </View>
           <Pressable
+            accessibilityRole="button"
             style={({ pressed }) => [
               styles.webSubmitBtn,
               pressed && { opacity: 0.85 },
@@ -297,15 +313,23 @@ export default function ScanIDScreen() {
 
       <View style={[styles.overlay, { paddingTop: insets.top }]}>
         <View style={styles.topBar}>
-          <Pressable style={styles.topBarBtn} onPress={() => router.back()}>
+          <Pressable
+            style={styles.topBarBtn}
+            onPress={() => router.back()}
+            accessibilityRole="button"
+            accessibilityLabel="Retour"
+          >
             <ChevronLeft size={24} color="#fff" />
           </Pressable>
-          <Text style={styles.topBarTitle}>
+          <Text accessibilityRole="header" style={styles.topBarTitle}>
             {"Scanner la pièce d\u2019identité"}
           </Text>
           <Pressable
             style={[styles.topBarBtn, torchEnabled && styles.topBarBtnActive]}
             onPress={() => setTorchEnabled((v) => !v)}
+            accessibilityRole="switch"
+            accessibilityLabel="Lampe torche"
+            accessibilityState={{ checked: torchEnabled }}
           >
             <Flashlight
               size={20}
@@ -345,12 +369,13 @@ export default function ScanIDScreen() {
               <ShieldCheck size={24} color={colors.secondary} />
               <Text style={styles.resultLabel}>ID scanné</Text>
               <Text style={styles.resultData}>{scannedData}</Text>
-              <Pressable style={styles.retryBtn} onPress={handleRetry}>
+              <Pressable accessibilityRole="button" style={styles.retryBtn} onPress={handleRetry}>
                 <Text style={styles.retryText}>Scanner à nouveau</Text>
               </Pressable>
             </View>
           ) : (
             <Pressable
+              accessibilityRole="button"
               style={({ pressed }) => [
                 styles.manualBtn,
                 pressed && { opacity: 0.8 },

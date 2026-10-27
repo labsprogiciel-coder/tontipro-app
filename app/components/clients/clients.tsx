@@ -39,7 +39,7 @@ const ClientCard: React.FC<ClientCardProps> = ({
   const badgeStyle = badgeColors[status];
 
   return (
-    <TouchableOpacity style={styles.card} onPress={onPress} activeOpacity={0.7}>
+    <TouchableOpacity accessibilityRole="button" style={styles.card} onPress={onPress} activeOpacity={0.7}>
       {/* Avatar Section */}
       <View style={[styles.avatar, { backgroundColor: avatarStyle.bg }]}>
         <Text style={[styles.avatarText, { color: avatarStyle.text }]}>

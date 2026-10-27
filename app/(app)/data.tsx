@@ -49,7 +49,7 @@ const T = {
   bgInfo: "#e6f1fb",
   text1: "#1a1a18",
   text2: "#5f5e5a",
-  text3: "#888780",
+  text3: "#6c6b65",
   textSuccess: "#3b6d11",
   textWarning: "#854f0b",
   textDanger: "#a32d2d",
@@ -88,6 +88,7 @@ function BtnMain({
 }) {
   return (
     <TouchableOpacity
+      accessibilityRole="button"
       onPress={onPress}
       activeOpacity={0.8}
       style={[styles.btnMain, { backgroundColor: color }]}
@@ -110,6 +111,7 @@ function BtnOutline({
 }) {
   return (
     <TouchableOpacity
+      accessibilityRole="button"
       onPress={onPress}
       activeOpacity={0.7}
       style={styles.btnOutline}
@@ -166,6 +168,7 @@ function BackRow({
   return (
     <View style={styles.backRow}>
       <TouchableOpacity
+        accessibilityRole="button"
         onPress={onBack}
         style={styles.backBtn}
         activeOpacity={0.7}
@@ -185,7 +188,7 @@ function BackRow({
 /** Screen title block */
 /** Section label */
 function SecTitle({ label }: { label: string }) {
-  return <Text style={styles.secTitle}>{label}</Text>;
+  return <Text accessibilityRole="header" style={styles.secTitle}>{label}</Text>;
 }
 
 // ─── HUB SCREEN ───────────────────────────────────────────────────────────────
@@ -231,7 +234,7 @@ function HubScreen({ onNavigate }: { onNavigate: (s: Screen) => void }) {
       {/* Top bar */}
       <View style={styles.topbar}>
         <View style={styles.topbarRow}>
-          <Text style={styles.pageTitle}>Données</Text>
+          <Text accessibilityRole="header" style={styles.pageTitle}>Données</Text>
           <View style={styles.iconBtn}>
             <Clock size={15} color={T.text2} strokeWidth={1.4} />
           </View>
@@ -252,6 +255,7 @@ function HubScreen({ onNavigate }: { onNavigate: (s: Screen) => void }) {
       <View style={styles.actionTiles}>
         {tiles.map((t, i) => (
           <TouchableOpacity
+            accessibilityRole="button"
             key={i}
             onPress={() => onNavigate(t.key)}
             activeOpacity={0.8}
@@ -425,7 +429,7 @@ function ExportConfigScreen({
         <BackRow label="Données" step={2} total={3} onBack={onBack} />
 
         <View style={styles.screenTitleBlock}>
-          <Text style={styles.screenTitle}>{"Configurer\nl'export"}</Text>
+          <Text accessibilityRole="header" style={styles.screenTitle}>{"Configurer\nl'export"}</Text>
           <Text style={styles.screenSub}>
             Choisissez le format et les données à exporter.
           </Text>
@@ -440,6 +444,7 @@ function ExportConfigScreen({
             const sel = format === f.id;
             return (
               <TouchableOpacity
+                accessibilityRole="button"
                 key={f.id}
                 onPress={() => setFormat(f.id)}
                 activeOpacity={0.8}

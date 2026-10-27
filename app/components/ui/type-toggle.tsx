@@ -18,6 +18,9 @@ export const TypeToggle: React.FC<TypeToggleProps> = ({
 }) => (
   <View style={styles.container}>
     <TouchableOpacity
+      accessibilityRole="radio"
+      accessibilityState={{ checked: type === "deposit" }}
+      accessibilityLabel="Dépôt"
       onPress={() => onTypeChange("deposit")}
       style={[styles.opt, type === "deposit" && { backgroundColor: T.orangeStrong }]}
     >
@@ -26,6 +29,9 @@ export const TypeToggle: React.FC<TypeToggleProps> = ({
       </Text>
     </TouchableOpacity>
     <TouchableOpacity
+      accessibilityRole="radio"
+      accessibilityState={{ checked: type === "withdrawal" }}
+      accessibilityLabel="Retrait"
       onPress={() => onTypeChange("withdrawal")}
       style={[
         styles.opt,

@@ -25,7 +25,9 @@ const ActionButton: React.FC<ActionButtonProps> = ({
   onClick,
 }) => (
   <Pressable
+    accessibilityRole="button"
     onPress={disabled ? undefined : onClick}
+    accessibilityState={{ disabled: !!disabled }}
     style={({ pressed }) => [
       styles.btn,
       buttonBg ? { backgroundColor: buttonBg } : null,
