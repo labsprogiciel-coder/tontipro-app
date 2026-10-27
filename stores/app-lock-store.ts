@@ -8,9 +8,12 @@ import { create } from "zustand";
 interface AppLockState {
   isUnlocked: boolean;
   unlock: () => void;
+  /** Ask for a PIN again (an agent handed the phone over). */
+  lock: () => void;
 }
 
 export const useAppLockStore = create<AppLockState>((set) => ({
   isUnlocked: false,
   unlock: () => set({ isUnlocked: true }),
+  lock: () => set({ isUnlocked: false }),
 }));

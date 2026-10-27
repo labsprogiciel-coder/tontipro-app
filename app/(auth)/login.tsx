@@ -10,8 +10,12 @@
 // (set-pin.tsx). Each later launch only asks for that PIN, checked on the
 // device (utils/secure-storage.ts), which also works offline. The PIN never
 // signs anyone in to the server.
+// On a shared TPE, agents who handed the phone over ("Changer d'agent") are
+// listed here: picking one and typing their PIN brings back their session
+// (lib/agent-switch.ts). The password is only needed for a new agent on the
+// phone, after "Déconnexion", or once a saved session has expired.
 import { useRouter } from "expo-router";
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import {
   ActivityIndicator,
   Keyboard,
@@ -25,7 +29,7 @@ import {
   View,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { Eye, EyeOff, KeyRound, Lock, Phone } from "lucide-react-native";
+import { ChevronRight, Eye, EyeOff, KeyRound, Lock, Phone, Users } from "lucide-react-native";
 import { useAuthActions } from "@convex-dev/auth/react";
 import { useAction, useConvexAuth } from "convex/react";
 import * as adminApi from "@/lib/admin-api";
@@ -33,6 +37,8 @@ import { useAuthStore } from "@/stores/auth-store";
 import { useAppLockStore } from "@/stores/app-lock-store";
 import { hasOfflineCredential, verifyOfflineCredential } from "@/utils/secure-storage";
 import { PinEntry } from "@/app/components/ui/pin-entry";
+import { forgetAgent, listSavedAgents, type SavedAgent } from "@/lib/agent-sessions";
+import { forgetCurrentAgent, handOverDevice, switchToAgent } from "@/lib/agent-switch";
 import { MizoMark, MizoWordmark } from "@/app/components/ui/MizoLogo";
 
 import { SPACE } from "@/constants/spacing";
@@ -105,6 +111,15 @@ export default function LoginScreen() {
   const logout = useAuthStore((s) => s.logout);
   const user = useAuthStore((s) => s.user);
 
+  // Agents who can come back on this TPE with their PIN
+  const [savedAgents, setSavedAgents] = useState<SavedAgent[]>([]);
+  const [picked, setPicked] = useState<SavedAgent | null>(null);
+  const [usePassword, setUsePassword] = useState(false);
+  const reloadAgents = useCallback(() => {
+    listSavedAgents().then(setSavedAgents);
+  }, []);
+  useEffect(reloadAgents, [reloadAgents, user]);
+
   // Session already on this device (earlier launch) but not unlocked since
   // this cold start: ask for the local PIN only.
   const isUnlockMode = !signingIn && !authComplete && user !== null && !isUnlocked;
@@ -141,6 +156,8 @@ export default function LoginScreen() {
       return;
     }
     (async () => {
+      // Signed in with the password: a saved session for this agent is stale
+      await forgetAgent(user.id).catch(() => {});
       if (await hasOfflineCredential(user.phone!)) {
         enterApp();
       } else {
@@ -228,9 +245,9 @@ export default function LoginScreen() {
     enterApp();
   };
 
-  /** "Ce n'est pas vous ?" / forgotten PIN: full sign-out, then sign in again. */
+  /** Forgotten PIN: full sign-out (PIN and saved session go), then sign in again. */
   const handleSignOut = async () => {
-    logout();
+    await forgetCurrentAgent();
     setUnlockCode("");
     setError("");
     try {
@@ -239,6 +256,156 @@ export default function LoginScreen() {
       console.warn("signOut failed:", e);
     }
   };
+
+  /** "Ce n'est pas vous ?": keep this agent on the phone, show the picker. */
+  const handleHandOver = async () => {
+    setUnlockCode("");
+    setError("");
+    await handOverDevice();
+    reloadAgents();
+  };
+
+  /** PIN of the agent picked in the list: bring their session back. */
+  const handlePickedPin = async (pin: string) => {
+    if (!picked) return;
+    setIsLoading(true);
+    setError("");
+    const result = await switchToAgent(picked, pin);
+    setIsLoading(false);
+    setUnlockCode("");
+    if (result.ok) {
+      const u = useAuthStore.getState().user;
+      router.replace(
+        (u?.device === null
+          ? "/(auth)/bind-device"
+          : { pathname: "/(auth)/welcome", params: { orgName: u?.organization?.name ?? "Mizo" } }) as any,
+      );
+      return;
+    }
+    setError(result.message);
+    if (result.needsPassword) {
+      setPhoneNumber(picked.phone);
+      setPicked(null);
+      setUsePassword(true);
+      reloadAgents();
+    }
+  };
+
+  const showPicker =
+    !signingIn && !authComplete && user === null && savedAgents.length > 0 && !usePassword;
+
+  if (showPicker && picked) {
+    return (
+      <SafeAreaView style={styles.container} edges={["top", "bottom"]}>
+        <View style={[styles.screen, styles.pinScreen]}>
+          <View style={[styles.header, styles.pinHeader]}>
+            <View style={styles.logo}>
+              <MizoMark size={64} />
+            </View>
+            <MizoWordmark height={22} />
+            <Text style={styles.title}>{picked.name}</Text>
+            <Text style={styles.subtitle}>Entrez votre code PIN à 4 chiffres pour continuer.</Text>
+          </View>
+
+          <PinEntry
+            length={4}
+            value={unlockCode}
+            onChange={(v) => {
+              setUnlockCode(v);
+              if (error) setError("");
+            }}
+            onComplete={handlePickedPin}
+            disabled={isLoading}
+            error={error}
+            accessibilityLabel="Code PIN"
+          />
+
+          <View style={styles.pinStatus}>
+            {isLoading ? (
+              <ActivityIndicator color={T.orange} />
+            ) : error ? (
+              <Text style={styles.errorText}>{error}</Text>
+            ) : null}
+          </View>
+
+          <Pressable
+            onPress={() => {
+              setPicked(null);
+              setUnlockCode("");
+              setError("");
+            }}
+            style={styles.pinFooterLink}
+          >
+            <Text style={styles.footerLinkText}>Choisir un autre agent</Text>
+          </Pressable>
+        </View>
+      </SafeAreaView>
+    );
+  }
+
+  if (showPicker) {
+    return (
+      <SafeAreaView style={styles.container} edges={["top", "bottom"]}>
+        <ScrollView contentContainerStyle={styles.screen}>
+          <View style={styles.header}>
+            <View style={styles.logo}>
+              <MizoMark size={64} />
+            </View>
+            <MizoWordmark height={22} />
+            <Text style={styles.title}>Qui utilise ce TPE ?</Text>
+            <Text style={styles.subtitle}>Choisissez votre nom, puis entrez votre code PIN.</Text>
+          </View>
+
+          <View style={styles.agentList}>
+            {savedAgents.map((a) => (
+              <Pressable
+                key={a.id}
+                onPress={() => {
+                  setPicked(a);
+                  setError("");
+                }}
+                style={({ pressed }) => [styles.agentRow, pressed && styles.btnPressed]}
+                accessibilityRole="button"
+                accessibilityLabel={`Se connecter en tant que ${a.name}`}
+              >
+                <View style={styles.agentAvatar}>
+                  <Text style={styles.agentAvatarText}>
+                    {a.name
+                      .split(" ")
+                      .slice(0, 2)
+                      .map((w) => w[0] ?? "")
+                      .join("")
+                      .toUpperCase()}
+                  </Text>
+                </View>
+                <View style={{ flex: 1 }}>
+                  <Text style={styles.agentName}>{a.name}</Text>
+                  <Text style={styles.agentPhone}>{a.phone}</Text>
+                </View>
+                <ChevronRight size={18} color={T.textTertiary} />
+              </Pressable>
+            ))}
+          </View>
+
+          {error ? <Text style={[styles.errorText, { marginTop: SPACE.md }]}>{error}</Text> : null}
+
+          <View style={styles.modeLinks}>
+            <Pressable
+              onPress={() => {
+                setUsePassword(true);
+                setError("");
+              }}
+              hitSlop={8}
+            >
+              <Text style={styles.footerText}>
+                Pas dans la liste ? <Text style={styles.footerLinkText}>Se connecter</Text>
+              </Text>
+            </Pressable>
+          </View>
+        </ScrollView>
+      </SafeAreaView>
+    );
+  }
 
   if (isUnlockMode) {
     return (
@@ -276,10 +443,14 @@ export default function LoginScreen() {
             ) : null}
           </View>
 
+          <Pressable onPress={handleHandOver} style={styles.pinFooterLink}>
+            <Text style={styles.footerText}>
+              Ce n&apos;est pas vous ? <Text style={styles.footerLinkText}>Changer d&apos;agent</Text>
+            </Text>
+          </Pressable>
           <Pressable onPress={handleSignOut} style={styles.pinFooterLink}>
             <Text style={styles.footerText}>
-              Code oublié ou ce n&apos;est pas vous ?{" "}
-              <Text style={styles.footerLinkText}>Se reconnecter</Text>
+              Code oublié ? <Text style={styles.footerLinkText}>Se reconnecter</Text>
             </Text>
           </Pressable>
         </View>
@@ -410,6 +581,19 @@ export default function LoginScreen() {
           </View>
 
           <View style={styles.modeLinks}>
+            {savedAgents.length > 0 && user === null && (
+              <Pressable
+                onPress={() => {
+                  setUsePassword(false);
+                  setError("");
+                }}
+                hitSlop={8}
+                style={styles.savedLink}
+              >
+                <Users size={16} color={T.orange} />
+                <Text style={styles.footerLinkText}>Agents enregistrés sur ce TPE</Text>
+              </Pressable>
+            )}
             {mode !== "signIn" ? (
               <Pressable onPress={() => switchMode("signIn")} hitSlop={8}>
                 <Text style={styles.footerLinkText}>J&apos;ai déjà un mot de passe</Text>
@@ -522,4 +706,29 @@ const styles = StyleSheet.create({
 
   hint: { fontSize: 12, color: T.textTertiary, marginLeft: SPACE.xs },
   modeLinks: { marginTop: SPACE.xxl, alignItems: "center", gap: SPACE.md },
+  savedLink: { flexDirection: "row", alignItems: "center", gap: SPACE.xs },
+
+  agentList: { gap: SPACE.sm },
+  agentRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: SPACE.md,
+    backgroundColor: T.bgSecondary,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: T.border,
+    paddingHorizontal: SPACE.md,
+    minHeight: 64,
+  },
+  agentAvatar: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: T.orangeLight,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  agentAvatarText: { color: T.orangeDark, fontWeight: "700", fontSize: 14 },
+  agentName: { fontSize: 15, fontWeight: "600", color: T.textPrimary },
+  agentPhone: { fontSize: 12, color: T.textSecondary, marginTop: 2 },
 });

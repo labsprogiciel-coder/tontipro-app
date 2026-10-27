@@ -23,6 +23,7 @@ import ErrorBoundary from "@/app/error-boundary";
 import { useNavigationStore } from "@/stores/navigation-store";
 import { useAuthStore } from "@/stores/auth-store";
 import { useAppLockStore } from "@/stores/app-lock-store";
+import { useAuthEpochStore } from "@/stores/auth-epoch-store";
 import * as adminApi from "@/lib/admin-api";
 
 /**
@@ -46,6 +47,8 @@ SplashScreen.preventAutoHideAsync();
 
 function RootLayout() {
   const [loaded, error] = useFonts({});
+  // Remounts the auth provider after an agent switch (lib/agent-sessions.ts)
+  const authEpoch = useAuthEpochStore((s) => s.epoch);
   const navigationRef = useNavigationContainerRef();
   useEffect(() => {
     if (navigationRef) navigationIntegration.registerNavigationContainer(navigationRef);
@@ -88,7 +91,7 @@ function RootLayout() {
   }
 
   return (
-    <ConvexAuthProvider client={convex} storage={storageAdapter}>
+    <ConvexAuthProvider key={authEpoch} client={convex} storage={storageAdapter}>
       <ErrorBoundary onError={clearNavigationState}>
         <SafeAreaProvider>
           <GestureHandlerRootView style={{ flex: 1 }}>
