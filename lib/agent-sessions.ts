@@ -59,13 +59,17 @@ export async function parkSession(user: User): Promise<boolean> {
   const pairs = await AsyncStorage.multiGet(keys);
   const tokens = Object.fromEntries(pairs.filter(([, v]) => v !== null)) as Record<string, string>;
   const hasRefresh = Object.keys(tokens).some((k) => k.startsWith("__convexAuthRefreshToken"));
-  if (hasRefresh) {
-    await SecureStore.setItemAsync(sessionKey(user.id), JSON.stringify(tokens));
-    const list = (await listSavedAgents()).filter((a) => a.id !== user.id);
-    list.unshift({ id: user.id, name: user.name, phone: user.phone, user, savedAt: Date.now() });
-    await writeList(list);
+  try {
+    if (hasRefresh) {
+      await SecureStore.setItemAsync(sessionKey(user.id), JSON.stringify(tokens));
+      const list = (await listSavedAgents()).filter((a) => a.id !== user.id);
+      list.unshift({ id: user.id, name: user.name, phone: user.phone, user, savedAt: Date.now() });
+      await writeList(list);
+    }
+  } finally {
+    // Even when saving failed: the next agent must not inherit this session
+    await AsyncStorage.multiRemove(keys);
   }
-  await AsyncStorage.multiRemove(keys);
   return hasRefresh;
 }
 
@@ -77,7 +81,14 @@ export async function restoreSession(agentId: string): Promise<User | null> {
   const agent = (await listSavedAgents()).find((a) => a.id === agentId);
   const raw = await SecureStore.getItemAsync(sessionKey(agentId));
   if (!agent || !raw) return null;
-  const tokens = JSON.parse(raw) as Record<string, string>;
+  let tokens: Record<string, string>;
+  try {
+    tokens = JSON.parse(raw) as Record<string, string>;
+  } catch {
+    // Unreadable: treated as expired, the agent signs in with the password
+    await forgetAgent(agentId).catch(() => {});
+    return null;
+  }
   await AsyncStorage.multiRemove(await currentAuthKeys());
   await AsyncStorage.multiSet(Object.entries(tokens));
   // A session is in use by one agent at a time: the copy here would go stale

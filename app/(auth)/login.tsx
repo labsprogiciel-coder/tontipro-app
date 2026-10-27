@@ -38,7 +38,12 @@ import { useAppLockStore } from "@/stores/app-lock-store";
 import { hasOfflineCredential, verifyOfflineCredential } from "@/utils/secure-storage";
 import { PinEntry } from "@/app/components/ui/pin-entry";
 import { forgetAgent, listSavedAgents, type SavedAgent } from "@/lib/agent-sessions";
-import { forgetCurrentAgent, handOverDevice, switchToAgent } from "@/lib/agent-switch";
+import {
+  forgetCurrentAgent,
+  handOverDevice,
+  switchToAgent,
+  type SwitchResult,
+} from "@/lib/agent-switch";
 import { MizoMark, MizoWordmark } from "@/app/components/ui/MizoLogo";
 
 import { SPACE } from "@/constants/spacing";
@@ -115,6 +120,17 @@ export default function LoginScreen() {
   const [savedAgents, setSavedAgents] = useState<SavedAgent[]>([]);
   const [picked, setPicked] = useState<SavedAgent | null>(null);
   const [usePassword, setUsePassword] = useState(false);
+
+  // The server ended a session: password form, with the agent's number
+  const expiredPhone = useAuthStore((s) => s.expiredPhone);
+  useEffect(() => {
+    if (!expiredPhone) return;
+    setPhoneNumber(expiredPhone);
+    setUsePassword(true);
+    setPicked(null);
+    setError("Votre session a expiré : reconnectez-vous avec votre mot de passe.");
+    useAuthStore.setState({ expiredPhone: null });
+  }, [expiredPhone]);
   const reloadAgents = useCallback(() => {
     listSavedAgents().then(setSavedAgents);
   }, []);
@@ -270,9 +286,16 @@ export default function LoginScreen() {
     if (!picked) return;
     setIsLoading(true);
     setError("");
-    const result = await switchToAgent(picked, pin);
-    setIsLoading(false);
-    setUnlockCode("");
+    let result: SwitchResult;
+    try {
+      result = await switchToAgent(picked, pin);
+    } catch (e) {
+      console.error("[login] switchToAgent failed:", e);
+      result = { ok: false, message: "Impossible de restaurer la session. Réessayez." };
+    } finally {
+      setIsLoading(false);
+      setUnlockCode("");
+    }
     if (result.ok) {
       const u = useAuthStore.getState().user;
       router.replace(

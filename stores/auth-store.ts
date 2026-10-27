@@ -84,6 +84,13 @@ interface AuthState {
   logout: (options?: { keepOnDevice?: boolean }) => void;
   /** Make a saved agent the signed-in one (PIN switch, lib/agent-sessions.ts). */
   switchTo: (user: User) => void;
+  /** Phone of an agent whose server session ended; login asks for the password. */
+  expiredPhone: string | null;
+  /**
+   * The server ended the signed-in agent's session (expired, or revoked):
+   * back to the password, keeping their PIN and queued work on the phone.
+   */
+  sessionEnded: () => void;
 }
 
 /**
@@ -124,6 +131,7 @@ export const useAuthStore = create<AuthState>()(
       isLoadingClients: false,
       user: null,
       registeredPhone: null,
+      expiredPhone: null,
 
       /**
        * Called from RootLayoutNav when `useQuery(adminApi.me)` returns data.
@@ -274,6 +282,12 @@ export const useAuthStore = create<AuthState>()(
         useTransactionStore.getState().switchAgent(user.id);
         setSentryUser(user.id);
         set({ isAuthenticated: true, isLoadingClients: false, user });
+      },
+
+      sessionEnded: () => {
+        const phone = get().user?.phone ?? null;
+        get().logout({ keepOnDevice: true });
+        set({ expiredPhone: phone });
       },
 
       logout: (options) => {

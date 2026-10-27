@@ -143,9 +143,14 @@ function RootLayoutNav() {
         isInitialized: true,
       });
     } else if (!convexAuthed) {
-      // Not authenticated via Convex — check local PIN for offline fallback
-      // Keep existing state if already authenticated via PIN
-      if (!isAuthenticated) {
+      // Not authenticated via Convex. Offline, a saved session stays
+      // "loading" (never here), so a signed-in staff member here means the
+      // server ended the session (expired, revoked, or a restored one it
+      // refused): back to the password instead of failing every call.
+      const signedIn = useAuthStore.getState().user;
+      if (isAuthenticated && signedIn?.branchId) {
+        useAuthStore.getState().sessionEnded();
+      } else if (!isAuthenticated) {
         useAuthStore.setState({ isInitialized: true });
       }
     }
