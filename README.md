@@ -101,7 +101,7 @@ bun android  # Lancer sur émulateur Android
 Le workflow GitHub Actions `.github/workflows/e2e.yml` (« PR checks ») tourne sur chaque pull request vers `main`, chaque push sur `main`, ou à la main :
 
 - **typecheck** : `bun run type-check` et `bun run lint`.
-- **e2e-android** : construit un APK de release depuis les sources (`expo prebuild` + Gradle, x86_64 uniquement, mises à jour à distance désactivées pour tester exactement le code de la PR), puis lance les parcours Maestro de `.maestro/` sur un émulateur Android. Aucune minute EAS n’est utilisée. Le rapport JUnit et les captures sont dans l’artefact `maestro-results`.
+- **e2e-android** : construit un APK de release depuis les sources (`expo prebuild` + Gradle, x86_64 uniquement, mises à jour à distance désactivées pour tester exactement le code de la PR), puis lance les parcours Maestro de `.maestro/` sur un émulateur Android. Aucune minute EAS n’est utilisée. Le rapport JUnit et les logs sont dans l’artefact `maestro-results`, avec des captures d’écran quand un parcours échoue.
 
 L’APK de test pointe vers le déploiement Convex **dev** (l’URL de `.env.example`) et n’envoie rien à Sentry. Le parcours `login` reste sur les écrans de connexion (vérifications du formulaire, première connexion, mot de passe oublié) : il n’a besoin d’aucun compte et ne modifie aucune donnée. Pour tester les écrans après connexion, il faudra un compte agent de test sur le déploiement dev, stocké dans les secrets GitHub.
 
