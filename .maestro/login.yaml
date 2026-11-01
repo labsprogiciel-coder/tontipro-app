@@ -1,6 +1,7 @@
 # Smoke test: the app starts, reaches the agent login screen, checks the form on the
 # device and switches between sign-in, first login and forgotten password.
-# Nothing is sent to the server: every submit here fails the form check first.
+# The app still makes its startup Convex query (users:me) to the dev deployment, but no
+# login is attempted: every submit here fails the form check on the device first.
 appId: com.tontipro.app
 name: Login screen
 tags:
