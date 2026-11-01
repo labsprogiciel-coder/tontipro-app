@@ -175,7 +175,9 @@ function RootLayoutNav() {
 
     const inAuthGroup = segments[0] === "(auth)";
     const inAppGroup = segments[0] === "(app)";
-    const currentAuthScreen = segments[1];
+    // Read as plain strings: without the generated route types (a fresh checkout, CI)
+    // useSegments() is typed as a one-element tuple and [1] fails to type-check.
+    const currentAuthScreen = (segments as string[])[1];
     const isAuthEntryScreen =
       !currentAuthScreen || ["login", "splash"].includes(currentAuthScreen);
     const user = useAuthStore.getState().user;

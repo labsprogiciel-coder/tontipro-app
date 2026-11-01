@@ -1,0 +1,132 @@
+# Typecheck, lint and end-to-end tests on every pull request to main, on GitHub's runners
+# (no EAS minutes or subscription needed). The APK is built here from source with
+# `expo prebuild` and Gradle, then the Maestro flows in .maestro/ run on an Android emulator.
+# The app talks to the admin *dev* Convex deployment (the URL in .env.example); the flows
+# stay on the login screens, so they need no account and change no data.
+name: PR checks
+
+on:
+  pull_request:
+    branches: [main]
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+# A new push to the same pull request cancels the run still going for the old one.
+concurrency:
+  group: pr-checks-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  typecheck:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: oven-sh/setup-bun@v2
+      - run: bun install --frozen-lockfile
+      - run: bun run type-check
+      - run: bun run lint
+
+  e2e-android:
+    runs-on: ubuntu-latest
+    # A cold native build takes ~30 minutes; Gradle's cache shortens later runs.
+    timeout-minutes: 90
+    env:
+      # No Sentry auth token here: skip the source map upload during the Gradle build,
+      # and send nothing from the test app to Sentry (an empty DSN turns it off).
+      SENTRY_DISABLE_AUTO_UPLOAD: "true"
+      EXPO_PUBLIC_SENTRY_DSN: ""
+    steps:
+      # The native build and the emulator image don't both fit on a stock runner's disk, so
+      # first drop big preinstalled toolchains this job never uses.
+      - name: Free disk space
+        run: |
+          sudo rm -rf /usr/share/dotnet /opt/ghc /usr/local/.ghcup /usr/share/swift \
+            /usr/local/share/boost /opt/hostedtoolcache/CodeQL
+          df -h /
+
+      - uses: actions/checkout@v4
+      - uses: oven-sh/setup-bun@v2
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 17
+      - uses: gradle/actions/setup-gradle@v4
+
+      - run: bun install --frozen-lockfile
+
+      - name: Generate the Android project
+        run: |
+          # The bundle needs EXPO_PUBLIC_CONVEX_URL: use the dev deployment from .env.example.
+          cp .env.example .env
+          npx expo prebuild --platform android --no-install
+          # Test what's in this pull request: never let an over-the-air update replace it.
+          sed -i 's|expo.modules.updates.ENABLED" android:value="true"|expo.modules.updates.ENABLED" android:value="false"|' \
+            android/app/src/main/AndroidManifest.xml
+          grep -q 'expo.modules.updates.ENABLED" android:value="false"' android/app/src/main/AndroidManifest.xml
+
+      # Release build: the JavaScript is bundled in, so no dev server is needed. It's signed
+      # with the debug key, and built only for the emulator's x86_64 to save time. Android's
+      # release lint is skipped: it also lints third-party libraries and has nothing to say
+      # about whether the app works.
+      - name: Build the APK
+        working-directory: android
+        timeout-minutes: 45
+        run: ./gradlew assembleRelease -PreactNativeArchitectures=x86_64 -x lintVitalRelease -x lintVitalAnalyzeRelease --no-daemon
+
+      # Keep the APK and drop the build output (several GB) before the emulator image lands.
+      - name: Keep the APK, clear the build
+        run: |
+          cp android/app/build/outputs/apk/release/app-release.apk "$RUNNER_TEMP/mizo.apk"
+          rm -rf android node_modules
+          df -h /
+
+      - name: Install Maestro
+        run: |
+          curl -fsSL "https://get.maestro.mobile.dev" | bash
+          echo "$HOME/.maestro/bin" >> "$GITHUB_PATH"
+
+      # The Android emulator needs hardware acceleration.
+      - name: Enable KVM
+        run: |
+          echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
+          sudo udevadm control --reload-rules
+          sudo udevadm trigger --name-match=kvm
+
+      # The app's very first launch on a software-rendered emulator can take over a minute,
+      # so the script launches it once (and closes it) before the flows start their clocks.
+      # A slow emulator can also show "System UI isn't responding" over the app, which hides
+      # every element from Maestro; error dialogs are turned off and any open one is closed.
+      - name: Run Maestro flows on an emulator
+        uses: reactivecircus/android-emulator-runner@v2
+        with:
+          api-level: 34
+          target: google_apis
+          arch: x86_64
+          profile: pixel_6
+          disable-animations: true
+          emulator-options: -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim -camera-back none
+          script: |
+            adb shell settings put global hide_error_dialogs 1 || true
+            adb install -r "$RUNNER_TEMP/mizo.apk"
+            adb shell am start -W -n com.tontipro.app/.MainActivity && sleep 20 && adb shell am force-stop com.tontipro.app
+            adb shell am broadcast -a android.intent.action.CLOSE_SYSTEM_DIALOGS || true
+            maestro test .maestro --format junit --output maestro-report.xml --debug-output maestro-debug || (adb logcat -d -t 5000 > logcat.txt; adb shell screencap -p /sdcard/last.png; adb pull /sdcard/last.png last-screen.png; echo "::group::Crash and JS errors"; grep -E "AndroidRuntime|FATAL|ReactNativeJS|ReactNative|com.tontipro.app" logcat.txt | tail -120; echo "::endgroup::"; echo "::group::Text on screen"; maestro hierarchy 2>/dev/null | grep -oE '"(text|accessibilityText|resource-id)" *: *"[^"]+"' | sort -u | head -80; echo "::endgroup::"; exit 1)
+
+      - name: Upload test report and screenshots
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: maestro-results
+          # Maestro keeps its failure screenshots under a hidden .maestro/ folder.
+          path: |
+            maestro-report.xml
+            maestro-debug/
+            logcat.txt
+            last-screen.png
+          include-hidden-files: true
+          if-no-files-found: ignore

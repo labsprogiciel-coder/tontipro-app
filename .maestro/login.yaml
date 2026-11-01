@@ -1,0 +1,52 @@
+# Smoke test: the app starts, reaches the agent login screen, checks the form on the
+# device and switches between sign-in, first login and forgotten password.
+# The app still makes its startup Convex query (users:me) to the dev deployment, but no
+# login is attempted: every submit here fails the form check on the device first.
+appId: com.tontipro.app
+name: Login screen
+tags:
+  - smoke
+---
+- launchApp:
+    clearState: true
+# Cold start on an emulator (fonts, splash, first Convex round trip) can take a while
+- extendedWaitUntil:
+    visible: "Connexion Agent"
+    timeout: 120000
+- assertVisible: "Numéro de téléphone"
+
+# Empty form: the phone number is checked first
+- tapOn: "Se connecter"
+- assertVisible: "Entrez un numéro de téléphone valide."
+
+# First login (activation code from the administrator). The form is longer, so scroll
+# to what may sit below the fold.
+- tapOn: "Nouveau.*"
+- assertVisible: "Première connexion"
+- scrollUntilVisible:
+    element:
+      text: "Confirmer le mot de passe"
+    direction: DOWN
+- scrollUntilVisible:
+    element:
+      text: "Activer mon compte"
+    direction: DOWN
+
+# Back to sign-in
+- scrollUntilVisible:
+    element:
+      text: "J.ai déjà un mot de passe"
+    direction: DOWN
+- tapOn: "J.ai déjà un mot de passe"
+- assertVisible: "Connexion Agent"
+
+# Forgotten password
+- scrollUntilVisible:
+    element:
+      text: "Mot de passe oublié"
+    direction: DOWN
+- tapOn: "Mot de passe oublié"
+- scrollUntilVisible:
+    element:
+      text: "Changer mon mot de passe"
+    direction: DOWN
