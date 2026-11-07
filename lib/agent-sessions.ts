@@ -12,9 +12,15 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
 import * as SecureStore from "expo-secure-store";
 import type { User } from "@/stores/auth-store";
 import { hasDeviceKey } from "@/lib/device-key";
+import { convex } from "@/lib/convex";
 
 const LIST_KEY = "device_agents_v1";
 const AUTH_KEY_PREFIXES = ["__convexAuthJWT", "__convexAuthRefreshToken"];
+// ConvexAuthProvider suffixes its keys with the deployment URL, letters and
+// digits only: tokens of another deployment (a preview build) are ignored
+const namespace = () => convex.url.replace(/[^a-zA-Z0-9]/g, "");
+const jwtKey = () => `__convexAuthJWT_${namespace()}`;
+const refreshKey = () => `__convexAuthRefreshToken_${namespace()}`;
 
 /** An agent who can come back on this phone with their PIN. */
 export interface SavedAgent {
@@ -67,10 +73,11 @@ function decodeBase64Url(input: string): string {
 
 /**
  * The staff member a set of session tokens belongs to (the access token's
- * `sub` is "userId|sessionId"), or null when it can't be read.
+ * `sub` is "userId|sessionId"), or null when it can't be read or there is no
+ * access token for this app's deployment.
  */
 export function tokensOwner(tokens: Record<string, string>): string | null {
-  const jwt = Object.entries(tokens).find(([k]) => k.startsWith("__convexAuthJWT"))?.[1];
+  const jwt = tokens[jwtKey()];
   const payload = jwt?.split(".")[1];
   if (!payload) return null;
   try {
@@ -100,7 +107,7 @@ export async function parkSession(user: User): Promise<boolean> {
   // Tokens of another agent (left by a provider that wrote after a switch)
   // must not be filed under this one: they would sign the wrong agent in
   const hasRefresh =
-    Object.keys(tokens).some((k) => k.startsWith("__convexAuthRefreshToken")) &&
+    typeof tokens[refreshKey()] === "string" &&
     tokensOwner(tokens) === user.id;
   let kept = false;
   try {
