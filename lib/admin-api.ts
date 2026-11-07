@@ -246,3 +246,14 @@ export const createWithdrawal = makeFunctionReference<
   { customerId: string; amount: number; clientId: string; offline?: boolean } & RecordedOn,
   string
 >("transactions:createWithdrawal");
+
+/** A device key for this app install (admin convex/deviceKeys.ts): sign in again with the PIN alone */
+export const issueDeviceKey = makeFunctionReference<
+  "mutation",
+  { installId: string },
+  { keyId: string; secret: string }
+>("deviceKeys:issue");
+
+export const revokeDeviceKey = makeFunctionReference<"mutation", { keyId: string }, null>(
+  "deviceKeys:revoke",
+);

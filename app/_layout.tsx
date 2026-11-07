@@ -1,5 +1,5 @@
 // app/_layout.tsx
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import {
   ActivityIndicator,
   Platform,
@@ -13,7 +13,7 @@ import * as SplashScreen from "expo-splash-screen";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
 import { SafeAreaProvider } from "react-native-safe-area-context";
 import AsyncStorage from "@react-native-async-storage/async-storage";
-import { ConvexAuthProvider, useConvexAuth } from "@convex-dev/auth/react";
+import { ConvexAuthProvider, useAuthActions, useConvexAuth } from "@convex-dev/auth/react";
 import { useQuery } from "convex/react";
 
 import { navigationIntegration, Sentry } from "@/lib/sentry";
@@ -25,6 +25,8 @@ import { useAuthStore } from "@/stores/auth-store";
 import { useAppLockStore } from "@/stores/app-lock-store";
 import { useAuthEpochStore } from "@/stores/auth-epoch-store";
 import * as adminApi from "@/lib/admin-api";
+import { ensureDeviceKey, forgetDeviceKey, getDeviceKey, isKeyRefusal } from "@/lib/device-key";
+import { isConnected, subscribeToNetworkChanges } from "@/utils/network";
 
 /**
  * Where ConvexAuthProvider keeps the session tokens (`__convexAuthJWT_*`,
@@ -122,6 +124,61 @@ function RootLayoutNav() {
   const isInitialized = useAuthStore((s) => s.isInitialized);
   const setConvexUser = useAuthStore((s) => s.setConvexUser);
   const isUnlocked = useAppLockStore((s) => s.isUnlocked);
+  const { signIn } = useAuthActions();
+  const reauthing = useRef(false);
+
+  /**
+   * The server session ended (expired after 30 days, or a saved one was
+   * missing): sign the agent back in with this phone's device key
+   * (lib/device-key.ts) instead of asking for the password. Offline, the
+   * call waits for the network and the agent keeps working meanwhile. Only a
+   * refusal (key deleted: suspended, unbound from the TPE, password reset)
+   * sends them back to the password.
+   */
+  const reauthWithDeviceKey = async (agentId: string) => {
+    if (reauthing.current) return;
+    reauthing.current = true;
+    try {
+      const key = await getDeviceKey(agentId);
+      if (!key) {
+        useAuthStore.getState().sessionEnded();
+        return;
+      }
+      await signIn("deviceKey", { keyId: key.keyId, secret: key.secret });
+      // New tokens: users:me answers again and the root effect takes over
+    } catch (e) {
+      const retry = () => {
+        if (useAuthStore.getState().user?.id === agentId) reauthWithDeviceKey(agentId);
+      };
+      if (!isKeyRefusal(e)) {
+        // Not a refusal (connection lost mid-call, server busy): keep the key
+        // and try again, once the network is back if it is gone
+        console.warn("[auth] device key sign-in failed, retrying:", e);
+        if (await isConnected()) {
+          setTimeout(retry, 30_000);
+        } else {
+          const stop = subscribeToNetworkChanges((online) => {
+            if (!online) return;
+            stop();
+            retry();
+          });
+        }
+        return;
+      }
+      console.warn("[auth] device key refused:", e);
+      await forgetDeviceKey(agentId);
+      if (useAuthStore.getState().user?.id === agentId) useAuthStore.getState().sessionEnded();
+    } finally {
+      reauthing.current = false;
+    }
+  };
+
+  // Signed in and online: make sure this phone holds the agent's device key
+  // (installs from before device keys get theirs here)
+  useEffect(() => {
+    if (!convexAuthed || !convexUser?.active) return;
+    ensureDeviceKey(convexUser.id).catch((e) => console.warn("[auth] device key not issued:", e));
+  }, [convexAuthed, convexUser?.active, convexUser?.id]);
 
   // Sync Convex auth state → Zustand store
   useEffect(() => {
@@ -145,11 +202,11 @@ function RootLayoutNav() {
     } else if (!convexAuthed) {
       // Not authenticated via Convex. Offline, a saved session stays
       // "loading" (never here), so a signed-in staff member here means the
-      // server ended the session (expired, revoked, or a restored one it
-      // refused): back to the password instead of failing every call.
+      // server ended the session (expired, revoked, or none was saved):
+      // sign back in with the device key, the password only if it's refused.
       const signedIn = useAuthStore.getState().user;
       if (isAuthenticated && signedIn?.branchId) {
-        useAuthStore.getState().sessionEnded();
+        reauthWithDeviceKey(signedIn.id);
       } else if (!isAuthenticated) {
         useAuthStore.setState({ isInitialized: true });
       }

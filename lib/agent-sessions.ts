@@ -11,6 +11,7 @@
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import * as SecureStore from "expo-secure-store";
 import type { User } from "@/stores/auth-store";
+import { hasDeviceKey } from "@/lib/device-key";
 
 const LIST_KEY = "device_agents_v1";
 const AUTH_KEY_PREFIXES = ["__convexAuthJWT", "__convexAuthRefreshToken"];
@@ -50,8 +51,9 @@ async function currentAuthKeys(): Promise<string[]> {
 
 /**
  * Put the signed-in agent's session aside and clear it from the provider's
- * storage, without signing out on the server. Returns false (nothing saved)
- * when there is no session to keep, e.g. it already expired.
+ * storage, without signing out on the server. Returns false (agent not kept
+ * on the phone) when there is neither a session to keep nor a device key
+ * to sign them back in with (lib/device-key.ts).
  */
 export async function parkSession(user: User): Promise<boolean> {
   if (!user.phone) return false;
@@ -59,9 +61,15 @@ export async function parkSession(user: User): Promise<boolean> {
   const pairs = await AsyncStorage.multiGet(keys);
   const tokens = Object.fromEntries(pairs.filter(([, v]) => v !== null)) as Record<string, string>;
   const hasRefresh = Object.keys(tokens).some((k) => k.startsWith("__convexAuthRefreshToken"));
+  let kept = false;
   try {
     if (hasRefresh) {
       await SecureStore.setItemAsync(sessionKey(user.id), JSON.stringify(tokens));
+    } else {
+      await SecureStore.deleteItemAsync(sessionKey(user.id));
+    }
+    kept = hasRefresh || (await hasDeviceKey(user.id));
+    if (kept) {
       const list = (await listSavedAgents()).filter((a) => a.id !== user.id);
       list.unshift({ id: user.id, name: user.name, phone: user.phone, user, savedAt: Date.now() });
       await writeList(list);
@@ -70,7 +78,7 @@ export async function parkSession(user: User): Promise<boolean> {
     // Even when saving failed: the next agent must not inherit this session
     await AsyncStorage.multiRemove(keys);
   }
-  return hasRefresh;
+  return kept;
 }
 
 /**
@@ -79,8 +87,16 @@ export async function parkSession(user: User): Promise<boolean> {
  */
 export async function restoreSession(agentId: string): Promise<User | null> {
   const agent = (await listSavedAgents()).find((a) => a.id === agentId);
+  if (!agent) return null;
   const raw = await SecureStore.getItemAsync(sessionKey(agentId));
-  if (!agent || !raw) return null;
+  if (!raw) {
+    // No session kept, but a device key: start signed out on the server, the
+    // root layout signs the agent back in with the key (online)
+    if (!(await hasDeviceKey(agentId))) return null;
+    await AsyncStorage.multiRemove(await currentAuthKeys());
+    await writeList((await listSavedAgents()).filter((a) => a.id !== agentId));
+    return agent.user;
+  }
   let tokens: Record<string, string>;
   try {
     tokens = JSON.parse(raw) as Record<string, string>;

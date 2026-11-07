@@ -30,6 +30,7 @@ import {
   Info,
   LogOut,
   Users,
+  Smartphone,
   ChevronRight,
   Database,
   LucideIcon,
@@ -98,9 +99,9 @@ const SettingsScreen = () => {
   );
 
   /**
-   * "Déconnexion": sign out of the server too, and forget this agent's PIN
-   * and saved session on the phone (otherwise users:me would sign them back
-   * in).
+   * "Retirer ce téléphone": sign out of the server too, and forget this
+   * agent's PIN, saved session and device key on the phone (otherwise
+   * users:me would sign them back in). Coming back needs the password.
    */
   const signOutNow = async () => {
     await forgetCurrentAgent();
@@ -114,8 +115,9 @@ const SettingsScreen = () => {
   };
 
   /**
-   * "Changer d'agent": this agent's session and PIN stay on the phone; the
-   * next agent picks themselves and types their PIN (login.tsx).
+   * "Déconnexion": this agent's session, PIN and device key stay on the
+   * phone; they come back by picking themselves and typing their PIN, even
+   * offline, and so can another agent of the TPE (login.tsx).
    */
   const handOverNow = async () => {
     await handOverDevice();
@@ -124,13 +126,14 @@ const SettingsScreen = () => {
   };
 
   /**
-   * Sign-out, also used to hand a shared TPE to another agent. The signed-in
-   * agent's queued operations stay on the phone but only sync under their
-   * own session, so they are offered a sync first.
+   * "Déconnexion" (`switching`: keeps the PIN, also hands a shared TPE to
+   * another agent) or "Retirer ce téléphone". The signed-in agent's queued
+   * operations stay on the phone but only sync under their own session, so
+   * they are offered a sync first.
    */
   const confirmSignOut = (switching: boolean) => {
-    const title = switching ? "Changer d'agent" : "Déconnexion";
-    const confirmLabel = switching ? "Changer d'agent" : "Déconnexion";
+    const title = switching ? "Déconnexion" : "Retirer ce téléphone";
+    const confirmLabel = switching ? "Se déconnecter" : "Retirer";
     const me = useAuthStore.getState().user?.id;
     const pendingOps = useTransactionStore
       .getState()
@@ -143,8 +146,8 @@ const SettingsScreen = () => {
       Alert.alert(
         title,
         switching
-          ? "Un autre agent pourra se connecter avec son code PIN. Vous reviendrez avec le vôtre."
-          : "Votre code PIN sera effacé de ce téléphone : il faudra votre mot de passe pour revenir.",
+          ? "Vous reviendrez avec votre code PIN, même sans connexion. Un autre agent du TPE peut aussi se connecter avec le sien."
+          : "Votre code PIN et votre accès seront effacés de ce téléphone : pour revenir, il faudra votre mot de passe et une connexion internet.",
         [
           { text: "Annuler", style: "cancel" },
           { text: confirmLabel, style: "destructive", onPress: switching ? handOverNow : signOutNow },
@@ -362,16 +365,17 @@ const SettingsScreen = () => {
             { marginTop: SPACE.sm, marginBottom: SPACE.xxl },
           ]}
         >
-          {/* A TPE can be shared: the next agent signs in with their own account */}
-          <SettingItem
-            icon={Users}
-            label="Changer d'agent"
-            onPress={() => confirmSignOut(true)}
-          />
-          <View style={styles.divider} />
+          {/* Keeps the PIN: the agent, or another agent of a shared TPE, signs in with it */}
           <SettingItem
             icon={LogOut}
             label="Déconnexion"
+            onPress={() => confirmSignOut(true)}
+          />
+          <View style={styles.divider} />
+          {/* Removes the agent from this phone: the password is needed again */}
+          <SettingItem
+            icon={Smartphone}
+            label="Retirer ce téléphone"
             onPress={handleLogout}
             destructive={true}
           />
