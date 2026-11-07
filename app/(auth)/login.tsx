@@ -15,7 +15,7 @@
 // (lib/agent-switch.ts). The password is only needed for a new agent on the
 // phone, after "Déconnexion", or once a saved session has expired.
 import { useRouter } from "expo-router";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import {
   ActivityIndicator,
   Keyboard,
@@ -36,6 +36,7 @@ import * as adminApi from "@/lib/admin-api";
 import { useAuthStore } from "@/stores/auth-store";
 import { useAppLockStore } from "@/stores/app-lock-store";
 import { hasOfflineCredential, verifyOfflineCredential } from "@/utils/secure-storage";
+import { isConnected } from "@/utils/network";
 import { PinEntry } from "@/app/components/ui/pin-entry";
 import { forgetAgent, listSavedAgents, type SavedAgent } from "@/lib/agent-sessions";
 import {
@@ -92,6 +93,17 @@ const REFUSED: Record<Mode, string> = {
   reset: "Réinitialisation impossible : vérifiez le numéro et le code.",
 };
 
+// The password is checked by the server: offline, a sign-in would wait for
+// the network forever (Convex queues the call until it reconnects)
+const OFFLINE =
+  "Pas de connexion internet. La connexion avec le mot de passe demande le réseau ; " +
+  "ensuite, votre code PIN suffit, même hors-ligne.";
+const NO_ANSWER =
+  "Le serveur ne répond pas. Vérifiez votre connexion internet et réessayez.";
+// Connected but no answer (Wi-Fi without internet, weak signal): stop waiting
+const SIGN_IN_TIMEOUT_MS = 30_000;
+const TIMED_OUT = Symbol("timed out");
+
 /** Shows staff sign-in, activation, or password reset, or local PIN unlock for a saved session. */
 export default function LoginScreen() {
   const router = useRouter();
@@ -112,6 +124,9 @@ export default function LoginScreen() {
   // before signIn() resolves, which must not show the PIN screen.
   const [signingIn, setSigningIn] = useState(false);
   const [unlockCode, setUnlockCode] = useState("");
+  // Each submit gets a number: a sign-in that answers after its timeout
+  // still finishes the flow, unless a newer submit replaced it
+  const attemptRef = useRef(0);
 
   const isUnlocked = useAppLockStore((s) => s.isUnlocked);
   const logout = useAuthStore((s) => s.logout);
@@ -217,13 +232,16 @@ export default function LoginScreen() {
       return;
     }
     Keyboard.dismiss();
+    setError("");
+    if (!(await isConnected())) {
+      setError(OFFLINE);
+      return;
+    }
     setIsLoading(true);
     setSigningIn(true);
-    setError("");
     const phone = phoneNumber.trim();
-    try {
-      // A previous agent's session on a shared TPE must not survive this one
-      if (user) logout();
+    const attempt = ++attemptRef.current;
+    const run = async () => {
       if (mode === "activate") {
         await signIn("phone", { phone, password, flow: "signUp", code: code.trim() });
       } else {
@@ -231,6 +249,34 @@ export default function LoginScreen() {
           await resetPassword({ phone, code: code.trim(), newPassword: password });
         }
         await signIn("phone", { phone, password, flow: "signIn" });
+      }
+    };
+    let timer: ReturnType<typeof setTimeout> | undefined;
+    try {
+      // A previous agent's session on a shared TPE must not survive this one
+      if (user) logout();
+      const call = run();
+      const outcome = await Promise.race([
+        call,
+        new Promise<typeof TIMED_OUT>((resolve) => {
+          timer = setTimeout(() => resolve(TIMED_OUT), SIGN_IN_TIMEOUT_MS);
+        }),
+      ]);
+      if (outcome === TIMED_OUT) {
+        setError(NO_ANSWER);
+        setIsLoading(false);
+        setSigningIn(false);
+        // Signed in after all, once the network came back
+        call
+          .then(() => {
+            if (attemptRef.current !== attempt) return;
+            setError("");
+            setSigningIn(true);
+            setIsLoading(true);
+            setAuthComplete(true);
+          })
+          .catch(() => {});
+        return;
       }
       setAuthComplete(true); // the effect above takes over once the profile is in
     } catch (e: any) {
@@ -240,6 +286,8 @@ export default function LoginScreen() {
       setConfirm("");
       setIsLoading(false);
       setSigningIn(false);
+    } finally {
+      clearTimeout(timer);
     }
   };
 
