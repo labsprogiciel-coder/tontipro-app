@@ -44,15 +44,36 @@ export async function hasDeviceKey(agentId: string): Promise<boolean> {
   return (await getDeviceKey(agentId)) !== null;
 }
 
+// One issuance at a time per agent: two overlapping calls would each get a
+// key, the second replacing the first on the server, and the phone could end
+// up keeping the replaced one
+const issuing = new Map<string, Promise<void>>();
+
 /**
  * Get a device key for the signed-in agent if this phone has none (or
  * `replace`, after a password sign-in: a reset may have deleted the old one).
  * Needs the network; a failure only means the password may be asked later.
  */
 export async function ensureDeviceKey(agentId: string, replace = false): Promise<void> {
+  const pending = issuing.get(agentId);
+  // A key being issued right now is a fresh one: it covers `replace` too
+  if (pending) return pending;
   if (!replace && (await hasDeviceKey(agentId))) return;
-  const key = await convex.mutation(adminApi.issueDeviceKey, { installId: await installId() });
-  await SecureStore.setItemAsync(storeKey(agentId), JSON.stringify(key));
+  const run = (async () => {
+    const key = await convex.mutation(adminApi.issueDeviceKey, { installId: await installId() });
+    await SecureStore.setItemAsync(storeKey(agentId), JSON.stringify(key));
+  })().finally(() => issuing.delete(agentId));
+  issuing.set(agentId, run);
+  return run;
+}
+
+/**
+ * True when the server refused the key itself (deleted or wrong: the admin
+ * backend's ConvexError "DEVICE_KEY_REFUSED"), not when the call failed.
+ */
+export function isKeyRefusal(error: unknown): boolean {
+  if ((error as { data?: unknown } | null)?.data === "DEVICE_KEY_REFUSED") return true;
+  return String((error as Error)?.message ?? error).includes("DEVICE_KEY_REFUSED");
 }
 
 /** Drop the agent's key from the phone, and on the server when online. */

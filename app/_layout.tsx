@@ -25,7 +25,7 @@ import { useAuthStore } from "@/stores/auth-store";
 import { useAppLockStore } from "@/stores/app-lock-store";
 import { useAuthEpochStore } from "@/stores/auth-epoch-store";
 import * as adminApi from "@/lib/admin-api";
-import { ensureDeviceKey, forgetDeviceKey, getDeviceKey } from "@/lib/device-key";
+import { ensureDeviceKey, forgetDeviceKey, getDeviceKey, isKeyRefusal } from "@/lib/device-key";
 import { isConnected, subscribeToNetworkChanges } from "@/utils/network";
 
 /**
@@ -147,13 +147,22 @@ function RootLayoutNav() {
       await signIn("deviceKey", { keyId: key.keyId, secret: key.secret });
       // New tokens: users:me answers again and the root effect takes over
     } catch (e) {
-      if (!(await isConnected())) {
-        // Lost the network mid-call: try again once it is back
-        const stop = subscribeToNetworkChanges((online) => {
-          if (!online) return;
-          stop();
-          if (useAuthStore.getState().user?.id === agentId) reauthWithDeviceKey(agentId);
-        });
+      const retry = () => {
+        if (useAuthStore.getState().user?.id === agentId) reauthWithDeviceKey(agentId);
+      };
+      if (!isKeyRefusal(e)) {
+        // Not a refusal (connection lost mid-call, server busy): keep the key
+        // and try again, once the network is back if it is gone
+        console.warn("[auth] device key sign-in failed, retrying:", e);
+        if (await isConnected()) {
+          setTimeout(retry, 30_000);
+        } else {
+          const stop = subscribeToNetworkChanges((online) => {
+            if (!online) return;
+            stop();
+            retry();
+          });
+        }
         return;
       }
       console.warn("[auth] device key refused:", e);

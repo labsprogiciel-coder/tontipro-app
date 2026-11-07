@@ -40,7 +40,7 @@ import { useAuthStore } from "@/stores/auth-store";
 import { useAppLockStore } from "@/stores/app-lock-store";
 import { hasOfflineCredential, verifyOfflineCredential } from "@/utils/secure-storage";
 import { isConnected } from "@/utils/network";
-import { ensureDeviceKey } from "@/lib/device-key";
+import { ensureDeviceKey, forgetDeviceKey } from "@/lib/device-key";
 import { PinEntry } from "@/app/components/ui/pin-entry";
 import { forgetAgent, listSavedAgents, type SavedAgent } from "@/lib/agent-sessions";
 import {
@@ -195,7 +195,11 @@ export default function LoginScreen() {
       // Signed in with the password: a saved session for this agent is stale,
       // and so may be the device key (a password reset deletes it)
       await forgetAgent(user.id).catch(() => {});
-      ensureDeviceKey(user.id, true).catch((e) => console.warn("[login] device key not issued:", e));
+      ensureDeviceKey(user.id, true).catch(async (e) => {
+        console.warn("[login] device key not issued:", e);
+        // The old key may be revoked: drop it so the next launch online issues a new one
+        await forgetDeviceKey(user.id).catch(() => {});
+      });
       if (await hasOfflineCredential(user.phone!)) {
         enterApp();
       } else {
