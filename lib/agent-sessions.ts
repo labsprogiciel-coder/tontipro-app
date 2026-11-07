@@ -19,8 +19,8 @@ const AUTH_KEY_PREFIXES = ["__convexAuthJWT", "__convexAuthRefreshToken"];
 // ConvexAuthProvider suffixes its keys with the deployment URL, letters and
 // digits only: tokens of another deployment (a preview build) are ignored
 const namespace = () => convex.url.replace(/[^a-zA-Z0-9]/g, "");
-const jwtKey = () => `__convexAuthJWT_${namespace()}`;
-const refreshKey = () => `__convexAuthRefreshToken_${namespace()}`;
+export const jwtKey = () => `__convexAuthJWT_${namespace()}`;
+export const refreshKey = () => `__convexAuthRefreshToken_${namespace()}`;
 
 /** An agent who can come back on this phone with their PIN. */
 export interface SavedAgent {
@@ -71,13 +71,8 @@ function decodeBase64Url(input: string): string {
   return out; // bytes as Latin-1: enough for the ASCII ids in `sub`
 }
 
-/**
- * The staff member a set of session tokens belongs to (the access token's
- * `sub` is "userId|sessionId"), or null when it can't be read or there is no
- * access token for this app's deployment.
- */
-export function tokensOwner(tokens: Record<string, string>): string | null {
-  const jwt = tokens[jwtKey()];
+/** The staff member an access token belongs to (`sub` is "userId|sessionId"). */
+export function jwtOwner(jwt: string | null | undefined): string | null {
   const payload = jwt?.split(".")[1];
   if (!payload) return null;
   try {
@@ -86,6 +81,49 @@ export function tokensOwner(tokens: Record<string, string>): string | null {
   } catch {
     return null;
   }
+}
+
+/**
+ * The staff member a set of session tokens belongs to, or null when it can't
+ * be read or there is no access token for this app's deployment.
+ */
+export function tokensOwner(tokens: Record<string, string>): string | null {
+  return jwtOwner(tokens[jwtKey()]);
+}
+
+// Tokens a replaced provider received after its agent was put aside: a
+// refresh that was in flight at the switch (Convex refreshes right after
+// each sign-in is confirmed). The server has already replaced the refresh
+// token, so the copy put aside is stale, and using it again more than 10 s
+// later ends the session on the server. They go to the agent's saved
+// session instead (parkSession / restoreSession merge them).
+const lateTokens = new Map<string, Record<string, string>>();
+
+/**
+ * Keep a token a replaced provider wrote for `owner`: in their saved session
+ * (or for parkSession, if it is running), and in the provider's storage when
+ * `owner` is the signed-in agent again (`active`).
+ */
+export async function adoptLateToken(owner: string, key: string, value: string, active: boolean) {
+  if (key !== jwtKey() && key !== refreshKey()) return;
+  lateTokens.set(owner, { ...lateTokens.get(owner), [key]: value });
+  if (active) await AsyncStorage.setItem(key, value);
+  const raw = await SecureStore.getItemAsync(sessionKey(owner));
+  if (!raw) return;
+  try {
+    const saved = JSON.parse(raw) as Record<string, string>;
+    if (tokensOwner(saved) !== owner) return;
+    await SecureStore.setItemAsync(sessionKey(owner), JSON.stringify({ ...saved, [key]: value }));
+  } catch {
+    // unreadable copy: restoreSession falls back on the device key
+  }
+}
+
+/** `tokens` with the late ones received for `agentId` on top, which are then consumed. */
+function withLateTokens(agentId: string, tokens: Record<string, string>) {
+  const late = lateTokens.get(agentId);
+  lateTokens.delete(agentId);
+  return late ? { ...tokens, ...late } : tokens;
 }
 
 async function currentAuthKeys(): Promise<string[]> {
@@ -103,7 +141,8 @@ export async function parkSession(user: User): Promise<boolean> {
   if (!user.phone) return false;
   const keys = await currentAuthKeys();
   const pairs = await AsyncStorage.multiGet(keys);
-  const tokens = Object.fromEntries(pairs.filter(([, v]) => v !== null)) as Record<string, string>;
+  let tokens = Object.fromEntries(pairs.filter(([, v]) => v !== null)) as Record<string, string>;
+  if (tokensOwner(tokens) === user.id) tokens = withLateTokens(user.id, tokens);
   // Tokens of another agent (left by a provider that wrote after a switch)
   // must not be filed under this one: they would sign the wrong agent in
   const hasRefresh =
@@ -136,7 +175,12 @@ export async function parkSession(user: User): Promise<boolean> {
 export async function restoreSession(agentId: string): Promise<User | null> {
   const agent = (await listSavedAgents()).find((a) => a.id === agentId);
   if (!agent) return null;
-  const raw = await SecureStore.getItemAsync(sessionKey(agentId));
+  let raw = await SecureStore.getItemAsync(sessionKey(agentId));
+  const late = lateTokens.get(agentId);
+  if (!raw && late?.[refreshKey()] && jwtOwner(late[jwtKey()]) === agentId) {
+    // Put aside without a session, then a late refresh brought one
+    raw = JSON.stringify(late);
+  }
   if (!raw) {
     // No session kept, but a device key: start signed out on the server, the
     // root layout signs the agent back in with the key (online)
@@ -163,6 +207,7 @@ export async function restoreSession(agentId: string): Promise<User | null> {
     await writeList((await listSavedAgents()).filter((a) => a.id !== agentId));
     return agent.user;
   }
+  tokens = withLateTokens(agentId, tokens);
   await AsyncStorage.multiRemove(await currentAuthKeys());
   await AsyncStorage.multiSet(Object.entries(tokens));
   // A session is in use by one agent at a time: the copy here would go stale

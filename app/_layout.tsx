@@ -27,6 +27,7 @@ import { useAuthEpochStore } from "@/stores/auth-epoch-store";
 import * as adminApi from "@/lib/admin-api";
 import { ensureDeviceKey, forgetDeviceKey, getDeviceKey, isKeyRefusal } from "@/lib/device-key";
 import { isConnected, subscribeToNetworkChanges } from "@/utils/network";
+import { adoptLateToken, jwtKey, jwtOwner } from "@/lib/agent-sessions";
 
 /**
  * Where ConvexAuthProvider keeps the session tokens (`__convexAuthJWT_*`,
@@ -35,14 +36,34 @@ import { isConnected, subscribeToNetworkChanges } from "@/utils/network";
  * reloaded keys starting with "convex", missed these, and every cold start
  * came back signed out of the server while the PIN still unlocked the app.
  * One per provider (epoch): once an agent switch has started, the replaced
- * provider's late writes are dropped (stores/auth-epoch-store.ts).
+ * provider's late tokens (a refresh it had in flight) go to the agent they
+ * belong to, never to the next agent's storage (stores/auth-epoch-store.ts,
+ * lib/agent-sessions.ts adoptLateToken).
  */
 function storageFor(epoch: number) {
   const mayWrite = () => useAuthEpochStore.getState().writable === epoch;
+  // The agent whose tokens this provider holds
+  let owner: string | null = null;
+  const note = (key: string, value: string | null) => {
+    if (key === jwtKey() && value) owner = jwtOwner(value) ?? owner;
+  };
   return {
-    getItem: (key: string) => AsyncStorage.getItem(key),
-    setItem: (key: string, value: string) =>
-      mayWrite() ? AsyncStorage.setItem(key, value) : Promise.resolve(),
+    getItem: async (key: string) => {
+      const value = await AsyncStorage.getItem(key);
+      note(key, value);
+      return value;
+    },
+    setItem: async (key: string, value: string) => {
+      note(key, value);
+      if (mayWrite()) return AsyncStorage.setItem(key, value);
+      if (!owner) return;
+      const epochs = useAuthEpochStore.getState();
+      const active =
+        epochs.writable === epochs.epoch && useAuthStore.getState().user?.id === owner;
+      await adoptLateToken(owner, key, value, active);
+    },
+    // A replaced provider dropping its tokens (refused by the server) must
+    // not erase the next agent's; restoring its agent finds out on its own
     removeItem: (key: string) =>
       mayWrite() ? AsyncStorage.removeItem(key) : Promise.resolve(),
   };
