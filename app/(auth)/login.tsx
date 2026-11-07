@@ -10,10 +10,13 @@
 // (set-pin.tsx). Each later launch only asks for that PIN, checked on the
 // device (utils/secure-storage.ts), which also works offline. The PIN never
 // signs anyone in to the server.
-// On a shared TPE, agents who handed the phone over ("Changer d'agent") are
+// Agents who left the phone with "Déconnexion" or "Changer d'agent" are
 // listed here: picking one and typing their PIN brings back their session
-// (lib/agent-switch.ts). The password is only needed for a new agent on the
-// phone, after "Déconnexion", or once a saved session has expired.
+// (lib/agent-switch.ts), offline too. When the server session has expired,
+// the phone's device key signs them back in (lib/device-key.ts, app/_layout.tsx).
+// The password is only needed for a new agent on the phone, after "Retirer ce
+// téléphone" or a forgotten PIN, or once IT deleted the device key
+// (suspension, TPE unbound, password reset).
 import { useRouter } from "expo-router";
 import { useCallback, useEffect, useRef, useState } from "react";
 import {
@@ -37,6 +40,7 @@ import { useAuthStore } from "@/stores/auth-store";
 import { useAppLockStore } from "@/stores/app-lock-store";
 import { hasOfflineCredential, verifyOfflineCredential } from "@/utils/secure-storage";
 import { isConnected } from "@/utils/network";
+import { ensureDeviceKey } from "@/lib/device-key";
 import { PinEntry } from "@/app/components/ui/pin-entry";
 import { forgetAgent, listSavedAgents, type SavedAgent } from "@/lib/agent-sessions";
 import {
@@ -188,8 +192,10 @@ export default function LoginScreen() {
       return;
     }
     (async () => {
-      // Signed in with the password: a saved session for this agent is stale
+      // Signed in with the password: a saved session for this agent is stale,
+      // and so may be the device key (a password reset deletes it)
       await forgetAgent(user.id).catch(() => {});
+      ensureDeviceKey(user.id, true).catch((e) => console.warn("[login] device key not issued:", e));
       if (await hasOfflineCredential(user.phone!)) {
         enterApp();
       } else {

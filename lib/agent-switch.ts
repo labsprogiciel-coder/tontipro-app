@@ -7,6 +7,7 @@ import { useAuthStore } from "@/stores/auth-store";
 import { useAppLockStore } from "@/stores/app-lock-store";
 import { useAuthEpochStore } from "@/stores/auth-epoch-store";
 import { verifyOfflineCredential } from "@/utils/secure-storage";
+import { forgetDeviceKey } from "@/lib/device-key";
 
 /**
  * "Changer d'agent": keep the signed-in agent's session and PIN on the phone,
@@ -52,9 +53,14 @@ export async function switchToAgent(agent: SavedAgent, pin: string): Promise<Swi
   return { ok: true };
 }
 
-/** Full sign-out of the signed-in agent: their PIN and saved session go. */
+/**
+ * Remove the signed-in agent from the phone: their PIN, saved session and
+ * device key go (revoked on the server when online). Next time they need
+ * the password, and so the network.
+ */
 export async function forgetCurrentAgent(): Promise<void> {
   const user = useAuthStore.getState().user;
+  if (user) await forgetDeviceKey(user.id, true).catch(() => {});
   useAuthStore.getState().logout();
   if (user) await forgetAgent(user.id).catch(() => {});
 }
