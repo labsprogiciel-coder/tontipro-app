@@ -1,5 +1,5 @@
 // app/_layout.tsx
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   ActivityIndicator,
   Platform,
@@ -34,12 +34,19 @@ import { isConnected, subscribeToNetworkChanges } from "@/utils/network";
  * this goes straight to AsyncStorage: the earlier synchronous cache only
  * reloaded keys starting with "convex", missed these, and every cold start
  * came back signed out of the server while the PIN still unlocked the app.
+ * One per provider (epoch): once an agent switch has started, the replaced
+ * provider's late writes are dropped (stores/auth-epoch-store.ts).
  */
-const storageAdapter = {
-  getItem: (key: string) => AsyncStorage.getItem(key),
-  setItem: (key: string, value: string) => AsyncStorage.setItem(key, value),
-  removeItem: (key: string) => AsyncStorage.removeItem(key),
-};
+function storageFor(epoch: number) {
+  const mayWrite = () => useAuthEpochStore.getState().writable === epoch;
+  return {
+    getItem: (key: string) => AsyncStorage.getItem(key),
+    setItem: (key: string, value: string) =>
+      mayWrite() ? AsyncStorage.setItem(key, value) : Promise.resolve(),
+    removeItem: (key: string) =>
+      mayWrite() ? AsyncStorage.removeItem(key) : Promise.resolve(),
+  };
+}
 
 export const unstable_settings = {
   initialRouteName: "(auth)",
@@ -51,6 +58,7 @@ function RootLayout() {
   const [loaded, error] = useFonts({});
   // Remounts the auth provider after an agent switch (lib/agent-sessions.ts)
   const authEpoch = useAuthEpochStore((s) => s.epoch);
+  const storageAdapter = useMemo(() => storageFor(authEpoch), [authEpoch]);
   const navigationRef = useNavigationContainerRef();
   useEffect(() => {
     if (navigationRef) navigationIntegration.registerNavigationContainer(navigationRef);

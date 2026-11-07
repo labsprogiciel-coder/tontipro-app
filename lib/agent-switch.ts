@@ -15,6 +15,8 @@ import { forgetDeviceKey } from "@/lib/device-key";
  */
 export async function handOverDevice(): Promise<void> {
   const user = useAuthStore.getState().user;
+  // From here the current provider must not write tokens any more
+  useAuthEpochStore.getState().seal();
   if (user) {
     try {
       await parkSession(user);
@@ -39,8 +41,17 @@ export type SwitchResult =
 export async function switchToAgent(agent: SavedAgent, pin: string): Promise<SwitchResult> {
   const check = await verifyOfflineCredential(agent.phone, pin);
   if (!check.valid) return { ok: false, message: check.message ?? "Code incorrect." };
-  const user = await restoreSession(agent.id);
+  useAuthEpochStore.getState().seal();
+  let user: Awaited<ReturnType<typeof restoreSession>>;
+  try {
+    user = await restoreSession(agent.id);
+  } catch (e) {
+    // Nothing moved for good: the current provider may write again
+    useAuthEpochStore.setState((s) => ({ writable: s.epoch }));
+    throw e;
+  }
   if (!user) {
+    useAuthEpochStore.setState((s) => ({ writable: s.epoch }));
     return {
       ok: false,
       needsPassword: true,
