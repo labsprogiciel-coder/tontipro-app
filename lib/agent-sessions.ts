@@ -44,6 +44,43 @@ async function writeList(list: SavedAgent[]) {
   await AsyncStorage.setItem(LIST_KEY, JSON.stringify(list));
 }
 
+const B64 = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
+
+/** Base64url to text, without relying on atob (not on every Hermes build). */
+function decodeBase64Url(input: string): string {
+  const s = input.replace(/-/g, "+").replace(/_/g, "/");
+  let bits = 0;
+  let value = 0;
+  let out = "";
+  for (const ch of s) {
+    const i = B64.indexOf(ch);
+    if (i < 0) continue;
+    value = (value << 6) | i;
+    bits += 6;
+    if (bits >= 8) {
+      bits -= 8;
+      out += String.fromCharCode((value >> bits) & 0xff);
+    }
+  }
+  return out; // bytes as Latin-1: enough for the ASCII ids in `sub`
+}
+
+/**
+ * The staff member a set of session tokens belongs to (the access token's
+ * `sub` is "userId|sessionId"), or null when it can't be read.
+ */
+export function tokensOwner(tokens: Record<string, string>): string | null {
+  const jwt = Object.entries(tokens).find(([k]) => k.startsWith("__convexAuthJWT"))?.[1];
+  const payload = jwt?.split(".")[1];
+  if (!payload) return null;
+  try {
+    const sub = JSON.parse(decodeBase64Url(payload)).sub;
+    return typeof sub === "string" ? sub.split("|")[0] : null;
+  } catch {
+    return null;
+  }
+}
+
 async function currentAuthKeys(): Promise<string[]> {
   const keys = await AsyncStorage.getAllKeys();
   return keys.filter((k) => AUTH_KEY_PREFIXES.some((p) => k.startsWith(p)));
@@ -60,7 +97,11 @@ export async function parkSession(user: User): Promise<boolean> {
   const keys = await currentAuthKeys();
   const pairs = await AsyncStorage.multiGet(keys);
   const tokens = Object.fromEntries(pairs.filter(([, v]) => v !== null)) as Record<string, string>;
-  const hasRefresh = Object.keys(tokens).some((k) => k.startsWith("__convexAuthRefreshToken"));
+  // Tokens of another agent (left by a provider that wrote after a switch)
+  // must not be filed under this one: they would sign the wrong agent in
+  const hasRefresh =
+    Object.keys(tokens).some((k) => k.startsWith("__convexAuthRefreshToken")) &&
+    tokensOwner(tokens) === user.id;
   let kept = false;
   try {
     if (hasRefresh) {
@@ -97,13 +138,23 @@ export async function restoreSession(agentId: string): Promise<User | null> {
     await writeList((await listSavedAgents()).filter((a) => a.id !== agentId));
     return agent.user;
   }
-  let tokens: Record<string, string>;
+  let tokens: Record<string, string> | null = null;
   try {
     tokens = JSON.parse(raw) as Record<string, string>;
   } catch {
-    // Unreadable: treated as expired, the agent signs in with the password
-    await forgetAgent(agentId).catch(() => {});
-    return null;
+    tokens = null;
+  }
+  if (!tokens || tokensOwner(tokens) !== agentId) {
+    // Unreadable, or another agent's: not this agent's session. Their device
+    // key signs them back in (online); without one, the password
+    await SecureStore.deleteItemAsync(sessionKey(agentId));
+    if (!(await hasDeviceKey(agentId))) {
+      await forgetAgent(agentId).catch(() => {});
+      return null;
+    }
+    await AsyncStorage.multiRemove(await currentAuthKeys());
+    await writeList((await listSavedAgents()).filter((a) => a.id !== agentId));
+    return agent.user;
   }
   await AsyncStorage.multiRemove(await currentAuthKeys());
   await AsyncStorage.multiSet(Object.entries(tokens));
