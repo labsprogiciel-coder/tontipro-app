@@ -81,6 +81,10 @@ export async function clearSessionHere(): Promise<void> {
   useAuthEpochStore.getState().seal();
   try {
     await clearProviderTokens();
+  } catch (e) {
+    // Once more: the provider remounts below and would read what is left
+    console.warn("[agent-switch] clearing the session failed, retrying:", e);
+    await clearProviderTokens().catch((e2) => console.error("[agent-switch] session not cleared:", e2));
   } finally {
     useAuthEpochStore.getState().bump();
   }
@@ -102,5 +106,6 @@ export async function forgetCurrentAgent(): Promise<void> {
   }
   useAuthStore.getState().logout();
   if (user) await forgetAgent(user.id).catch(() => {});
-  await clearSessionHere();
+  // Never rejects: callers go on to the sign-in screen
+  await clearSessionHere().catch(() => {});
 }

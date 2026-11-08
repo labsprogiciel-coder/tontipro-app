@@ -27,7 +27,7 @@ import { useAuthEpochStore } from "@/stores/auth-epoch-store";
 import * as adminApi from "@/lib/admin-api";
 import { ensureDeviceKey, forgetDeviceKey, getDeviceKey, isKeyRefusal } from "@/lib/device-key";
 import { isConnected, subscribeToNetworkChanges } from "@/utils/network";
-import { adoptLateToken, jwtKey, jwtOwner, parkSession } from "@/lib/agent-sessions";
+import { adoptLateToken, clearProviderTokens, jwtKey, jwtOwner, parkSession } from "@/lib/agent-sessions";
 
 /**
  * Where ConvexAuthProvider keeps the session tokens (`__convexAuthJWT_*`,
@@ -225,6 +225,9 @@ function RootLayoutNav() {
         try {
           await parkSession(userFromMe(me));
         } finally {
+          // parkSession keeps nothing for a profile without a phone: the
+          // provider must restart without that session all the same
+          await clearProviderTokens().catch(() => {});
           useAuthEpochStore.getState().bump();
         }
       } catch (e) {
