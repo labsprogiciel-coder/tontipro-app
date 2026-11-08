@@ -17,6 +17,7 @@ import { isOwnPendingClient, useClientStore } from "@/stores/client-store";
 import { forgetCurrentAgent, handOverDevice } from "@/lib/agent-switch";
 import {
   isOwnTransaction,
+  isUnclaimedTransaction,
   useTransactionStore,
 } from "@/stores/transaction-store";
 
@@ -93,8 +94,37 @@ const SettingsScreen = () => {
 
   // Shared TPE: other agents' queued operations wait for their next sign-in
   const othersPending = useTransactionStore(
-    (s) => s.pendingTransactions.filter((t) => !isOwnTransaction(t, user?.id)).length,
+    (s) =>
+      s.pendingTransactions.filter((t) => !isOwnTransaction(t, user?.id) && !isUnclaimedTransaction(t))
+        .length,
   );
+  // Queued before the app recorded who took them: on a shared TPE they wait
+  // until an agent says they are theirs (sent alone when no other agent is kept)
+  const unclaimed = useTransactionStore((s) => s.pendingTransactions.filter(isUnclaimedTransaction));
+
+  const claimUnclaimed = () => {
+    const total = unclaimed.reduce((sum, t) => sum + t.amount, 0);
+    const n = unclaimed.length;
+    Alert.alert(
+      "Opérations sans agent",
+      `${n} opération${n > 1 ? "s" : ""} (${total.toLocaleString("fr-FR")} FCFA au total) ` +
+        "enregistrée" + (n > 1 ? "s" : "") + " avant la gestion de plusieurs agents. " +
+        "Confirmez seulement si c'est vous qui les avez faites : elles seront envoyées à votre nom.",
+      [
+        { text: "Annuler", style: "cancel" },
+        {
+          text: "Ce sont les miennes",
+          onPress: async () => {
+            const me = useAuthStore.getState().user?.id;
+            if (!me) return;
+            useTransactionStore.getState().claimUnclaimedTransactions(me);
+            await handleForceSync();
+          },
+        },
+      ],
+      { cancelable: true },
+    );
+  };
 
   /**
    * "Retirer ce téléphone": sign out of the server too, and forget this
@@ -290,6 +320,20 @@ const SettingsScreen = () => {
             value={lastSyncLabel}
             onPress={handleForceSync}
           />
+          {unclaimed.length > 0 && (
+            <Pressable
+              accessibilityRole="button"
+              accessibilityLabel={`${unclaimed.length} opérations sans agent en attente : les réclamer`}
+              onPress={claimUnclaimed}
+              style={styles.infoBox}
+            >
+              <Users size={16} color="#6c6b65" />
+              <Text style={[styles.infoText, { flex: 1 }]}>
+                {unclaimed.length} opération{unclaimed.length > 1 ? "s" : ""} sans agent en attente :
+                touchez ici si ce sont les vôtres.
+              </Text>
+            </Pressable>
+          )}
           {othersPending > 0 && (
             <View style={styles.infoBox}>
               <Users size={16} color="#6c6b65" />
