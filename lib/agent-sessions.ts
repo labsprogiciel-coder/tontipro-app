@@ -217,6 +217,11 @@ export async function restoreSession(agentId: string): Promise<User | null> {
   return agent.user;
 }
 
+/** Drop the session tokens from the provider's storage (local sign-out). */
+export async function clearProviderTokens(): Promise<void> {
+  await AsyncStorage.multiRemove(await currentAuthKeys());
+}
+
 /** Remove an agent from this phone (full sign-out). */
 export async function forgetAgent(agentId: string): Promise<void> {
   await SecureStore.deleteItemAsync(sessionKey(agentId));

@@ -15,8 +15,12 @@ export async function withAuthRetry<T>(
     } catch (e: any) {
       const isLastAttempt = i === attempts - 1;
       const message = String(e?.message ?? "");
+      // A ConvexError since the admin backend types it (a plain Error reads
+      // "Server Error" in production)
       const isAuthRace =
-        message.includes("Non authentifié") || message.includes("Unauthenticated");
+        e?.data === "Unauthenticated" ||
+        message.includes("Non authentifié") ||
+        message.includes("Unauthenticated");
       if (isLastAttempt || !isAuthRace) {
         throw e;
       }

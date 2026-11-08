@@ -60,8 +60,14 @@ export async function ensureDeviceKey(agentId: string, replace = false): Promise
   if (pending) return pending;
   if (!replace && (await hasDeviceKey(agentId))) return;
   const run = (async () => {
-    const key = await convex.mutation(adminApi.issueDeviceKey, { installId: await installId() });
-    await SecureStore.setItemAsync(storeKey(agentId), JSON.stringify(key));
+    // expectedUserId: a call held offline and sent after a switch is refused
+    // instead of issuing the next agent's key, to be filed under this one
+    const { keyId, secret, userId } = await convex.mutation(adminApi.issueDeviceKey, {
+      installId: await installId(),
+      expectedUserId: agentId,
+    });
+    if (userId !== undefined && userId !== agentId) throw new Error("device key for another agent");
+    await SecureStore.setItemAsync(storeKey(agentId), JSON.stringify({ keyId, secret }));
   })().finally(() => issuing.delete(agentId));
   issuing.set(agentId, run);
   return run;

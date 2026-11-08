@@ -14,7 +14,7 @@ import { useRouter } from "expo-router";
 import * as Device from "expo-device";
 import { Check, Smartphone } from "lucide-react-native";
 import { useConvexAuth, useMutation, useQuery } from "convex/react";
-import { useAuthActions } from "@convex-dev/auth/react";
+import { clearSessionHere } from "@/lib/agent-switch";
 import { myDevice, refusalMessage, registerMyDevice } from "@/lib/admin-api";
 import { getOrCreateDeviceInstallId } from "@/utils/device-id";
 import { useAuthStore } from "@/stores/auth-store";
@@ -33,7 +33,6 @@ export default function BindDeviceScreen() {
   const router = useRouter();
   const [serial, setSerial] = useState<string | null>(null);
   const { isAuthenticated, isLoading: authLoading } = useConvexAuth();
-  const { signOut } = useAuthActions();
   const logout = useAuthStore((s) => s.logout);
   const bound = useQuery(myDevice, isAuthenticated ? {} : "skip");
   const register = useMutation(registerMyDevice);
@@ -47,7 +46,7 @@ export default function BindDeviceScreen() {
       .then(() => setRequest("sent"))
       .catch((e) =>
         setRequest(
-          String(e?.message ?? "").includes("Unauthenticated")
+          e?.data === "Unauthenticated" || String(e?.message ?? "").includes("Unauthenticated")
             ? "expired"
             : e?.data === "FORBIDDEN"
               ? "Votre rôle n'utilise pas de TPE."
@@ -70,12 +69,10 @@ export default function BindDeviceScreen() {
 
   /** Server session lost: sign in again with phone + password. */
   const signInAgain = async () => {
+    // The server already ended the session: clear it here only (a held
+    // auth:signOut would end the next agent's)
     logout();
-    try {
-      await signOut();
-    } catch (e) {
-      console.warn("signOut failed:", e);
-    }
+    await clearSessionHere();
     router.replace("/login");
   };
 

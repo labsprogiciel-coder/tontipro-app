@@ -537,11 +537,19 @@ async function recordWithdrawal(
  * queued one arrives later than it was recorded, and the dashboard shows by
  * how much.
  */
+/**
+ * When, where and by whom it was recorded on the TPE. `expectedAgentId`
+ * makes the server refuse it (AGENT_MISMATCH, kept queued) if Convex sends
+ * the call later under another agent: an unanswered call stays in Convex's
+ * queue after withTimeout gives up, and goes out with whoever is signed in
+ * when the network returns.
+ */
 function recordedOn(tx: Transaction) {
   const recordedAt = new Date(tx.date).getTime();
   return {
     ...(Number.isFinite(recordedAt) ? { recordedAt } : {}),
     ...(tx.location ? { location: tx.location } : {}),
+    ...(tx.agentId ? { expectedAgentId: tx.agentId } : {}),
   };
 }
 
