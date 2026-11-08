@@ -14,7 +14,6 @@ import { useRouter } from "expo-router";
 import { colors } from "@/constants/colors";
 import { useAuthStore } from "@/stores/auth-store";
 import { isOwnPendingClient, useClientStore } from "@/stores/client-store";
-import { useAuthActions } from "@convex-dev/auth/react";
 import { forgetCurrentAgent, handOverDevice } from "@/lib/agent-switch";
 import {
   isOwnTransaction,
@@ -92,7 +91,6 @@ const SettingsScreen = () => {
   const [notificationsEnabled, setNotificationsEnabled] = useState(true);
   const [darkModeEnabled, setDarkModeEnabled] = useState(false);
 
-  const { signOut } = useAuthActions();
   // Shared TPE: other agents' queued operations wait for their next sign-in
   const othersPending = useTransactionStore(
     (s) => s.pendingTransactions.filter((t) => !isOwnTransaction(t, user?.id)).length,
@@ -105,11 +103,6 @@ const SettingsScreen = () => {
    */
   const signOutNow = async () => {
     await forgetCurrentAgent();
-    try {
-      await signOut();
-    } catch (e) {
-      console.warn("signOut failed:", e);
-    }
     // @ts-ignore
     router.replace("/(auth)");
   };

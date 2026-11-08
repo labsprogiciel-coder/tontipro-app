@@ -64,6 +64,10 @@ export function balanceDelta(tx: Pick<Transaction, "type" | "amount">): number {
 // two lift on their own (the next day, or once IT binds a TPE), so a queued
 // deposit refused with them stays queued; the others never will.
 const RETRY_LATER_CODES = new Set(["DAY_CLOSED", "NO_DEVICE"]);
+// No usable session for this agent right now (signed out, switched, a call
+// sent under the next agent): neither a refusal nor a message for the agent,
+// the operation stays queued for their next session
+const SESSION_CODES = new Set(["Unauthenticated", "User not found", "Account suspended", "AGENT_MISMATCH"]);
 const SYNC_MESSAGES: Record<string, string> = {
   DAY_CLOSED: "Caisse du jour clôturée : l'opération sera envoyée demain.",
   NO_DEVICE: "Aucun TPE actif n'est lié à votre compte. Contactez votre administrateur.",
@@ -91,7 +95,10 @@ export function isPermanentSyncError(
   error: unknown,
 ): error is ConvexError<{ code: string; message: string }> {
   const code = errorCode(error);
-  return error instanceof ConvexError && !(code && RETRY_LATER_CODES.has(code));
+  return (
+    error instanceof ConvexError &&
+    !(code && (RETRY_LATER_CODES.has(code) || SESSION_CODES.has(code)))
+  );
 }
 
 /** Refused for now (day closed, no TPE bound): keep it queued and say why. */

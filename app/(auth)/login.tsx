@@ -111,7 +111,7 @@ const TIMED_OUT = Symbol("timed out");
 /** Shows staff sign-in, activation, or password reset, or local PIN unlock for a saved session. */
 export default function LoginScreen() {
   const router = useRouter();
-  const { signIn, signOut } = useAuthActions();
+  const { signIn } = useAuthActions();
   const resetPassword = useAction(adminApi.resetPassword);
   const { isAuthenticated: convexAuthed } = useConvexAuth();
 
@@ -325,11 +325,6 @@ export default function LoginScreen() {
     await forgetCurrentAgent();
     setUnlockCode("");
     setError("");
-    try {
-      await signOut();
-    } catch (e) {
-      console.warn("signOut failed:", e);
-    }
   };
 
   /** "Ce n'est pas vous ?": keep this agent on the phone, show the picker. */

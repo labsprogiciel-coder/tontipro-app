@@ -226,7 +226,16 @@ export const listBranchTransactions = makeFunctionReference<
  * deposit already stored. Returns the transaction ID.
  */
 /** When (phone clock, ms) and where the agent recorded a movement; both optional. */
-type RecordedOn = { recordedAt?: number; location?: GeoFix };
+type RecordedOn = {
+  recordedAt?: number;
+  location?: GeoFix;
+  /**
+   * The agent who recorded it: the server refuses it (`AGENT_MISMATCH`) when
+   * another agent is signed in, which happens when Convex sends a call it
+   * held while offline after a switch on a shared TPE
+   */
+  expectedAgentId?: string;
+};
 
 export const createDeposit = makeFunctionReference<
   "mutation",
@@ -250,9 +259,18 @@ export const createWithdrawal = makeFunctionReference<
 /** A device key for this app install (admin convex/deviceKeys.ts): sign in again with the PIN alone */
 export const issueDeviceKey = makeFunctionReference<
   "mutation",
-  { installId: string },
-  { keyId: string; secret: string }
+  { installId: string; expectedUserId?: string },
+  { keyId: string; secret: string; userId?: string }
 >("deviceKeys:issue");
+
+/**
+ * End the signed-in agent's own session on the server, only if it is
+ * `expectedUserId`'s (else `AGENT_MISMATCH`). Used instead of auth:signOut,
+ * which a call held offline would run for the next agent.
+ */
+export const endSession = makeFunctionReference<"mutation", { expectedUserId: string }, null>(
+  "deviceKeys:endSession",
+);
 
 export const revokeDeviceKey = makeFunctionReference<"mutation", { keyId: string }, null>(
   "deviceKeys:revoke",

@@ -2,7 +2,15 @@
 //
 // Switching agents on a shared TPE with a PIN (see lib/agent-sessions.ts for
 // where the sessions are kept).
-import { forgetAgent, parkSession, restoreSession, type SavedAgent } from "@/lib/agent-sessions";
+import {
+  clearProviderTokens,
+  forgetAgent,
+  parkSession,
+  restoreSession,
+  type SavedAgent,
+} from "@/lib/agent-sessions";
+import { convex } from "@/lib/convex";
+import * as adminApi from "@/lib/admin-api";
 import { useAuthStore } from "@/stores/auth-store";
 import { useAppLockStore } from "@/stores/app-lock-store";
 import { useAuthEpochStore } from "@/stores/auth-epoch-store";
@@ -65,13 +73,39 @@ export async function switchToAgent(agent: SavedAgent, pin: string): Promise<Swi
 }
 
 /**
+ * Sign out on this phone only: the provider's tokens go and it remounts
+ * signed out. No server call: auth:signOut held while offline would be sent
+ * later with the next agent's session and end theirs.
+ */
+export async function clearSessionHere(): Promise<void> {
+  useAuthEpochStore.getState().seal();
+  try {
+    await clearProviderTokens();
+  } catch (e) {
+    // Once more: the provider remounts below and would read what is left
+    console.warn("[agent-switch] clearing the session failed, retrying:", e);
+    await clearProviderTokens().catch((e2) => console.error("[agent-switch] session not cleared:", e2));
+  } finally {
+    useAuthEpochStore.getState().bump();
+  }
+}
+
+/**
  * Remove the signed-in agent from the phone: their PIN, saved session and
- * device key go (revoked on the server when online). Next time they need
- * the password, and so the network.
+ * device key go, and their server session ends (when online; deviceKeys
+ * endSession and revoke only act for this agent, so a call held offline
+ * can't touch the next one). Next time they need the password, and so the
+ * network.
  */
 export async function forgetCurrentAgent(): Promise<void> {
   const user = useAuthStore.getState().user;
-  if (user) await forgetDeviceKey(user.id, true).catch(() => {});
+  if (user) {
+    // Sent now with this agent's session, before the provider remounts
+    convex.mutation(adminApi.endSession, { expectedUserId: user.id }).catch(() => {});
+    await forgetDeviceKey(user.id, true).catch(() => {});
+  }
   useAuthStore.getState().logout();
   if (user) await forgetAgent(user.id).catch(() => {});
+  // Never rejects: callers go on to the sign-in screen
+  await clearSessionHere().catch(() => {});
 }

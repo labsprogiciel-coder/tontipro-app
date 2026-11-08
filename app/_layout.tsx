@@ -21,13 +21,13 @@ import { convex } from "@/lib/convex";
 import { colors } from "@/constants/colors";
 import ErrorBoundary from "@/app/error-boundary";
 import { useNavigationStore } from "@/stores/navigation-store";
-import { useAuthStore } from "@/stores/auth-store";
+import { useAuthStore, userFromMe } from "@/stores/auth-store";
 import { useAppLockStore } from "@/stores/app-lock-store";
 import { useAuthEpochStore } from "@/stores/auth-epoch-store";
 import * as adminApi from "@/lib/admin-api";
 import { ensureDeviceKey, forgetDeviceKey, getDeviceKey, isKeyRefusal } from "@/lib/device-key";
 import { isConnected, subscribeToNetworkChanges } from "@/utils/network";
-import { adoptLateToken, jwtKey, jwtOwner } from "@/lib/agent-sessions";
+import { adoptLateToken, clearProviderTokens, jwtKey, jwtOwner, parkSession } from "@/lib/agent-sessions";
 
 /**
  * Where ConvexAuthProvider keeps the session tokens (`__convexAuthJWT_*`,
@@ -202,6 +202,42 @@ function RootLayoutNav() {
     }
   };
 
+  const latestMe = useRef(convexUser);
+  latestMe.current = convexUser;
+  const settingAside = useRef(false);
+  /**
+   * users:me answers for another staff member than the signed-in agent (a
+   * session mixed up by a switch on a shared TPE). Checked again after a
+   * moment, in case it was a result from before the switch; then that
+   * session is filed under its owner (lib/agent-sessions.ts parkSession,
+   * which checks the tokens are theirs) and the provider restarts signed
+   * out, so the root effect signs the agent back in with their device key.
+   */
+  const setAsideForeignSession = (agentId: string) => {
+    if (settingAside.current) return;
+    settingAside.current = true;
+    setTimeout(async () => {
+      try {
+        const me = latestMe.current;
+        if (!me?.active || me.id === agentId || useAuthStore.getState().user?.id !== agentId) return;
+        Sentry.captureMessage("[auth] session of another agent set aside", "warning");
+        useAuthEpochStore.getState().seal();
+        try {
+          await parkSession(userFromMe(me));
+        } finally {
+          // parkSession keeps nothing for a profile without a phone: the
+          // provider must restart without that session all the same
+          await clearProviderTokens().catch(() => {});
+          useAuthEpochStore.getState().bump();
+        }
+      } catch (e) {
+        console.warn("[auth] could not set the session aside:", e);
+      } finally {
+        settingAside.current = false;
+      }
+    }, 3000);
+  };
+
   // Signed in and online: make sure this phone holds the agent's device key
   // (installs from before device keys get theirs here)
   useEffect(() => {
@@ -214,6 +250,13 @@ function RootLayoutNav() {
     if (convexLoading) return; // still checking
 
     if (convexAuthed && convexUser) {
+      const signedIn = useAuthStore.getState().user;
+      if (convexUser.active && isAuthenticated && signedIn?.branchId && signedIn.id !== convexUser.id) {
+        // The session belongs to someone else than the agent who unlocked
+        // with their PIN: never take that profile on (see setAsideForeignSession)
+        setAsideForeignSession(signedIn.id);
+        return;
+      }
       // Convex session active → populate store (a suspended account,
       // `active: false`, is signed out locally by setConvexUser)
       setConvexUser(convexUser);
