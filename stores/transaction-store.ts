@@ -13,6 +13,7 @@ import { Transaction } from "@/types/transaction";
 import type { Client } from "@/types/client";
 import { useClientStore } from "./client-store";
 import { useAuthStore } from "./auth-store";
+import { listSavedAgents } from "@/lib/agent-sessions";
 import { DEV_MOCKS_ENABLED } from "@/__dev__/config";
 import * as Crypto from "expo-crypto";
 import {
@@ -37,10 +38,15 @@ function sortByTimestampDesc(a: Transaction, b: Transaction): number {
  * Whether a queued transaction was recorded by `agentId`. On a TPE shared by
  * several agents, each one's queue is replayed only under their own session,
  * so the server credits the right agent. Entries queued before agentId was
- * stored count as the current agent's.
+ * stored (isUnclaimedTransaction) belong to no one until claimed.
  */
 export function isOwnTransaction(tx: Transaction, agentId: string | undefined): boolean {
-  return !tx.agentId || tx.agentId === agentId;
+  return !!agentId && tx.agentId === agentId;
+}
+
+/** Queued before the app recorded who took it: not sent until claimed. */
+export function isUnclaimedTransaction(tx: Transaction): boolean {
+  return !tx.agentId;
 }
 
 /**
@@ -148,6 +154,11 @@ interface TransactionStoreState {
    * and sync at that agent's next sign-in.
    */
   switchAgent: (agentId: string) => void;
+  /**
+   * Give the queued operations recorded before the app stored their agent
+   * (isUnclaimedTransaction) to `agentId`, so they sync under their session.
+   */
+  claimUnclaimedTransactions: (agentId: string) => void;
   clearAll: () => void;
 }
 
@@ -408,6 +419,14 @@ export const useTransactionStore = create<TransactionStoreState>()(
         });
       },
 
+      claimUnclaimedTransactions: (agentId) => {
+        set((state) => ({
+          pendingTransactions: state.pendingTransactions.map((t) =>
+            isUnclaimedTransaction(t) ? { ...t, agentId } : t,
+          ),
+        }));
+      },
+
       // ── Reset ─────────────────────────────────────────────────────────────
 
       clearAll: () => {
@@ -568,6 +587,15 @@ async function syncPendingOnce(): Promise<void> {
   // Another agent's operations on a shared TPE wait for their own session
   const me = useAuthStore.getState().user?.id;
   if (!me) return;
+  // Entries without an agent are only this agent's for sure when no other
+  // agent is kept on the phone; on a shared TPE they wait for someone to
+  // claim them (Paramètres), so they are never credited to the wrong agent
+  if (store.getState().pendingTransactions.some(isUnclaimedTransaction)) {
+    const others = (await listSavedAgents()).some((a) => a.id !== me);
+    if (!others && useAuthStore.getState().user?.id === me) {
+      store.getState().claimUnclaimedTransactions(me);
+    }
+  }
   const queue = store.getState().pendingTransactions.filter((t) => isOwnTransaction(t, me)).sort(
     (a, b) => new Date(a.date).getTime() - new Date(b.date).getTime(),
   );
@@ -713,5 +741,9 @@ export function useOwnPendingTransactions(): Transaction[] {
 export function useOwnRejectedTransactions(): Transaction[] {
   const rejected = useTransactionStore((s) => s.rejectedTransactions);
   const me = useAuthStore((s) => s.user?.id);
-  return useMemo(() => rejected.filter((t) => isOwnTransaction(t, me)), [rejected, me]);
+  // Refused ones are only shown, never sent: older ones without an agent too
+  return useMemo(
+    () => rejected.filter((t) => isOwnTransaction(t, me) || isUnclaimedTransaction(t)),
+    [rejected, me],
+  );
 }
