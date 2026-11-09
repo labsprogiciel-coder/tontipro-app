@@ -157,8 +157,9 @@ interface TransactionStoreState {
   /**
    * Give the queued operations recorded before the app stored their agent
    * (isUnclaimedTransaction) to `agentId`, so they sync under their session.
+   * `ids`: only those (the ones an agent confirmed), when given.
    */
-  claimUnclaimedTransactions: (agentId: string) => void;
+  claimUnclaimedTransactions: (agentId: string, ids?: string[]) => void;
   clearAll: () => void;
 }
 
@@ -419,10 +420,11 @@ export const useTransactionStore = create<TransactionStoreState>()(
         });
       },
 
-      claimUnclaimedTransactions: (agentId) => {
+      claimUnclaimedTransactions: (agentId, ids) => {
+        const only = ids ? new Set(ids) : null;
         set((state) => ({
           pendingTransactions: state.pendingTransactions.map((t) =>
-            isUnclaimedTransaction(t) ? { ...t, agentId } : t,
+            isUnclaimedTransaction(t) && (!only || only.has(t.id)) ? { ...t, agentId } : t,
           ),
         }));
       },

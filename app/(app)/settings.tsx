@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import {
   Alert,
   Pressable,
@@ -100,9 +100,15 @@ const SettingsScreen = () => {
   );
   // Queued before the app recorded who took them: on a shared TPE they wait
   // until an agent says they are theirs (sent alone when no other agent is kept)
-  const unclaimed = useTransactionStore((s) => s.pendingTransactions.filter(isUnclaimedTransaction));
+  // Select the stored array and filter outside the selector: a selector that
+  // returns a new array on every call makes zustand re-render endlessly
+  const pending = useTransactionStore((s) => s.pendingTransactions);
+  const unclaimed = useMemo(() => pending.filter(isUnclaimedTransaction), [pending]);
 
   const claimUnclaimed = () => {
+    // What the agent confirms: these operations, for the agent who opened the dialog
+    const shown = unclaimed.map((t) => t.id);
+    const opener = useAuthStore.getState().user?.id;
     const total = unclaimed.reduce((sum, t) => sum + t.amount, 0);
     const n = unclaimed.length;
     Alert.alert(
@@ -116,8 +122,9 @@ const SettingsScreen = () => {
           text: "Ce sont les miennes",
           onPress: async () => {
             const me = useAuthStore.getState().user?.id;
-            if (!me) return;
-            useTransactionStore.getState().claimUnclaimedTransactions(me);
+            // Another agent signed in meanwhile: not theirs to confirm
+            if (!me || me !== opener) return;
+            useTransactionStore.getState().claimUnclaimedTransactions(me, shown);
             await handleForceSync();
           },
         },
