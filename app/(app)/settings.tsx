@@ -106,6 +106,9 @@ const SettingsScreen = () => {
   const unclaimed = useMemo(() => pending.filter(isUnclaimedTransaction), [pending]);
 
   const claimUnclaimed = () => {
+    // What the agent confirms: these operations, for the agent who opened the dialog
+    const shown = unclaimed.map((t) => t.id);
+    const opener = useAuthStore.getState().user?.id;
     const total = unclaimed.reduce((sum, t) => sum + t.amount, 0);
     const n = unclaimed.length;
     Alert.alert(
@@ -119,8 +122,9 @@ const SettingsScreen = () => {
           text: "Ce sont les miennes",
           onPress: async () => {
             const me = useAuthStore.getState().user?.id;
-            if (!me) return;
-            useTransactionStore.getState().claimUnclaimedTransactions(me);
+            // Another agent signed in meanwhile: not theirs to confirm
+            if (!me || me !== opener) return;
+            useTransactionStore.getState().claimUnclaimedTransactions(me, shown);
             await handleForceSync();
           },
         },
