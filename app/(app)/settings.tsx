@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import {
   Alert,
   Pressable,
@@ -100,7 +100,10 @@ const SettingsScreen = () => {
   );
   // Queued before the app recorded who took them: on a shared TPE they wait
   // until an agent says they are theirs (sent alone when no other agent is kept)
-  const unclaimed = useTransactionStore((s) => s.pendingTransactions.filter(isUnclaimedTransaction));
+  // Select the stored array and filter outside the selector: a selector that
+  // returns a new array on every call makes zustand re-render endlessly
+  const pending = useTransactionStore((s) => s.pendingTransactions);
+  const unclaimed = useMemo(() => pending.filter(isUnclaimedTransaction), [pending]);
 
   const claimUnclaimed = () => {
     const total = unclaimed.reduce((sum, t) => sum + t.amount, 0);
